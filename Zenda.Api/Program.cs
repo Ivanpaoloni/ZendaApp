@@ -1,41 +1,24 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// 1. REGISTRAR SERVICIOS
+builder.Services.AddControllers(); // Esto es clave para que use Controllers
+builder.Services.AddOpenApi();     // Swagger/OpenAPI
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// 2. CONFIGURAR PIPELINE
+if (app.Environment.IsDevelopment() || true) // Forzamos true para verlo en Render
 {
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// 3. MAPEAR RUTAS
+app.MapControllers(); // Esto busca automáticamente tus controladores
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// Dejamos un health check simple aquí también por seguridad
+app.MapGet("/health", () => new { Status = "Zenda is Live", Time = DateTime.UtcNow });
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
