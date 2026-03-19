@@ -1,24 +1,16 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. REGISTRAR SERVICIOS
-builder.Services.AddControllers(); // Esto es clave para que use Controllers
-builder.Services.AddOpenApi();     // Swagger/OpenAPI
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(); // <--- Esto usa el paquete que acabas de instalar
 
 var app = builder.Build();
 
-// 2. CONFIGURAR PIPELINE
-if (app.Environment.IsDevelopment() || true) // Forzamos true para verlo en Render
-{
-    app.MapOpenApi();
-}
+// Habilitamos Swagger para verlo siempre
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-app.UseAuthorization();
-
-// 3. MAPEAR RUTAS
-app.MapControllers(); // Esto busca automáticamente tus controladores
-
-// Dejamos un health check simple aquí también por seguridad
-app.MapGet("/health", () => new { Status = "Zenda is Live", Time = DateTime.UtcNow });
+app.MapControllers();
 
 app.Run();
