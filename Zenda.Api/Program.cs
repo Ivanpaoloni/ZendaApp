@@ -14,16 +14,21 @@ builder.Services.AddDbContext<ZendaDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 #region Health Checks Configuration
-// 1. Registro de los checks (Base de datos)
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "Neon-Database");
 
-// 2. Configuración de la UI (SOLO UNA VEZ)
 builder.Services.AddHealthChecksUI(setup =>
 {
-    // Al usar solo el path, la UI asume que es el mismo dominio que la web
-    setup.AddHealthCheckEndpoint("Zenda API", "/health-api");
-    setup.SetEvaluationTimeInSeconds(30); // En prod, 30 segundos está bien para no saturar
+    // Detectamos si estamos en producción (Render)
+    var isProd = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+
+    // Si es prod, usamos la URL completa. Si es local, usamos el path relativo.
+    var endpoint = isProd
+        ? "https://zendaapp.onrender.com/health-api"
+        : "/health-api";
+
+    setup.AddHealthCheckEndpoint("Zenda API", endpoint);
+    setup.SetEvaluationTimeInSeconds(30);
 })
 .AddInMemoryStorage();
 #endregion
