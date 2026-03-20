@@ -1,4 +1,5 @@
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Zenda.Infrastructure;
 
@@ -17,20 +18,7 @@ builder.Services.AddDbContext<ZendaDbContext>(options =>
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "Neon-Database");
 
-builder.Services.AddHealthChecksUI(setup =>
-{
-    // Detectamos si estamos en producción (Render)
-    var isProd = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
-
-    // En prod usamos la URL completa de Zenda en Render
-    var endpoint = isProd
-        ? "https://zendaapp.onrender.com/health-api"
-        : "/health-api";
-
-    setup.AddHealthCheckEndpoint("Zenda API", endpoint);
-    setup.SetEvaluationTimeInSeconds(30);
-})
-.AddInMemoryStorage();
+builder.Services.AddHealthChecksUI().AddInMemoryStorage();
 #endregion
 
 var app = builder.Build();
@@ -49,14 +37,11 @@ app.UseHttpsRedirection();
 app.MapControllers();
 
 #region Health Checks Endpoints
-app.MapHealthChecks("/health-api", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-{
-    Predicate = _ => true,
-    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-});
 
-app.MapHealthChecksUI(options => { options.UIPath = "/health-ui"; });
-app.MapHealthChecks("/health");
+//HealthCheck Middleware
+app.UseHealthChecks("/health", new HealthCheckOptions { ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
+app.UseHealthChecksUI(config => config.UIPath = "/health-dash");
+
 #endregion
 
 app.Run();
