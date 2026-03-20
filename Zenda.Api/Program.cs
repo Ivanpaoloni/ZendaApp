@@ -22,7 +22,7 @@ builder.Services.AddHealthChecksUI(setup =>
     // Detectamos si estamos en producción (Render)
     var isProd = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
 
-    // Si es prod, usamos la URL completa. Si es local, usamos el path relativo.
+    // En prod usamos la URL completa de Zenda en Render
     var endpoint = isProd
         ? "https://zendaapp.onrender.com/health-api"
         : "/health-api";
