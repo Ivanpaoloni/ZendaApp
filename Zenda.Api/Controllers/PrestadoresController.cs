@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Zenda.Core.Entities; // Asegurate de tener las entidades que definimos antes
+using Microsoft.EntityFrameworkCore;
+using Zenda.Core.Entities;
+using Zenda.Infrastructure;
 
 namespace Zenda.Api.Controllers;
 
@@ -7,23 +9,31 @@ namespace Zenda.Api.Controllers;
 [Route("api/[controller]")]
 public class PrestadoresController : ControllerBase
 {
-    // Por ahora usamos una lista en memoria hasta tener la DB
-    private static readonly List<Prestador> _prestadores = new()
+    private readonly ZendaDbContext _context;
+
+    // Inyectamos el contexto de la base de datos
+    public PrestadoresController(ZendaDbContext context)
     {
-        new Prestador { Id = Guid.NewGuid(), Nombre = "Ivan Paoloni", Especialidad = "Software Dev", Slug = "ivan-dev" }
-    };
+        _context = context;
+    }
 
     [HttpGet]
-    public IActionResult GetAll()
+    public async Task<IActionResult> GetAll()
     {
-        return Ok(_prestadores);
+        // Traemos los prestadores de la base de datos real
+        var prestadores = await _context.Prestadores.Include(x => x.Horarios).ToListAsync();
+        return Ok(prestadores);
     }
 
     [HttpPost]
-    public IActionResult Create([FromBody] Prestador nuevo)
+    public async Task<IActionResult> Create([FromBody] Prestador nuevo)
     {
         nuevo.Id = Guid.NewGuid();
-        _prestadores.Add(nuevo);
+
+        // Lo guardamos en Neon
+        _context.Prestadores.Add(nuevo);
+        await _context.SaveChangesAsync();
+
         return CreatedAtAction(nameof(GetAll), new { id = nuevo.Id }, nuevo);
     }
 }

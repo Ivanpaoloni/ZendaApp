@@ -1,8 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using Zenda.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(); // <--- Esto usa el paquete que acabas de instalar
+
+builder.Services.AddDbContext<ZendaDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
