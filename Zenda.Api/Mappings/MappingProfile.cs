@@ -13,5 +13,7 @@ public class MappingProfile : Profile
 
         // De DTO a Entidad (para POST)
         CreateMap<PrestadorCreateDto, Prestador>();
+
+        CreateMap<PrestadorUpdateDto, Prestador>();
     }
 }

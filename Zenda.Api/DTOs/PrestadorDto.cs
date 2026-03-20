@@ -17,3 +17,10 @@ public class PrestadorReadDto
     public string Especialidad { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
 }
+
+public class PrestadorUpdateDto
+{
+    public string Nombre { get; set; } = string.Empty;
+    public string Especialidad { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+}

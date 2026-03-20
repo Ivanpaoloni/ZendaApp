@@ -17,6 +17,18 @@ public class PrestadoresController : ControllerBase
         _context = context;
         _mapper = mapper;
     }
+    #region get
+
+    [HttpGet("{slug}")]
+    public async Task<ActionResult<PrestadorReadDto>> GetBySlug(string slug)
+    {
+        var prestador = await _context.Prestadores
+            .FirstOrDefaultAsync(p => p.Slug.ToLower() == slug.ToLower());
+
+        if (prestador == null) return NotFound(new { message = "Prestador no encontrado" });
+
+        return Ok(_mapper.Map<PrestadorReadDto>(prestador));
+    }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetAll()
@@ -25,7 +37,9 @@ public class PrestadoresController : ControllerBase
         // Mapeamos la lista de entidades a una lista de DTOs
         return Ok(_mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores));
     }
+    #endregion
 
+    #region Post
     [HttpPost]
     public async Task<ActionResult<PrestadorReadDto>> Create(PrestadorCreateDto dto)
     {
@@ -40,4 +54,34 @@ public class PrestadoresController : ControllerBase
         var resultado = _mapper.Map<PrestadorReadDto>(prestador);
         return CreatedAtAction(nameof(GetAll), new { id = resultado.Id }, resultado);
     }
+    #endregion
+
+    #region Put
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(Guid id, PrestadorUpdateDto dto)
+    {
+        var prestadorDb = await _context.Prestadores.FindAsync(id);
+        if (prestadorDb == null) return NotFound();
+
+        // Mapeamos los cambios del DTO sobre la entidad que ya existe
+        _mapper.Map(dto, prestadorDb);
+
+        await _context.SaveChangesAsync();
+        return NoContent(); // 204: Todo bien, pero no devuelvo contenido
+    }
+    #endregion
+
+    #region delete
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var prestador = await _context.Prestadores.FindAsync(id);
+        if (prestador == null) return NotFound();
+
+        _context.Prestadores.Remove(prestador);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+    #endregion
 }
