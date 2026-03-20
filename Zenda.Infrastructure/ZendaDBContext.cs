@@ -13,6 +13,7 @@ namespace Zenda.Infrastructure
         public ZendaDbContext(DbContextOptions<ZendaDbContext> options) : base(options) { }
 
         public DbSet<Prestador> Prestadores { get; set; }
-        // Aquí agregaremos Turnos, Pacientes, etc., más adelante
+        public DbSet<Disponibilidad> Disponibilidad { get; set; }
+        public DbSet<Turno> Turnos { get; set; }
     }
 }

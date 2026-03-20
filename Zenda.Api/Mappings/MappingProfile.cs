@@ -8,12 +8,24 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // De Entidad a DTO (para GET)
+        #region Prestadores
+
         CreateMap<Prestador, PrestadorReadDto>();
 
-        // De DTO a Entidad (para POST)
         CreateMap<PrestadorCreateDto, Prestador>();
 
         CreateMap<PrestadorUpdateDto, Prestador>();
+
+        #endregion
+
+        #region Disponibilidad
+
+        CreateMap<Disponibilidad, DisponibilidadReadDto>();
+
+        CreateMap<DisponibilidadCreateDto, Disponibilidad>()
+            .ForMember(dest => dest.HoraInicio, opt => opt.MapFrom(src => TimeOnly.Parse(src.HoraInicio)))
+            .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => TimeOnly.Parse(src.HoraFin)));
+
+        #endregion
     }
 }
