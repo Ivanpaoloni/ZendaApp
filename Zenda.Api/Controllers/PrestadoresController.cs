@@ -23,6 +23,7 @@ public class PrestadoresController : ControllerBase
     public async Task<ActionResult<PrestadorReadDto>> GetBySlug(string slug)
     {
         var prestador = await _context.Prestadores
+            .Include(p => p.Horarios)
             .FirstOrDefaultAsync(p => p.Slug.ToLower() == slug.ToLower());
 
         if (prestador == null) return NotFound(new { message = "Prestador no encontrado" });
@@ -33,7 +34,7 @@ public class PrestadoresController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetAll()
     {
-        var prestadores = await _context.Prestadores.ToListAsync();
+        var prestadores = await _context.Prestadores.Include(p => p.Horarios).ToListAsync();
         // Mapeamos la lista de entidades a una lista de DTOs
         return Ok(_mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores));
     }
