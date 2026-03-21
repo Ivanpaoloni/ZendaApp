@@ -35,13 +35,10 @@ public class TurnosController : ControllerBase
         var horaInicio = TimeOnly.FromDateTime(inicioLimpio);
         var horaFin = TimeOnly.FromDateTime(finSolicitado);
 
-        // 1. Obtenemos el Enum puro
-        var diaSemanaTurno = dto.Inicio.DayOfWeek;
-
         // 2. Comparamos directamente
         var atiende = await _context.Disponibilidad
             .AnyAsync(d => d.PrestadorId == dto.PrestadorId &&
-                           d.DiaSemana == diaSemanaTurno &&
+                           d.DiaSemana == (int)dto.Inicio.DayOfWeek &&
                            horaInicio >= d.HoraInicio &&
                            horaFin <= d.HoraFin);
 
@@ -81,6 +78,56 @@ public class TurnosController : ControllerBase
             .ToListAsync();
 
         return Ok(_mapper.Map<IEnumerable<TurnoReadDto>>(turnos));
+    }
+
+    [HttpGet("disponibilidad/{prestadorId}")]
+    public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad(Guid prestadorId, [FromQuery] DateTime fecha)
+    {
+        // 1. Buscamos al prestador para saber SU duración de turno
+        var prestador = await _context.Prestadores
+            .Select(p => new { p.Id, p.DuracionTurnoMinutos })
+            .FirstOrDefaultAsync(p => p.Id == prestadorId);
+
+        if (prestador == null) return NotFound("Prestador no encontrado");
+
+        int duracion = prestador.DuracionTurnoMinutos; // Ej: 50, 20, 120...
+        int diaBuscado = (int)fecha.DayOfWeek;
+
+        // 2. Traemos configuración y turnos ocupados (como antes)
+        var configuracion = await _context.Disponibilidad
+            .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
+            .ToListAsync();
+
+        var turnosOcupados = await _context.Turnos
+            .Where(t => t.PrestadorId == prestadorId && t.Inicio.Date == fecha.Date)
+            .ToListAsync();
+
+        var respuesta = new DisponibilidadFechaDto { Fecha = fecha };
+
+        // 3. Generamos los slots usando la duración VARIABLE
+        foreach (var rango in configuracion)
+        {
+            var inicioSlot = rango.HoraInicio;
+
+            // El bucle ahora usa 'duracion' en lugar de 30
+            while (inicioSlot.AddMinutes(duracion) <= rango.HoraFin)
+            {
+                var finSlot = inicioSlot.AddMinutes(duracion);
+
+                bool estaOcupado = turnosOcupados.Any(t =>
+                    TimeOnly.FromDateTime(t.Inicio) < finSlot &&
+                    inicioSlot < TimeOnly.FromDateTime(t.Fin));
+
+                if (!estaOcupado)
+                {
+                    respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
+                }
+
+                inicioSlot = finSlot;
+            }
+        }
+
+        return Ok(respuesta);
     }
     #endregion
 }

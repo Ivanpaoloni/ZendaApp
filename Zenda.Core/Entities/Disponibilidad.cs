@@ -4,7 +4,7 @@ public class Disponibilidad
 {
     public Guid Id { get; set; } // <--- ESTO ES LO QUE FALTA
 
-    public DayOfWeek DiaSemana { get; set; }
+    public int DiaSemana { get; set; }
     public TimeOnly HoraInicio { get; set; }
     public TimeOnly HoraFin { get; set; }
 
