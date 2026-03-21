@@ -27,5 +27,15 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => TimeOnly.Parse(src.HoraFin)));
 
         #endregion
+
+        #region Turnos
+
+        CreateMap<Turno, TurnoReadDto>();
+
+        CreateMap<TurnoCreateDto, Turno>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore()) 
+            .ForMember(dest => dest.Fin, opt => opt.MapFrom(src => src.Inicio.AddMinutes(30)))
+            .ForMember(dest => dest.EstaConfirmado, opt => opt.MapFrom(src => false));
+        #endregion
     }
 }
