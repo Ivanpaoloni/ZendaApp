@@ -2,7 +2,7 @@
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 
-namespace Zenda.Api.Mappings;
+namespace Zenda.Core.Mappings;
 
 public class MappingProfile : Profile
 {

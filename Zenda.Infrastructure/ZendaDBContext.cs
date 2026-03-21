@@ -1,14 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Zenda.Core.Entities;
+using Zenda.Core.Interfaces;
 
 namespace Zenda.Infrastructure
 {
-    public class ZendaDbContext : DbContext
+    public class ZendaDbContext : DbContext, IZendaDbContext
     {
         public ZendaDbContext(DbContextOptions<ZendaDbContext> options) : base(options) { }
 
