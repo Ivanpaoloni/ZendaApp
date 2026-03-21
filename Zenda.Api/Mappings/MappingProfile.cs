@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Zenda.Api.DTOs;
+using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 
 namespace Zenda.Api.Mappings;

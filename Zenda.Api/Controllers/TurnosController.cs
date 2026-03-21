@@ -1,8 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Zenda.Api.DTOs;
-using Zenda.Core.Entities;
+using Zenda.Core.DTOs;
 using Zenda.Infrastructure;
 
 namespace Zenda.Api.Controllers;
