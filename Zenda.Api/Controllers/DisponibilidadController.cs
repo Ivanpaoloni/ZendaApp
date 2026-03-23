@@ -1,64 +1,47 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Zenda.Api.DTOs;
-using Zenda.Core.Entities;
-using Zenda.Infrastructure;
-
-namespace Zenda.Api.Controllers;
+﻿using Microsoft.AspNetCore.Mvc;
+using Zenda.Core.DTOs;
+using Zenda.Core.Interfaces;
 
 [ApiController]
 [Route("api/[controller]")]
 public class DisponibilidadController : ControllerBase
 {
-    private readonly ZendaDbContext _context;
-    private readonly IMapper _mapper;
+    private readonly IDisponibilidadService _service;
 
-    public DisponibilidadController(ZendaDbContext context, IMapper mapper)
+    public DisponibilidadController(IDisponibilidadService service)
     {
-        _context = context;
-        _mapper = mapper;
+        _service = service;
     }
 
-    #region Get
     [HttpGet("prestador/{prestadorId}")]
     public async Task<ActionResult<IEnumerable<DisponibilidadReadDto>>> GetByPrestador(Guid prestadorId)
     {
-        var horarios = await _context.Disponibilidad
-            .Where(d => d.PrestadorId == prestadorId)
-            .OrderBy(d => d.DiaSemana)
-            .ThenBy(d => d.HoraInicio)
-            .ToListAsync();
-
-        return Ok(_mapper.Map<IEnumerable<DisponibilidadReadDto>>(horarios));
+        return Ok(await _service.GetByPrestadorAsync(prestadorId));
     }
-    #endregion
 
-    #region Post
     [HttpPost]
     public async Task<ActionResult<DisponibilidadReadDto>> Create(DisponibilidadCreateDto dto)
     {
-        // TODO: Validar que el prestador exista y que no se superpongan horarios
-        var disponibilidad = _mapper.Map<Disponibilidad>(dto);
-        disponibilidad.Id = Guid.NewGuid();
-
-        _context.Disponibilidad.Add(disponibilidad);
-        await _context.SaveChangesAsync();
-
-        return Ok(_mapper.Map<DisponibilidadReadDto>(disponibilidad));
+        try
+        {
+            var result = await _service.CreateAsync(dto);
+            return Ok(result);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
     }
-    #endregion
 
-    #region Delete
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var disp = await _context.Disponibilidad.FindAsync(id);
-        if (disp == null) return NotFound();
-
-        _context.Disponibilidad.Remove(disp);
-        await _context.SaveChangesAsync();
-        return NoContent();
+        var success = await _service.DeleteAsync(id);
+        return success ? NoContent() : NotFound();
     }
-    #endregion
+
+    // Nuevo: Útil para la pantalla de configuración de agenda del profesional
+    [HttpPost("bulk/{prestadorId}")]
+    public async Task<IActionResult> UpsertAgenda(Guid prestadorId, IEnumerable<DisponibilidadCreateDto> agenda)
+    {
+        var success = await _service.UpsertAgendaAsync(prestadorId, agenda);
+        return success ? Ok() : NotFound();
+    }
 }
