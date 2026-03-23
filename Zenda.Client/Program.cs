@@ -6,14 +6,12 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// ELIMINÁ las líneas anteriores de HttpClient y dejá solo esta:
+// Leemos la URL desde el appsettings correspondiente
+var apiUrl = builder.Configuration["BaseApiUrl"] ?? builder.HostEnvironment.BaseAddress;
+
 builder.Services.AddScoped(sp => new HttpClient
 {
-    // Puerto real donde corre tu API según me pasaste:
-    //prod
-    BaseAddress = new Uri("https://zenda-api.onrender.com/")
-    
-    //BaseAddress = new Uri("http://localhost:5039/")
+    BaseAddress = new Uri(apiUrl)
 });
 
 await builder.Build().RunAsync();

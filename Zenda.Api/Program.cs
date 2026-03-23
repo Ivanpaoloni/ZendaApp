@@ -38,9 +38,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorPolicy", policy =>
     {
-        policy.WithOrigins("https://zenda.render.com", "https://localhost:7258") // Agregamos tu puerto local
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(
+            "https://localhost:7258",
+            "https://zenda-client.onrender.com"
+        ).AllowAnyMethod().AllowAnyHeader();
     });
 });
 
