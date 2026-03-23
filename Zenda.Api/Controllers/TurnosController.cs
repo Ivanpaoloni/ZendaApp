@@ -16,21 +16,8 @@ public class TurnosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
     {
-        try
-        {
-            var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
-            return Ok(nuevoTurno);
-        }
-        catch (ArgumentException ex)
-        {
-            // Errores de lógica (ej: horario ocupado)
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            // Errores inesperados
-            return StatusCode(500, new { message = "Ocurrió un error interno." });
-        }
+        var result = await _turnosService.ReservarTurnoAsync(dto);
+        return Ok(result);
     }
 
     [HttpGet("prestador/{prestadorId}")]

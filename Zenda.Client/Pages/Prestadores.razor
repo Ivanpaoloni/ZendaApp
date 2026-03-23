@@ -1,0 +1,80 @@
+﻿@page "/prestadores"
+@using Zenda.Core.DTOs
+@inject HttpClient Http
+
+<div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
+        EQUIPO PROFESIONAL
+    </span>
+    <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
+        Gestionar Prestadores
+    </h1>
+    <p class="text-on-surface-variant mt-2 font-body">Administra los profesionales y sus tiempos de atención.</p>
+</div>
+
+@if (prestadores == null)
+{
+    <div class="flex flex-col items-center justify-center py-20">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        <p class="mt-4 text-primary font-medium animate-pulse">Sincronizando con Zenda...</p>
+    </div>
+}
+else
+{
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        @foreach (var p in prestadores)
+        {
+            <div class="bg-white p-8 rounded-4xl editorial-shadow border border-transparent hover:border-outline-variant transition-all duration-300 group flex flex-col h-full">
+                <div class="flex justify-between items-start mb-8">
+                    <div class="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center group-hover:bg-secondary-container transition-colors duration-300">
+                        <span class="material-symbols-outlined text-primary text-3xl">person</span>
+                    </div>
+                    <span class="bg-surface-container-high text-on-surface px-3 py-1 rounded-lg text-[11px] font-bold font-body tracking-tight">
+                        @p.DuracionTurnoMinutos min
+                    </span>
+                </div>
+
+                <div class="flex-grow">
+                    <h3 class="text-2xl font-headline font-bold text-primary mb-1">@p.Nombre</h3>
+                    <p class="text-on-surface-variant font-body text-sm flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+                        @p.Especialidad
+                    </p>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-surface-container-high">
+                    <button class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
+                        Ver Agenda
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        }
+        <button @onclick='() => Nav.NavigateTo("nuevo-prestador")'
+                class="border-2 border-dashed border-outline-variant rounded-4xl p-8 flex flex-col items-center justify-center group hover:border-primary hover:bg-primary/5 transition-all duration-300 min-h-[300px]">
+            <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all">
+                <span class="material-symbols-outlined">add</span>
+            </div>
+            <span class="font-headline font-bold text-primary">Agregar Prestador</span>
+        </button>
+
+        @inject NavigationManager Nav
+    </div>
+}
+
+@code {
+    private List<PrestadorReadDto>? prestadores;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            prestadores = await Http.GetFromJsonAsync<List<PrestadorReadDto>>("api/prestadores");
+        }
+        catch (Exception ex)
+        {
+            // Aquí podrías usar un log o mostrar un error en UI
+            Console.WriteLine($"Error cargando prestadores: {ex.Message}");
+        }
+    }
+}

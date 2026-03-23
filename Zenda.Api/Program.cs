@@ -1,6 +1,7 @@
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Zenda.Api.Middlewares;
 using Zenda.Application.Services;
 using Zenda.Core.Interfaces;
 using Zenda.Infrastructure;
@@ -33,14 +34,28 @@ builder.Services.AddHealthChecks()
 builder.Services.AddHealthChecksUI().AddInMemoryStorage();
 #endregion
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorPolicy", policy =>
+    {
+        policy.WithOrigins("https://zenda.render.com", "https://localhost:7258") // Agregamos tu puerto local
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
+app.UseCors("BlazorPolicy");
 // swagger se ve siempre OJO prod
 //if (app.Environment.IsDevelopment())
-//{
+//{dotnet add Zenda.Client/Zenda.Client.csproj reference Zenda.Core/Zenda.Core.csproj
 //    app.UseSwagger();
 //    app.UseSwaggerUI();
 //}
+
+//middleware de manejo global de excepciones
+app.UseMiddleware<ExceptionMiddleware>();
 
 app.UseSwagger();
 app.UseSwaggerUI();

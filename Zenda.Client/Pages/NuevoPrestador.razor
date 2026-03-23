@@ -1,0 +1,94 @@
+﻿@page "/nuevo-prestador"
+@using Zenda.Core.DTOs
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <button @onclick="Volver" class="flex items-center gap-2 text-primary font-headline font-bold text-sm mb-6 hover:opacity-70 transition-opacity">
+        <span class="material-symbols-outlined">arrow_back</span>
+        Volver al equipo
+    </button>
+    <h1 class="text-4xl font-headline font-extrabold text-primary tracking-tight">Agregar Profesional</h1>
+    <p class="text-on-surface-variant mt-2 font-body">Completa el perfil para empezar a recibir turnos.</p>
+</div>
+
+<div class="max-w-2xl bg-white p-10 rounded-4xl editorial-shadow border border-surface-container-high">
+    <EditForm Model="@nuevoPrestador" OnValidSubmit="GuardarPrestador" class="space-y-8">
+        <DataAnnotationsValidator />
+
+        <div class="space-y-2">
+            <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">NOMBRE COMPLETO</label>
+            <InputText @bind-Value="nuevoPrestador.Nombre"
+                       class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body"
+                       placeholder="Ej. Ivan Barber" />
+            <ValidationMessage For="@(() => nuevoPrestador.Nombre)" class="text-error text-xs px-1" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+                <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">ESPECIALIDAD</label>
+                <InputText @bind-Value="nuevoPrestador.Especialidad"
+                           class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body"
+                           placeholder="Ej. Barbería & Estilo" />
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">DURACIÓN TURNO (MIN)</label>
+                <InputNumber @bind-Value="nuevoPrestador.DuracionTurnoMinutos"
+                             class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body" />
+            </div>
+        </div>
+
+        <div class="space-y-2">
+            <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">EMAIL DE CONTACTO</label>
+            <InputText @bind-Value="nuevoPrestador.Email"
+                       class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body"
+                       placeholder="email@ejemplo.com" />
+        </div>
+
+        <div class="pt-4">
+            <button type="submit" disabled="@enviando"
+                    class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-lg scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2 disabled:opacity-50">
+                @if (enviando)
+                {
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Guardando...</span>
+                }
+                else
+                {
+                    <span>Crear Profesional</span>
+                    <span class="material-symbols-outlined">person_add</span>
+                }
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private PrestadorCreateDto nuevoPrestador = new() { DuracionTurnoMinutos = 30 };
+    private bool enviando = false;
+
+    private async Task GuardarPrestador()
+    {
+        enviando = true;
+
+        // Generamos el slug básico automáticamente antes de enviar
+        nuevoPrestador.Slug = nuevoPrestador.Nombre.ToLower().Replace(" ", "-");
+
+        var response = await Http.PostAsJsonAsync("api/prestadores", nuevoPrestador);
+
+        if (response.IsSuccessStatusCode)
+        {
+            Nav.NavigateTo("prestadores");
+        }
+        else
+        {
+            // Aquí el Middleware de excepciones que hicimos antes nos devolvería el error
+            // Podrías mostrar un mensaje de error en pantalla
+        }
+
+        enviando = false;
+    }
+
+    private void Volver() => Nav.NavigateTo("prestadores");
+}
