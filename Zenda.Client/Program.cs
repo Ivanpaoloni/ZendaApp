@@ -10,7 +10,10 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp => new HttpClient
 {
     // Puerto real donde corre tu API según me pasaste:
-    BaseAddress = new Uri("http://localhost:5039/")
+    //prod
+    BaseAddress = new Uri("https://zenda-api.onrender.com/")
+    
+    //BaseAddress = new Uri("http://localhost:5039/")
 });
 
 await builder.Build().RunAsync();
