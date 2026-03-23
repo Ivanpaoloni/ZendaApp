@@ -20,11 +20,13 @@ public class MappingProfile : Profile
 
         #region Disponibilidad
 
-        CreateMap<Disponibilidad, DisponibilidadReadDto>();
+        CreateMap<Disponibilidad, DisponibilidadReadDto>()
+            .ForMember(dest => dest.HoraInicio, opt => opt.MapFrom(src => src.HoraInicio.ToString("HH:mm")))
+            .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => src.HoraFin.ToString("HH:mm")));
 
-        CreateMap<DisponibilidadCreateDto, Disponibilidad>()
-            .ForMember(dest => dest.HoraInicio, opt => opt.MapFrom(src => TimeOnly.Parse(src.HoraInicio)))
-            .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => TimeOnly.Parse(src.HoraFin)));
+        CreateMap<Disponibilidad, DisponibilidadReadDto>()
+    .ForMember(dest => dest.HoraInicio, opt => opt.MapFrom(src => src.HoraInicio.ToString("HH:mm")))
+    .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => src.HoraFin.ToString("HH:mm")));
 
         #endregion
 
