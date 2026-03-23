@@ -40,7 +40,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://localhost:7258",
-            "https://zenda-client.onrender.com"
+            "https://zenda-frontend.onrender.com"
         ).AllowAnyMethod().AllowAnyHeader();
     });
 });
