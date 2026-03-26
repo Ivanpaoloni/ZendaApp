@@ -1,6 +1,7 @@
 ﻿@page "/prestadores"
 @using Zenda.Core.DTOs
 @inject HttpClient Http
+@inject NavigationManager Nav
 
 <div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
     <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
@@ -36,9 +37,9 @@ else
 
                 <div class="flex-grow">
                     <h3 class="text-2xl font-headline font-bold text-primary mb-1">@p.Nombre</h3>
+                    @* Eliminamos la especialidad para que coincida con el DTO actual *@
                     <p class="text-on-surface-variant font-body text-sm flex items-center gap-2">
-                        <span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
-                        @p.Especialidad
+                        ID: @p.Id.ToString().Substring(0, 8)...
                     </p>
                 </div>
 
@@ -50,6 +51,7 @@ else
                 </div>
             </div>
         }
+
         <button @onclick='() => Nav.NavigateTo("nuevo-prestador")'
                 class="border-2 border-dashed border-outline-variant rounded-4xl p-8 flex flex-col items-center justify-center group hover:border-primary hover:bg-primary/5 transition-all duration-300 min-h-[300px]">
             <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all">
@@ -57,8 +59,6 @@ else
             </div>
             <span class="font-headline font-bold text-primary">Agregar Prestador</span>
         </button>
-
-        @inject NavigationManager Nav
     </div>
 }
 
@@ -73,7 +73,6 @@ else
         }
         catch (Exception ex)
         {
-            // Aquí podrías usar un log o mostrar un error en UI
             Console.WriteLine($"Error cargando prestadores: {ex.Message}");
         }
     }

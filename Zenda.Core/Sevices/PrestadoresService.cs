@@ -25,11 +25,12 @@ public class PrestadoresService : IPrestadoresService
         return _mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores);
     }
 
-    public async Task<PrestadorReadDto?> GetBySlugAsync(string slug)
+    // Reemplazamos GetBySlugAsync por GetByIdAsync
+    public async Task<PrestadorReadDto?> GetByIdAsync(Guid id)
     {
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
-            .FirstOrDefaultAsync(p => p.Slug.ToLower() == slug.ToLower());
+            .FirstOrDefaultAsync(p => p.Id == id);
 
         return prestador == null ? null : _mapper.Map<PrestadorReadDto>(prestador);
     }
@@ -37,9 +38,11 @@ public class PrestadoresService : IPrestadoresService
     public async Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto)
     {
         var prestador = _mapper.Map<Prestador>(dto);
-        prestador.Id = Guid.NewGuid();
 
-        // Validación de seguridad para evitar bucles infinitos
+        // Asignación explícita del Guid secuencial en la capa de servicio
+        prestador.Id = Guid.CreateVersion7();
+
+        // Validación de seguridad 
         if (prestador.DuracionTurnoMinutos <= 0) prestador.DuracionTurnoMinutos = 30;
 
         _context.Prestadores.Add(prestador);
@@ -50,7 +53,7 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
-        var prestadorDb = await _context.FindAsync<Prestador>(id);
+        var prestadorDb = await _context.Prestadores.FindAsync(id);
         if (prestadorDb == null) return false;
 
         _mapper.Map(dto, prestadorDb);
@@ -60,7 +63,7 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var prestador = await _context.FindAsync<Prestador>(id);
+        var prestador = await _context.Prestadores.FindAsync(id);
         if (prestador == null) return false;
 
         _context.Prestadores.Remove(prestador);

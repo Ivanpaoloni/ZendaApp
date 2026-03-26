@@ -2,6 +2,8 @@
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
+namespace Zenda.API.Controllers; // Asegurate de poner el namespace de tu proyecto API
+
 [ApiController]
 [Route("api/[controller]")]
 public class PrestadoresController : ControllerBase
@@ -17,10 +19,11 @@ public class PrestadoresController : ControllerBase
     public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetAll()
         => Ok(await _service.GetAllAsync());
 
-    [HttpGet("{slug}")]
-    public async Task<ActionResult<PrestadorReadDto>> GetBySlug(string slug)
+    // CORRECCIÓN: Cambiamos de slug a id, y agregamos la restricción :guid
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<PrestadorReadDto>> GetById(Guid id)
     {
-        var result = await _service.GetBySlugAsync(slug);
+        var result = await _service.GetByIdAsync(id);
         return result == null ? NotFound(new { message = "Prestador no encontrado" }) : Ok(result);
     }
 
@@ -28,17 +31,19 @@ public class PrestadoresController : ControllerBase
     public async Task<ActionResult<PrestadorReadDto>> Create(PrestadorCreateDto dto)
     {
         var result = await _service.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetBySlug), new { slug = result.Slug }, result);
+
+        // CORRECCIÓN: Redirigimos al método GetById usando el Id del nuevo prestador
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, PrestadorUpdateDto dto)
     {
         var success = await _service.UpdateAsync(id, dto);
         return success ? NoContent() : NotFound();
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var success = await _service.DeleteAsync(id);

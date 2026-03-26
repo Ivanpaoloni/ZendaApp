@@ -5,7 +5,7 @@ namespace Zenda.Core.Interfaces;
 public interface IPrestadoresService
 {
     Task<IEnumerable<PrestadorReadDto>> GetAllAsync();
-    Task<PrestadorReadDto?> GetBySlugAsync(string slug);
+    Task<PrestadorReadDto?> GetByIdAsync(Guid id);
     Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto);
     Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto);
     Task<bool> DeleteAsync(Guid id);

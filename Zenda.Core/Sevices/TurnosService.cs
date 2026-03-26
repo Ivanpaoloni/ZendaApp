@@ -21,7 +21,8 @@ public class TurnosService : ITurnosService
     {
         var turnos = await _context.Turnos
             .Where(t => t.PrestadorId == prestadorId)
-            .OrderBy(t => t.Inicio)
+            // Actualizado a la propiedad real de la entidad
+            .OrderBy(t => t.FechaHoraInicioUtc)
             .ToListAsync();
 
         return _mapper.Map<IEnumerable<TurnoReadDto>>(turnos);
@@ -35,48 +36,46 @@ public class TurnosService : ITurnosService
 
         if (prestador == null) throw new Exception("Prestador no encontrado");
 
-        // SEGURIDAD: Si la duración es 0 o negativa, el bucle sería infinito.
         int duracion = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30;
 
         int diaBuscado = (int)fecha.DayOfWeek;
-        var fechaFiltro = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
+        var fechaFiltroInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
+        var fechaFiltroFin = fechaFiltroInicio.AddDays(1);
 
         var configuracion = await _context.Disponibilidad
             .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
             .ToListAsync();
 
         var turnosOcupados = await _context.Turnos
-            .Where(t => t.PrestadorId == prestadorId && t.Inicio.Date == fechaFiltro)
-            .Select(t => new { t.Inicio, t.Fin }) // Traemos solo lo necesario
+            // Filtramos usando las propiedades UTC reales
+            .Where(t => t.PrestadorId == prestadorId &&
+                        t.FechaHoraInicioUtc >= fechaFiltroInicio &&
+                        t.FechaHoraInicioUtc < fechaFiltroFin &&
+                        t.Estado != "Cancelado") // Buena práctica: ignorar turnos cancelados en la disponibilidad
+            .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
-        var respuesta = new DisponibilidadFechaDto { Fecha = fechaFiltro };
+        var respuesta = new DisponibilidadFechaDto { Fecha = fechaFiltroInicio };
 
         foreach (var rango in configuracion)
         {
             var inicioSlot = rango.HoraInicio;
             var limiteFin = rango.HoraFin;
 
-            // Mientras el slot actual + duración quepa en el rango de atención
             while (inicioSlot.AddMinutes(duracion) <= limiteFin)
             {
                 var finSlot = inicioSlot.AddMinutes(duracion);
 
-                // Verificamos solapamiento
                 bool estaOcupado = turnosOcupados.Any(t =>
-                    TimeOnly.FromDateTime(t.Inicio) < finSlot &&
-                    inicioSlot < TimeOnly.FromDateTime(t.Fin));
+                    TimeOnly.FromDateTime(t.FechaHoraInicioUtc) < finSlot &&
+                    inicioSlot < TimeOnly.FromDateTime(t.FechaHoraFinUtc));
 
                 if (!estaOcupado)
                 {
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
-                // AVANCE CRÍTICO: 
-                // Si finSlot es menor o igual a inicioSlot (por error de datos o medianoche), 
-                // rompemos para evitar el bucle infinito.
                 if (finSlot <= inicioSlot) break;
-
                 inicioSlot = finSlot;
             }
         }
@@ -85,8 +84,8 @@ public class TurnosService : ITurnosService
 
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
-        // 1. Obtener datos del prestador y normalizar fechas
-        var prestador = await _context.FindAsync<Prestador>(dto.PrestadorId);
+        // 1. Validamos que exista el prestador para heredar su NegocioId y conocer la duración
+        var prestador = await _context.Prestadores.FindAsync(dto.PrestadorId);
         if (prestador == null) throw new Exception("Prestador no encontrado.");
 
         var inicioLimpio = DateTime.SpecifyKind(new DateTime(
@@ -98,7 +97,7 @@ public class TurnosService : ITurnosService
         var horaInicio = TimeOnly.FromDateTime(inicioLimpio);
         var horaFin = TimeOnly.FromDateTime(finSolicitado);
 
-        // 2. VALIDACIÓN 1: ¿Atiende en ese rango horario?
+        // 2. ¿Atiende en ese rango?
         var atiende = await _context.Disponibilidad.AnyAsync(d =>
             d.PrestadorId == dto.PrestadorId &&
             d.DiaSemana == (int)inicioLimpio.DayOfWeek &&
@@ -108,21 +107,34 @@ public class TurnosService : ITurnosService
         if (!atiende)
             throw new ArgumentException("El profesional no atiende en el horario o día solicitado.");
 
-        // 3. VALIDACIÓN 2: ¿Hay solapamiento con otros turnos?
+        // 3. ¿Hay solapamiento? (Descartando los cancelados)
         var ocupado = await _context.Turnos.AnyAsync(t =>
             t.PrestadorId == dto.PrestadorId &&
-            inicioLimpio < t.Fin &&
-            t.Inicio < finSolicitado);
+            t.Estado != "Cancelado" &&
+            inicioLimpio < t.FechaHoraFinUtc &&
+            t.FechaHoraInicioUtc < finSolicitado);
 
         if (ocupado)
             throw new ArgumentException("El horario ya se encuentra ocupado.");
 
-        // 4. Mapeo, asignación de valores finales y persistencia
-        var turno = _mapper.Map<Turno>(dto);
-        turno.Id = Guid.NewGuid();
-        turno.Inicio = inicioLimpio;
-        turno.Fin = finSolicitado;
-        turno.EstaConfirmado = false; // Por defecto arrancan sin confirmar
+        // 4. Instanciamos la entidad de dominio mapeando los datos de invitado (MVP)
+        var turno = new Turno
+        {
+            Id = Guid.CreateVersion7(),
+
+            // Aislamiento Multi-Tenant: El turno pertenece al mismo negocio que el prestador
+            NegocioId = prestador.NegocioId,
+
+            PrestadorId = dto.PrestadorId,
+            FechaHoraInicioUtc = inicioLimpio,
+            FechaHoraFinUtc = finSolicitado,
+
+            // Datos del cliente MVP
+            NombreClienteInvitado = dto.NombreClienteInvitado ?? string.Empty,
+            TelefonoClienteInvitado = dto.TelefonoClienteInvitado ?? string.Empty,
+
+            Estado = "Pendiente"
+        };
 
         _context.Turnos.Add(turno);
         await _context.SaveChangesAsync();
