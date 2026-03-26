@@ -25,6 +25,8 @@ builder.Services.AddScoped<IZendaDbContext>(provider => provider.GetRequiredServ
 builder.Services.AddScoped<ITurnosService, TurnosService>();
 builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
+builder.Services.AddScoped<ISedeService, SedeService>();
+
 #endregion
 
 #region Health Checks Configuration

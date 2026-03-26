@@ -6,8 +6,12 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Leemos la URL desde el appsettings correspondiente
 var apiUrl = builder.Configuration["BaseApiUrl"] ?? builder.HostEnvironment.BaseAddress;
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
+
+builder.Services.AddScoped<PrestadorClient>();
+builder.Services.AddScoped<SedeClient>();
+//builder.Services.AddScoped<TurnoClient>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

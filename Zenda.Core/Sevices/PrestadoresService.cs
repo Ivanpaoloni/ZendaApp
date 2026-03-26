@@ -38,10 +38,10 @@ public class PrestadoresService : IPrestadoresService
     public async Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto)
     {
         var prestador = _mapper.Map<Prestador>(dto);
-
+        //if (prestador.SedeId == Guid.Empty) prestador.SedeId = Guid.Parse("d84bb65e-8ed6-46a8-964c-5250761dad96");
         // Asignación explícita del Guid secuencial en la capa de servicio
         prestador.Id = Guid.CreateVersion7();
-
+        //if (prestador.SedeId == Guid.Empty) prestador.SedeId = null;
         // Validación de seguridad 
         if (prestador.DuracionTurnoMinutos <= 0) prestador.DuracionTurnoMinutos = 30;
 
