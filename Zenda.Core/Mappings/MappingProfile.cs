@@ -39,5 +39,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Estado, opt => opt.MapFrom(src => "Pendiente"));
 
         #endregion
+
+        #region Sedes
+
+        CreateMap<Sede, SedeReadDto>();
+        CreateMap<SedeCreateDto, Sede>()
+            .ForMember(dest => dest.Id, opt => opt.Ignore());
+
+        #endregion
     }
 }
