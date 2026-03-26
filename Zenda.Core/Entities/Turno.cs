@@ -1,15 +1,29 @@
-﻿using Zenda.Core.Entities;
+﻿using Zenda.Core.Models;
 
-public class Turno
+namespace Zenda.Core.Entities;
+
+public class Turno : BaseEntity, ITenantEntity
 {
-    public Guid Id { get; set; }
-    public DateTime Inicio { get; set; }
-    public DateTime Fin { get; set; }
-    public string ClienteNombre { get; set; } = string.Empty;
-    public string ClienteEmail { get; set; } = string.Empty;
-    public bool EstaConfirmado { get; set; }
+    // Aislamiento: Este turno es de esta barbería
+    public Guid NegocioId { get; set; }
 
-    // Relación
+    // ¿Quién atiende?
     public Guid PrestadorId { get; set; }
     public Prestador? Prestador { get; set; }
+
+    // Fecha y hora (¡Siempre en UTC en la base de datos!)
+    public DateTime FechaHoraInicioUtc { get; set; }
+    public DateTime FechaHoraFinUtc { get; set; }
+
+    // --- EL CLIENTE (El consumidor B2C) ---
+    // Opción A: Es un usuario registrado en todo Zenda (Futuro B2B2C)
+    public string? ClienteUserId { get; set; }
+
+    // Opción B: Es un invitado (MVP: Dejó sus datos en la landing pública de la barbería)
+    public string NombreClienteInvitado { get; set; } = string.Empty;
+    public string TelefonoClienteInvitado { get; set; } = string.Empty;
+    public string EmailClienteInvitado { get; set; } = string.Empty;
+
+    // Estado del turno: Pendiente, Confirmado, Cancelado
+    public string Estado { get; set; } = "Pendiente";
 }
