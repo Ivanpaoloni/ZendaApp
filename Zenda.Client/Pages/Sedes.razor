@@ -1,0 +1,96 @@
+﻿@page "/sedes"
+@inject SedeClient SedeService
+@using Zenda.Core.DTOs
+
+<div class="space-y-8">
+    <div class="flex justify-between items-end">
+        <div>
+            <p class="text-primary font-bold text-xs uppercase tracking-widest mb-1">Configuración</p>
+            <h1 class="text-4xl font-headline font-black text-on-surface tracking-tighter">Sedes</h1>
+        </div>
+        <button @onclick="IrANuevaSede" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-2xl font-headline font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined">add_location</span>
+            Nueva Sede
+        </button>
+    </div>
+
+    @if (sedes == null)
+    {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @for (int i = 0; i < 3; i++)
+            {
+                <div class="h-48 rounded-3xl bg-surface-container-low animate-pulse"></div>
+            }
+        </div>
+    }
+    else if (!sedes.Any())
+    {
+        <div class="bg-surface-container-low rounded-3xl p-12 text-center border-2 border-dashed border-outline-variant">
+            <span class="material-symbols-outlined text-5xl text-on-surface-variant mb-4">location_off</span>
+            <p class="text-on-surface-variant font-medium">No hay sedes registradas aún.</p>
+        </div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach (var sede in sedes)
+            {
+                <div class="group bg-surface-container-low border border-surface-container-high rounded-3xl p-6 hover:border-primary/30 transition-all hover:shadow-xl hover:shadow-primary/5 relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined">storefront</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+                                <span class="material-symbols-outlined text-xl">edit</span>
+                            </button>
+                            <button @onclick="() => EliminarSede(sede.Id)" class="p-2 text-on-surface-variant hover:text-error transition-colors">
+                                <span class="material-symbols-outlined text-xl">delete</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-headline font-bold text-on-surface mb-1">@sede.Nombre</h3>
+                    <p class="text-sm text-on-surface-variant mb-4 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-xs">link</span>
+                        zenda.app/@sede.Id.ToString().Substring(0, 8)
+                    </p>
+
+                    <div class="pt-4 border-t border-surface-container-high flex justify-between items-center">
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Estado</span>
+                        <span class="px-3 py-1 bg-green-500/10 text-green-600 text-[10px] font-black rounded-full uppercase">Activa</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<SedeReadDto>? sedes;
+    [Inject] NavigationManager Navigation { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarSedes();
+    }
+
+    private async Task CargarSedes()
+    {
+        sedes = await SedeService.GetAll();
+    }
+
+    private void IrANuevaSede() => Navigation.NavigateTo("/sedes/nueva");
+
+    private async Task EliminarSede(Guid id)
+    {
+        // Aquí llamaríamos al delete que armamos en la API
+        // Por ahora un confirm simple
+        var confirmado = await Task.FromResult(true); // Placeholder para diálogo
+        if (confirmado)
+        {
+            // await SedeService.Delete(id);
+            // await CargarSedes();
+        }
+    }
+}

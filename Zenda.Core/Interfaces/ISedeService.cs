@@ -5,6 +5,8 @@ namespace Zenda.Core.Interfaces
 {
     public interface ISedeService
     {
+        Task<SedeReadDto> CreateAsync(SedeCreateDto dto);
+        Task<bool> DeleteAsync(Guid id);
         Task<IEnumerable<SedeReadDto>> GetAllAsync();
     }
 }

@@ -47,5 +47,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
         #endregion
+
+        #region Negocio
+        CreateMap<Negocio, NegocioReadDto>();
+        CreateMap<NegocioCreateDto, Negocio>();
+        #endregion
     }
 }

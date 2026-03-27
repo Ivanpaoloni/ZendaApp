@@ -1,21 +1,38 @@
 ﻿@inherits LayoutComponentBase
+@inject NegocioClient NegocioService
+@using Zenda.Core.DTOs
 
 <div class="min-h-screen bg-background font-body">
     <nav class="fixed top-0 w-full z-50 bg-[#f7faf6]/80 backdrop-blur-xl border-b border-surface-container-high">
         <div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
-            <div class="text-2xl font-bold text-primary tracking-tighter font-headline">Zenda</div>
+            <div class="flex items-center gap-3">
+                <div class="text-2xl font-bold text-primary tracking-tighter font-headline">
+                    @(negocio?.Nombre ?? "Zenda")
+                </div>
+                @if (negocio != null)
+                {
+                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
+                        SaaS
+                    </span>
+                }
+            </div>
+
             <div class="hidden md:flex items-center gap-6">
                 <NavLink href="prestadores" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
                     Prestadores
+                </NavLink>
+                <NavLink href="sedes" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
+                    Sedes
                 </NavLink>
                 <NavLink href="turnos" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
                     Agenda
                 </NavLink>
             </div>
+
             <div class="flex items-center gap-3">
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-bold text-primary leading-none">Admin Panel</p>
-                    <p class="text-[10px] text-on-surface-variant">v1.0 Beta</p>
+                    <p class="text-[10px] text-on-surface-variant">@negocio?.Slug</p>
                 </div>
                 <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
                     <span class="material-symbols-outlined text-xl">account_circle</span>
@@ -28,3 +45,15 @@
         @Body
     </main>
 </div>
+
+@code {
+    private NegocioReadDto? negocio;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Por ahora usamos el ID que generaste en la base de datos (Zenda Barber)
+        // Mas adelante, esto vendrá del usuario logueado.
+        var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        negocio = await NegocioService.GetById(idHardcoded);
+    }
+}

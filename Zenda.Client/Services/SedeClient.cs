@@ -27,4 +27,21 @@ public class SedeClient
             return new List<SedeReadDto>();
         }
     }
+    public async Task<(bool Success, string ErrorMessage)> Create(SedeCreateDto dto)
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync("api/sedes", dto);
+
+            if (response.IsSuccessStatusCode)
+                return (true, string.Empty);
+
+            var error = await response.Content.ReadAsStringAsync();
+            return (false, string.IsNullOrEmpty(error) ? "Error al crear la sede" : error);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Error de conexión: {ex.Message}");
+        }
+    }
 }

@@ -12,6 +12,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) 
 builder.Services.AddScoped<PrestadorClient>();
 builder.Services.AddScoped<SedeClient>();
 //builder.Services.AddScoped<TurnoClient>();
+builder.Services.AddScoped<NegocioClient>();
 
 builder.Services.AddScoped(sp => new HttpClient
 {

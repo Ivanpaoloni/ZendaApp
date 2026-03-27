@@ -2,8 +2,6 @@
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
-namespace Zenda.Api.Controllers;
-
 [ApiController]
 [Route("api/[controller]")]
 public class SedesController : ControllerBase
@@ -16,10 +14,27 @@ public class SedesController : ControllerBase
     }
 
     [HttpGet]
-    // Usamos el plural "Sedes" para ser consistentes con la ruta
     public async Task<ActionResult<IEnumerable<SedeReadDto>>> GetAll()
+        => Ok(await _service.GetAllAsync());
+
+    [HttpPost]
+    public async Task<ActionResult<SedeReadDto>> Create(SedeCreateDto dto)
     {
-        var sedes = await _service.GetAllAsync();
-        return Ok(sedes);
+        try
+        {
+            var nuevaSede = await _service.CreateAsync(dto);
+            return Ok(nuevaSede);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> Delete(Guid id)
+    {
+        var eliminado = await _service.DeleteAsync(id);
+        return eliminado ? NoContent() : NotFound();
     }
 }

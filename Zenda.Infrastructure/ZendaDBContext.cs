@@ -8,41 +8,65 @@ namespace Zenda.Infrastructure
     {
         public ZendaDbContext(DbContextOptions<ZendaDbContext> options) : base(options) { }
 
-        public DbSet<Prestador> Prestadores { get; set; }
+        // Agregamos el Negocio como raíz
         public DbSet<Disponibilidad> Disponibilidad { get; set; }
-        public DbSet<Turno> Turnos { get; set; }
+        public DbSet<Negocio> Negocios { get; set; }
+        public DbSet<Prestador> Prestadores { get; set; }
         public DbSet<Sede> Sedes { get; set; }
+        public DbSet<Turno> Turnos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configuración de relaciones y restricciones
-            modelBuilder.Entity<Prestador>(entity =>
+            // 1. Configuración de Negocio (El Tenant)
+            modelBuilder.Entity<Negocio>(entity =>
             {
-                // 1 Sede -> N Prestadores
-                entity.HasOne(p => p.Sede)
-                      .WithMany()
-                      .HasForeignKey(p => p.SedeId)
-                      .OnDelete(DeleteBehavior.Restrict); // Evita borrar una sede con barberos activos
+                entity.HasKey(n => n.Id);
+                entity.Property(n => n.Nombre).IsRequired().HasMaxLength(100);
+                entity.Property(n => n.Slug).IsRequired().HasMaxLength(120);
+
+                // 1 Negocio -> N Sedes
+                entity.HasMany(n => n.Sedes)
+                      .WithOne(s => s.Negocio)
+                      .HasForeignKey(s => s.NegocioId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
+            // 2. Configuración de Sedes
+            modelBuilder.Entity<Sede>(entity =>
+            {
+                // 1 Sede -> N Prestadores
+                entity.HasMany(s => s.Prestadores)
+                      .WithOne(p => p.Sede)
+                      .HasForeignKey(p => p.SedeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 3. Prestadores
+            modelBuilder.Entity<Prestador>(entity =>
+            {
+                entity.HasOne(p => p.Sede)
+                      .WithMany(s => s.Prestadores)
+                      .HasForeignKey(p => p.SedeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 4. Disponibilidad y Turnos
             modelBuilder.Entity<Disponibilidad>(entity =>
             {
-                // 1 Prestador -> N Horarios
                 entity.HasOne(d => d.Prestador)
                       .WithMany(p => p.Horarios)
                       .HasForeignKey(d => d.PrestadorId)
-                      .OnDelete(DeleteBehavior.Cascade); // Si se borra el barbero, se borran sus horarios
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Turno>(entity =>
             {
-                // 1 Prestador -> N Turnos
                 entity.HasOne(t => t.Prestador)
                       .WithMany(p => p.Turnos)
                       .HasForeignKey(t => t.PrestadorId)
-                      .OnDelete(DeleteBehavior.Restrict); // Protege el historial: no podés borrar un barbero con turnos
+                      .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

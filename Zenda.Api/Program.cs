@@ -22,10 +22,11 @@ builder.Services.AddDbContext<ZendaDbContext>(options => options.UseNpgsql(build
 builder.Services.AddScoped<IZendaDbContext>(provider => provider.GetRequiredService<ZendaDbContext>());
 
 // Registro del Servicio
-builder.Services.AddScoped<ITurnosService, TurnosService>();
-builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
+builder.Services.AddScoped<INegocioService, NegocioService>();
+builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
 builder.Services.AddScoped<ISedeService, SedeService>();
+builder.Services.AddScoped<ITurnosService, TurnosService>();
 
 #endregion
 
