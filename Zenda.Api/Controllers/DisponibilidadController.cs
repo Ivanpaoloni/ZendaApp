@@ -38,10 +38,10 @@ public class DisponibilidadController : ControllerBase
     }
 
     // Nuevo: Útil para la pantalla de configuración de agenda del profesional
-    [HttpPost("bulk/{prestadorId}")]
-    public async Task<IActionResult> UpsertAgenda(Guid prestadorId, IEnumerable<DisponibilidadCreateDto> agenda)
+    [HttpPost("upsert/{prestadorId}")]
+    public async Task<IActionResult> UpsertAgenda(Guid prestadorId, [FromBody] IEnumerable<DisponibilidadCreateDto> agenda)
     {
-        var success = await _service.UpsertAgendaAsync(prestadorId, agenda);
-        return success ? Ok() : NotFound();
+        var resultado = await _service.UpsertAgendaAsync(prestadorId, agenda);
+        return resultado ? NoContent() : BadRequest("No se pudo actualizar la agenda.");
     }
 }

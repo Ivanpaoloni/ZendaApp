@@ -18,6 +18,7 @@ public class MappingProfile : Profile
 
         #region Disponibilidad
 
+        CreateMap<DisponibilidadCreateDto, Disponibilidad>();
         CreateMap<Disponibilidad, DisponibilidadReadDto>()
             .ForMember(dest => dest.HoraInicio, opt => opt.MapFrom(src => src.HoraInicio.ToString("HH:mm")))
             .ForMember(dest => dest.HoraFin, opt => opt.MapFrom(src => src.HoraFin.ToString("HH:mm")));

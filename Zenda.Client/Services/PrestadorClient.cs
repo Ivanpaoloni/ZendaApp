@@ -29,7 +29,25 @@ public class PrestadorClient
             return new List<PrestadorReadDto>();
         }
     }
-
+    public async Task<PrestadorReadDto?> GetById(Guid id)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"api/prestadores/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<PrestadorReadDto>();
+            }
+            // Aquí podrías loguear el error (response.StatusCode)
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // Error de conexión o red
+            Console.WriteLine($"Error de red: {ex.Message}");
+            return null;
+        }
+    }
     public async Task<(bool Success, string ErrorMessage)> Create(PrestadorCreateDto dto)
     {
         try

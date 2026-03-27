@@ -1,7 +1,9 @@
 ﻿@page "/prestadores"
 @using Zenda.Core.DTOs
-@inject HttpClient Http
 @inject NavigationManager Nav
+@inject PrestadorClient PrestadorService
+@* Inyectamos el State *@
+@inject Zenda.Client.Services.AppState State
 
 <div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
     <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
@@ -37,16 +39,23 @@ else
 
                 <div class="flex-grow">
                     <h3 class="text-2xl font-headline font-bold text-primary mb-1">@p.Nombre</h3>
-                    @* Eliminamos la especialidad para que coincida con el DTO actual *@
                     <p class="text-on-surface-variant font-body text-sm flex items-center gap-2">
-                        ID: @p.Id.ToString().Substring(0, 8)...
+                        <span class="material-symbols-outlined text-xs">fingerprint</span>
+                        ID: @p.Id.ToString()?[..8]
                     </p>
                 </div>
 
-                <div class="mt-8 pt-6 border-t border-surface-container-high">
-                    <button class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
-                        Ver Agenda
-                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                <div class="mt-8 pt-6 border-t border-surface-container-high space-y-3">
+                    @* Cambiamos el onclick para usar la función IrAAgenda *@
+                    <button @onclick="() => IrAAgenda(p)"
+                            class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
+                        Configurar Horarios
+                        <span class="material-symbols-outlined text-sm">calendar_month</span>
+                    </button>
+
+                    <button class="w-full py-3 bg-surface-container-low text-primary rounded-xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center justify-center gap-2">
+                        Ver Turnos Ocupados
+                        <span class="material-symbols-outlined text-sm">event_available</span>
                     </button>
                 </div>
             </div>
@@ -69,11 +78,28 @@ else
     {
         try
         {
-            prestadores = await Http.GetFromJsonAsync<List<PrestadorReadDto>>("api/prestadores");
+            prestadores = await PrestadorService.GetAll();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error cargando prestadores: {ex.Message}");
+            prestadores = new List<PrestadorReadDto>();
+        }
+    }
+
+    // Nueva función para manejar la navegación limpia
+    private void IrAAgenda(PrestadorReadDto p)
+    {
+        Console.WriteLine($"Intentando ir a la agenda de: {p.Nombre}"); // Esto DEBE aparecer en F12
+
+        try
+        {
+            State.PrestadorEnEdicion = p;
+            Nav.NavigateTo("prestadores/agenda"); // Sin la barra inicial a veces ayuda en Blazor WebAssembly
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al navegar: {ex.Message}");
         }
     }
 }
