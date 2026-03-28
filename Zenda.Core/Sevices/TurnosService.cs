@@ -30,18 +30,42 @@ public class TurnosService : ITurnosService
 
     public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid prestadorId, DateTime fecha)
     {
+        // 1. Traemos al prestador
         var prestador = await _context.Prestadores
-            .Select(p => new { p.Id, p.DuracionTurnoMinutos })
+            .Include(p => p.Sede)
+            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede })
             .FirstOrDefaultAsync(p => p.Id == prestadorId);
 
-        if (prestador == null) throw new Exception("Prestador no encontrado");
+        if (prestador == null || prestador.Sede == null) throw new Exception("Prestador o Sede no encontrados");
 
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
+
+        // =================================================================
+        // 2. NUEVO ESCUDO: ¿El día consultado ya pasó en la vida real?
+        // =================================================================
+        var fechaHoraActualSede = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
+        var fechaActualSede = fechaHoraActualSede.Date;
+
+        // Inicializamos la respuesta vacía
+        var respuesta = new DisponibilidadFechaDto { Fecha = fecha.Date };
+
+        // Si la fecha que me piden es MENOR a hoy, corto acá y devuelvo la lista vacía.
+        if (fecha.Date < fechaActualSede)
+        {
+            return respuesta;
+        }
+        // =================================================================
+
+        // Si pasamos el escudo, seguimos con la lógica normal...
         int duracion = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30;
 
-        // Normalizamos la fecha a UTC para el filtro de base de datos
+        var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
+        var finDiaLocal = inicioDiaLocal.AddDays(1);
+
+        var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
+        var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
+
         int diaBuscado = (int)fecha.DayOfWeek;
-        var fechaFiltroInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
-        var fechaFiltroFin = fechaFiltroInicio.AddDays(1);
 
         var configuracion = await _context.Disponibilidad
             .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
@@ -49,13 +73,15 @@ public class TurnosService : ITurnosService
 
         var turnosOcupados = await _context.Turnos
             .Where(t => t.PrestadorId == prestadorId &&
-                        t.FechaHoraInicioUtc >= fechaFiltroInicio &&
-                        t.FechaHoraInicioUtc < fechaFiltroFin &&
+                        t.FechaHoraInicioUtc >= inicioDiaUtc &&
+                        t.FechaHoraInicioUtc < finDiaUtc &&
                         t.Estado != "Cancelado")
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
-        var respuesta = new DisponibilidadFechaDto { Fecha = fechaFiltroInicio };
+        // 3. Evaluamos la hora actual solo si es "Hoy"
+        var horaActualSede = TimeOnly.FromDateTime(fechaHoraActualSede);
+        bool esHoy = fecha.Date == fechaActualSede;
 
         foreach (var rango in configuracion)
         {
@@ -66,24 +92,23 @@ public class TurnosService : ITurnosService
             {
                 var finSlot = inicioSlot.AddMinutes(duracion);
 
-                // Verificamos si este slot choca con algún turno ocupado
-                // Convertimos el UTC de la DB a Local para comparar "Horas Murales"
+                // Verificamos si la hora ya pasó HOY
+                bool yaPaso = esHoy && inicioSlot <= horaActualSede;
+
                 bool estaOcupado = turnosOcupados.Any(t =>
                 {
-                    var hInicioOcupado = TimeOnly.FromDateTime(t.FechaHoraInicioUtc.ToLocalTime());
-                    var hFinOcupado = TimeOnly.FromDateTime(t.FechaHoraFinUtc.ToLocalTime());
+                    var hInicioOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede));
+                    var hFinOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraFinUtc, zonaSede));
 
                     return hInicioOcupado < finSlot && inicioSlot < hFinOcupado;
                 });
 
-                if (!estaOcupado)
+                if (!estaOcupado && !yaPaso)
                 {
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
                 inicioSlot = finSlot;
-
-                // Seguridad ante configuraciones de 0 minutos o errores
                 if (duracion <= 0) break;
             }
         }
@@ -93,34 +118,71 @@ public class TurnosService : ITurnosService
 
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
-        // 1. Buscamos al prestador INCLUYENDO su sede para saber dónde trabaja
+        // 1. Buscamos el prestador con su Sede y su Disponibilidad
         var prestador = await _context.Prestadores
             .Include(p => p.Sede)
+            .Include(p => p.Horarios)
             .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
 
         if (prestador?.Sede == null)
-            throw new Exception("Prestador o Sede no encontrados.");
+            throw new InvalidOperationException("Prestador o Sede no encontrados.");
 
-        // 2. Obtenemos la zona horaria real del local
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
-        // 3. Nos aseguramos de que la fecha entrante no tenga rastros de UTC
+        // Tratamos la fecha de entrada como "Hora del Local" y la pasamos a UTC
         var fechaCruda = DateTime.SpecifyKind(dto.Inicio, DateTimeKind.Unspecified);
-
-        // 4. LA MAGIA: Convertimos esas 09:00 crudas a UTC basados en la Sede
         var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaCruda, zonaSede);
+        var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(prestador.DuracionTurnoMinutos);
 
-        // 5. Armamos la entidad
+        // ==========================================
+        // BARRERAS DE VALIDACIÓN DEL NEGOCIO (BACKEND)
+        // ==========================================
+
+        // BARRERA 1: ¿El turno es en el pasado?
+        if (fechaUtcDefinitiva < DateTime.UtcNow)
+        {
+            throw new InvalidOperationException("No se pueden reservar turnos en el pasado.");
+        }
+
+        // BARRERA 2: ¿Está dentro del horario de trabajo de este barbero?
+        int diaSemana = (int)fechaCruda.DayOfWeek;
+        var horaSolicitada = TimeOnly.FromDateTime(fechaCruda);
+
+        var horarioLaboral = prestador.Horarios.FirstOrDefault(h => h.DiaSemana == diaSemana);
+
+        if (horarioLaboral == null ||
+            horaSolicitada < horarioLaboral.HoraInicio ||
+            horaSolicitada.AddMinutes(prestador.DuracionTurnoMinutos) > horarioLaboral.HoraFin)
+        {
+            throw new InvalidOperationException("El horario solicitado está fuera de la jornada laboral del profesional.");
+        }
+
+        // BARRERA 3: ¿El horario ya fue reservado por otra persona hace un milisegundo?
+        bool turnoOcupado = await _context.Turnos.AnyAsync(t =>
+            t.PrestadorId == dto.PrestadorId &&
+            t.Estado != "Cancelado" &&
+            (fechaUtcDefinitiva < t.FechaHoraFinUtc && fechaFinUtcDefinitiva > t.FechaHoraInicioUtc)
+        );
+
+        if (turnoOcupado)
+        {
+            throw new InvalidOperationException("Lo sentimos, este horario acaba de ser reservado.");
+        }
+
+        // ==========================================
+        // SI PASA TODAS LAS BARRERAS, GUARDAMOS
+        // ==========================================
+
         var nuevoTurno = new Turno
         {
             NegocioId = prestador.NegocioId,
             PrestadorId = dto.PrestadorId,
-            FechaHoraInicioUtc = fechaUtcDefinitiva, // ¡Perfecto y a prueba de balas!
-            FechaHoraFinUtc = fechaUtcDefinitiva.AddMinutes(prestador.DuracionTurnoMinutos),
+            FechaHoraInicioUtc = fechaUtcDefinitiva,
+            FechaHoraFinUtc = fechaFinUtcDefinitiva,
             NombreClienteInvitado = dto.NombreClienteInvitado,
             TelefonoClienteInvitado = dto.TelefonoClienteInvitado,
             EmailClienteInvitado = dto.EmailClienteInvitado,
-            Estado = "Pendiente"
+            Estado = "Confirmado"
         };
 
         _context.Turnos.Add(nuevoTurno);
