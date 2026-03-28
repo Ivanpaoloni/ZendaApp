@@ -195,24 +195,17 @@ public class TurnosService : ITurnosService
     {
         // 1. Extraemos solo la fecha (00:00:00) y la forzamos explícitamente a UTC
         var fechaInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
-
-        // 2. Sumamos un día exacto
         var fechaFin = fechaInicio.AddDays(1);
 
-        return await _context.Turnos
+        var turnosDb = await _context.Turnos
             .AsNoTracking()
+            .Include(t => t.Prestador) 
             .Where(t => t.FechaHoraInicioUtc >= fechaInicio && t.FechaHoraInicioUtc < fechaFin)
             .OrderBy(t => t.FechaHoraInicioUtc)
-            .Select(t => new TurnoReadDto
-            {
-                Id = t.Id,
-                FechaHoraInicioUtc = t.FechaHoraInicioUtc,
-                FechaHoraFinUtc = t.FechaHoraFinUtc,
-                NombreClienteInvitado = t.NombreClienteInvitado,
-                TelefonoClienteInvitado = t.TelefonoClienteInvitado,
-                EmailClienteInvitado = t.EmailClienteInvitado,
-                Estado = t.Estado
-            })
             .ToListAsync();
+
+        var turnosDto = _mapper.Map<List<TurnoReadDto>>(turnosDb);
+
+        return turnosDto;
     }
 }

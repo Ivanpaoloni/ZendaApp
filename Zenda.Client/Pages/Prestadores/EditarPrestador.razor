@@ -1,0 +1,71 @@
+﻿@page "/prestadores/editar/{Id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using Zenda.Client.Services
+@using Zenda.Core.DTOs
+@attribute [Authorize]
+@inject PrestadorClient PrestadorService
+@inject SedeClient SedeService
+@inject NavigationManager Nav
+
+<div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div class="flex items-center justify-between">
+        <h2 class="text-3xl font-bold text-primary tracking-tighter">Editar Profesional</h2>
+        <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-on-surface-variant hover:text-primary transition-colors">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+
+    <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
+        @if (model == null) {
+            <p>Cargando datos...</p>
+        } else {
+            <EditForm Model="model" OnValidSubmit="HandleUpdate" class="space-y-6">
+                <DataAnnotationsValidator />
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Nombre</label>
+                    <InputText @bind-Value="model.Nombre" class="input-zenda" />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Sede Principal</label>
+                    <InputSelect @bind-Value="model.SedeId" class="input-zenda">
+                        @foreach (var s in sedes) {
+                            <option value="@s.Id">@s.Nombre</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <button type="submit" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all">
+                    Guardar Cambios
+                </button>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private PrestadorUpdateDto? model;
+    private List<SedeReadDto> sedes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var p = await PrestadorService.GetById(Id);
+        sedes = await SedeService.GetAll();
+        
+        if (p != null) {
+            model = new PrestadorUpdateDto { 
+                Id = p.Id, 
+                Nombre = p.Nombre, 
+                SedeId = p.SedeId, 
+                DuracionTurnoMinutos = p.DuracionTurnoMinutos 
+            };
+        }
+    }
+
+    private async Task HandleUpdate() {
+        var res = await PrestadorService.Update(Id, model!);
+        if (res.Success) Nav.NavigateTo("prestadores");
+    }
+}

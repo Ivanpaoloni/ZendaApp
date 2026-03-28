@@ -82,11 +82,19 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
-        // Buscamos dentro de la "burbuja" del Tenant
-        var prestadorDb = await _context.Prestadores.FirstOrDefaultAsync(p => p.Id == id);
+        // Buscamos al prestador. Si el ID no pertenece a este NegocioId, 
+        // el Global Query Filter hará que 'prestadorDb' sea NULL.
+        var prestadorDb = await _context.Prestadores
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         if (prestadorDb == null) return false;
 
+        // Mapeamos los cambios del DTO a la Entidad de la DB
         _mapper.Map(dto, prestadorDb);
+
+        // Validaciones extra de negocio si hicieran falta
+        if (prestadorDb.DuracionTurnoMinutos <= 0) prestadorDb.DuracionTurnoMinutos = 30;
+
         await _context.SaveChangesAsync();
         return true;
     }

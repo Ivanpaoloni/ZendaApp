@@ -3,7 +3,7 @@ using Zenda.Core.DTOs;
 
 namespace Zenda.Client.Services;
 
-public class SedeClient
+public class SedeClient : BaseClient
 {
     private readonly HttpClient _http;
     public SedeClient(HttpClient http) => _http = http;

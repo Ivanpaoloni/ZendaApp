@@ -35,8 +35,9 @@ namespace Zenda.Core.DTOs
         // Datos del cliente
         public string NombreClienteInvitado { get; set; } = string.Empty;
         public string EmailClienteInvitado { get; set; } = string.Empty;
-        public string TelefonoClienteInvitado { get; set; } = string.Empty;
-
+        public string TelefonoClienteInvitado { get; set; } = string.Empty; 
+        public Guid PrestadorId { get; set; }
+        public string PrestadorNombre { get; set; } = string.Empty;
         // CORRECCIÓN: Tu entidad ahora usa un string 'Estado' en lugar del booleano 'EstaConfirmado'
         public string Estado { get; set; } = string.Empty;
     }

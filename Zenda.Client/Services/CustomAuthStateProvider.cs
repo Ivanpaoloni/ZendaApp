@@ -7,7 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 
 namespace Zenda.Client.Auth;
 
-public class CustomAuthStateProvider : AuthenticationStateProvider
+public class CustomAuthStateProvider : AuthenticationStateProvider   
 {
     private readonly ILocalStorageService _localStorage;
     private readonly HttpClient _http;

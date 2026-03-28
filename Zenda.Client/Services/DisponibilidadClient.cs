@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 
-public class DisponibilidadClient
+public class DisponibilidadClient : BaseClient
 {
     private readonly HttpClient _http;
     public DisponibilidadClient(HttpClient http) => _http = http;

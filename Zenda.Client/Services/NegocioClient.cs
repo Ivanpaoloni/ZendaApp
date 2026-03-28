@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 
-public class NegocioClient
+public class NegocioClient : BaseClient
 {
     private readonly HttpClient _http;
     public NegocioClient(HttpClient http) => _http = http;

@@ -1,4 +1,6 @@
-﻿namespace Zenda.Core.DTOs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Zenda.Core.DTOs
 {
 
     // Este es el que usamos para recibir datos (POST/PUT)
@@ -26,8 +28,16 @@
 
     public class PrestadorUpdateDto
     {
-        public string Nombre { get; set; } = string.Empty;
-        public int DuracionTurnoMinutos { get; set; }
+        public Guid Id { get; set; }
 
+        [Required(ErrorMessage = "El nombre es obligatorio")]
+        [StringLength(100, MinimumLength = 3)]
+        public string Nombre { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Debes asignar una sede")]
+        public Guid SedeId { get; set; }
+
+        [Range(1, 480, ErrorMessage = "La duración debe ser entre 1 y 480 minutos")]
+        public int DuracionTurnoMinutos { get; set; }
     }
 }

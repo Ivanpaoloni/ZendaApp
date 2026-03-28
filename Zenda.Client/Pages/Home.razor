@@ -5,6 +5,8 @@
 @inject IJSRuntime JS
 @inject NegocioClient _negocioService
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
 
@@ -13,7 +15,7 @@
         RESUMEN DE HOY
     </span>
     <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
-        Hola, Admin 👋
+        Hola, @nombreUsuario
     </h1>
     <p class="text-on-surface-variant mt-2 font-body">Acá tenés el resumen de tu negocio para el @DateTime.Today.ToString("dd 'de' MMMM").</p>
 </div>
@@ -96,8 +98,7 @@
                             <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
                             <p class="text-sm text-on-surface-variant flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs">content_cut</span>
-                                @* Si tu DTO no trae el nombre del prestador, podés poner "Turno Confirmado" o ajustar el backend *@
-                                Profesional Asignado
+                                @(turno.PrestadorNombre)
                             </p>
                         </div>
 
@@ -142,12 +143,15 @@
 </div>
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     [Inject] private TurnoClient _turnoService { get; set; } = default!;
     [Inject] private PrestadorClient _prestadorClient { get; set; } = default!;
 
     private string textoBotonCopiar = "Copiar Enlace";
     private string iconoBotonCopiar = "content_copy";
     private string linkReserva = "";
+    private string nombreUsuario = "Admin";
 
     private int turnosHoy = 0;
     private int completadosHoy = 0;
@@ -159,11 +163,34 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // 1. Agarramos la sesión actual
+        var authState = await AuthStateTask;
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            // 2. Buscamos la etiqueta que le pegamos en el AuthService
+            var claimNombre = user.Claims.FirstOrDefault(c =>c.Type == "given_name");
+
+            if (claimNombre != null && !string.IsNullOrWhiteSpace(claimNombre.Value))
+            {
+                nombreUsuario = claimNombre.Value; // Acá sacamos el nombre real
+            }
+            else
+            {
+                // Si por algún motivo no lo encuentra, cortamos el email antes del @
+                var emailClaim = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(emailClaim) && emailClaim.Contains("@"))
+                {
+                    nombreUsuario = emailClaim.Split('@')[0];
+                    nombreUsuario = char.ToUpper(nombreUsuario[0]) + nombreUsuario.Substring(1).ToLower();
+                }
+            }
+        }
         try
         {
-            var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var negocio = await _negocioService.GetById(idHardcoded);
-
+            
+            var negocio = await _negocioService.GetPerfilAsync();
             if (negocio != null)
             {
                 // Armamos la URL completa (ej: https://tudominio.com/zenda-barber)

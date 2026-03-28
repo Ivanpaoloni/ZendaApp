@@ -3,7 +3,7 @@ using Zenda.Core.DTOs;
 
 namespace Zenda.Client.Services;
 
-public class TurnoClient
+public class TurnoClient : BaseClient
 {
     private readonly HttpClient _http;
     public TurnoClient(HttpClient http) => _http = http;
