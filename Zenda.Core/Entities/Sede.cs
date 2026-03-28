@@ -11,4 +11,5 @@ public class Sede : BaseEntity, ITenantEntity
 
     public List<Prestador> Prestadores { get; set; } = new();
     public string Direccion { get; set; } = string.Empty;
+    public string ZonaHorariaId { get; set; } = "America/Argentina/Buenos_Aires";
 }

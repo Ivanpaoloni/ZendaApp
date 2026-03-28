@@ -13,6 +13,7 @@ namespace Zenda.Core.DTOs
         public Guid NegocioId { get; set; }
         public string Nombre { get; set; } = string.Empty;
         public string Direccion { get; set; } = string.Empty;
+        public string ZonaHorariaId { get; set; } = "America/Argentina/Buenos_Aires";
         // Opcional: Podrías querer saber cuántos prestadores hay en esta sede
         // public int CantidadPrestadores { get; set; }
     }
@@ -28,5 +29,6 @@ namespace Zenda.Core.DTOs
 
         [Required]
         public Guid NegocioId { get; set; }
+        public string ZonaHorariaId { get; set; } = "America/Argentina/Buenos_Aires";
     }
 }

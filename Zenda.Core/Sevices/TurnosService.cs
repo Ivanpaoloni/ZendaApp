@@ -93,62 +93,40 @@ public class TurnosService : ITurnosService
 
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
-        // 1. Validamos que exista el prestador para heredar su NegocioId y conocer la duración
-        var prestador = await _context.Prestadores.FindAsync(dto.PrestadorId);
-        if (prestador == null) throw new Exception("Prestador no encontrado.");
+        // 1. Buscamos al prestador INCLUYENDO su sede para saber dónde trabaja
+        var prestador = await _context.Prestadores
+            .Include(p => p.Sede)
+            .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
 
-        var inicioLimpio = DateTime.SpecifyKind(new DateTime(
-            dto.Inicio.Year, dto.Inicio.Month, dto.Inicio.Day,
-            dto.Inicio.Hour, dto.Inicio.Minute, 0), DateTimeKind.Utc);
+        if (prestador?.Sede == null)
+            throw new Exception("Prestador o Sede no encontrados.");
 
-        var finSolicitado = inicioLimpio.AddMinutes(prestador.DuracionTurnoMinutos);
+        // 2. Obtenemos la zona horaria real del local
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
-        var horaInicio = TimeOnly.FromDateTime(inicioLimpio);
-        var horaFin = TimeOnly.FromDateTime(finSolicitado);
+        // 3. Nos aseguramos de que la fecha entrante no tenga rastros de UTC
+        var fechaCruda = DateTime.SpecifyKind(dto.Inicio, DateTimeKind.Unspecified);
 
-        // 2. ¿Atiende en ese rango?
-        var atiende = await _context.Disponibilidad.AnyAsync(d =>
-            d.PrestadorId == dto.PrestadorId &&
-            d.DiaSemana == (int)inicioLimpio.DayOfWeek &&
-            horaInicio >= d.HoraInicio &&
-            horaFin <= d.HoraFin);
+        // 4. LA MAGIA: Convertimos esas 09:00 crudas a UTC basados en la Sede
+        var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaCruda, zonaSede);
 
-        if (!atiende)
-            throw new ArgumentException("El profesional no atiende en el horario o día solicitado.");
-
-        // 3. ¿Hay solapamiento? (Descartando los cancelados)
-        var ocupado = await _context.Turnos.AnyAsync(t =>
-            t.PrestadorId == dto.PrestadorId &&
-            t.Estado != "Cancelado" &&
-            inicioLimpio < t.FechaHoraFinUtc &&
-            t.FechaHoraInicioUtc < finSolicitado);
-
-        if (ocupado)
-            throw new ArgumentException("El horario ya se encuentra ocupado.");
-
-        // 4. Instanciamos la entidad de dominio mapeando los datos de invitado (MVP)
-        var turno = new Turno
+        // 5. Armamos la entidad
+        var nuevoTurno = new Turno
         {
-            Id = Guid.CreateVersion7(),
-
-            // Aislamiento Multi-Tenant: El turno pertenece al mismo negocio que el prestador
             NegocioId = prestador.NegocioId,
-
             PrestadorId = dto.PrestadorId,
-            FechaHoraInicioUtc = inicioLimpio,
-            FechaHoraFinUtc = finSolicitado,
-
-            // Datos del cliente MVP
-            NombreClienteInvitado = dto.NombreClienteInvitado ?? string.Empty,
-            TelefonoClienteInvitado = dto.TelefonoClienteInvitado ?? string.Empty,
-
+            FechaHoraInicioUtc = fechaUtcDefinitiva, // ¡Perfecto y a prueba de balas!
+            FechaHoraFinUtc = fechaUtcDefinitiva.AddMinutes(prestador.DuracionTurnoMinutos),
+            NombreClienteInvitado = dto.NombreClienteInvitado,
+            TelefonoClienteInvitado = dto.TelefonoClienteInvitado,
+            EmailClienteInvitado = dto.EmailClienteInvitado,
             Estado = "Pendiente"
         };
 
-        _context.Turnos.Add(turno);
+        _context.Turnos.Add(nuevoTurno);
         await _context.SaveChangesAsync();
 
-        return _mapper.Map<TurnoReadDto>(turno);
+        return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
 
     public async Task<IEnumerable<TurnoReadDto>> GetTurnosByFechaAsync(DateTime fecha)

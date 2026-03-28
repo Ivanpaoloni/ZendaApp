@@ -312,11 +312,11 @@
                 nombrePrestadorReserva = asignado.Nombre;
             }
             var h = TimeOnly.Parse(horaSeleccionada!);
-            // 1. Esto crea un DateTime con la fecha elegida y la hora (ej: 28/03/2026 09:00:00)
             var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
 
-            // 2. EL ERROR SUELE ESTAR ACÁ:
-            var fechaUtc = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Local).ToUniversalTime();
+            // CLAVE: Le decimos a .NET "esta es una fecha pura, sin zona horaria asignada (Unspecified)"
+            // No intentamos convertir a UTC acá. Mandamos el dato crudo.
+            var fechaCruda = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Unspecified);
 
             var dtoParaEnviar = new TurnoCreateDto
             {
@@ -324,7 +324,7 @@
                 NombreClienteInvitado = nuevoTurno.NombreClienteInvitado,
                 TelefonoClienteInvitado = nuevoTurno.TelefonoClienteInvitado,
                 EmailClienteInvitado = nuevoTurno.EmailClienteInvitado,
-                Inicio = fechaUtc
+                Inicio = fechaCruda // ¡Mandamos las 09:00 intactas!
             };
 
             var resultado = await TurnoService.Reservar(dtoParaEnviar);
