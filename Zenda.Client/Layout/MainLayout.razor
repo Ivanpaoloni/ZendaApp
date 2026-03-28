@@ -4,29 +4,25 @@
 
 <div class="min-h-screen bg-background font-body">
     <nav class="fixed top-0 w-full z-50 bg-[#f7faf6]/80 backdrop-blur-xl border-b border-surface-container-high">
-        <div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+        <div class="flex justify-between items-center px-6 md:px-8 py-4 max-w-7xl mx-auto">
+
             <div class="flex items-center gap-3">
-                <div class="text-2xl font-bold text-primary tracking-tighter font-headline">
+                <div class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline">
                     @(negocio?.Nombre ?? "Zenda")
                 </div>
                 @if (negocio != null)
                 {
-                    <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
+                    <span class="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
                         SaaS
                     </span>
                 }
             </div>
 
-            <div class="hidden md:flex items-center gap-6">
-                <NavLink href="prestadores" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
-                    Prestadores
-                </NavLink>
-                <NavLink href="sedes" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
-                    Sedes
-                </NavLink>
-                <NavLink href="turnos" class="text-sm font-headline font-semibold text-on-surface/70 hover:text-primary transition-colors">
-                    Agenda
-                </NavLink>
+            <div class="hidden md:flex items-center gap-8">
+                <NavLink href="" Match="NavLinkMatch.All" class="nav-desktop">Inicio</NavLink>
+                <NavLink href="prestadores" class="nav-desktop">Equipo</NavLink>
+                <NavLink href="turnos" class="nav-desktop">Agenda</NavLink>
+                <NavLink href="sedes" class="nav-desktop">Sedes</NavLink>
             </div>
 
             <div class="flex items-center gap-3">
@@ -34,26 +30,100 @@
                     <p class="text-xs font-bold text-primary leading-none">Admin Panel</p>
                     <p class="text-[10px] text-on-surface-variant">@negocio?.Slug</p>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+                <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
                     <span class="material-symbols-outlined text-xl">account_circle</span>
                 </div>
             </div>
+
         </div>
     </nav>
 
-    <main class="pt-28 pb-12 px-8 max-w-7xl mx-auto">
+    <main class="pt-24 pb-24 md:pb-12 px-6 md:px-8 max-w-7xl mx-auto">
         @Body
     </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-surface-container-high pb-safe">
+        <div class="flex justify-around items-center h-16">
+            <NavLink href="" Match="NavLinkMatch.All" class="nav-mobile">
+                <span class="material-symbols-outlined text-[24px]">dashboard</span>
+                <span class="text-[10px] font-bold">Inicio</span>
+            </NavLink>
+
+            <NavLink href="prestadores" class="nav-mobile">
+                <span class="material-symbols-outlined text-[24px]">content_cut</span>
+                <span class="text-[10px] font-bold">Equipo</span>
+            </NavLink>
+
+            <NavLink href="turnos" class="nav-mobile">
+                <span class="material-symbols-outlined text-[24px]">calendar_month</span>
+                <span class="text-[10px] font-bold">Agenda</span>
+            </NavLink>
+
+            <NavLink href="sedes" class="nav-mobile">
+                <span class="material-symbols-outlined text-[24px]">location_on</span>
+                <span class="text-[10px] font-bold">Sedes</span>
+            </NavLink>
+        </div>
+    </nav>
 </div>
+
+<style>
+    /* CSS Puro para evitar los errores de compilación de Blazor con @@apply */
+
+    /* Enlaces Escritorio */
+    .nav-desktop {
+        font-family: 'Inter', sans-serif; /* Tu font-headline si es otra */
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6b7280; /* text-gray-500 aproximado para inactivo */
+        transition: color 0.2s ease-in-out;
+    }
+
+        .nav-desktop:hover {
+            color: #166534; /* text-green-800 o tu primary */
+        }
+
+        .nav-desktop.active {
+            color: #166534; /* Acá pones el HEX de tu color primary */
+            font-weight: 800;
+        }
+
+    /* Enlaces Móvil */
+    .nav-mobile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        width: 100%;
+        height: 100%;
+        color: #9ca3af; /* text-gray-400 */
+        transition: color 0.2s ease-in-out;
+    }
+
+        .nav-mobile.active {
+            color: #166534; /* Tu color primary */
+        }
+
+    /* Padding seguro para iPhones */
+    .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+</style>
 
 @code {
     private NegocioReadDto? negocio;
 
     protected override async Task OnInitializedAsync()
     {
-        // Por ahora usamos el ID que generaste en la base de datos (Zenda Barber)
-        // Mas adelante, esto vendrá del usuario logueado.
-        var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        negocio = await NegocioService.GetById(idHardcoded);
+        try
+        {
+            var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            negocio = await NegocioService.GetById(idHardcoded);
+        }
+        catch
+        {
+            // Fallback silencioso
+        }
     }
 }
