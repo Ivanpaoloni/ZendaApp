@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
@@ -8,33 +9,46 @@ public class SedesController : ControllerBase
 {
     private readonly ISedeService _service;
 
-    public SedesController(ISedeService service)
+    public SedesController(ISedeService service) => _service = service;
+
+    [AllowAnonymous] // Público para el flujo de reserva
+    [HttpGet("public/negocio/{negocioId:guid}")]
+    public async Task<ActionResult<IEnumerable<SedeReadDto>>> GetPublicByNegocio(Guid negocioId)
     {
-        _service = service;
+        var sedes = await _service.GetPublicByNegocioIdAsync(negocioId);
+        return Ok(sedes);
     }
 
+    [Authorize] // Admin: Ver todas mis sedes
     [HttpGet]
     public async Task<ActionResult<IEnumerable<SedeReadDto>>> GetAll()
         => Ok(await _service.GetAllAsync());
 
+    [Authorize] // Admin: Crear sede
     [HttpPost]
     public async Task<ActionResult<SedeReadDto>> Create(SedeCreateDto dto)
     {
-        try
-        {
-            var nuevaSede = await _service.CreateAsync(dto);
-            return Ok(nuevaSede);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await _service.CreateAsync(dto);
+        return Ok(result);
     }
 
-    [HttpDelete("{id}")]
+    [Authorize] // Admin: Borrar sede
+    [HttpDelete("{id:guid}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var eliminado = await _service.DeleteAsync(id);
-        return eliminado ? NoContent() : NotFound();
+        try
+        {
+            var eliminado = await _service.DeleteAsync(id);
+            return eliminado ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Esto devuelve un 400 con el texto plano "No se puede eliminar..."
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { message = "Error interno del servidor" });
+        }
     }
 }

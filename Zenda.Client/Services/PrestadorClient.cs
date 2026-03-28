@@ -6,6 +6,11 @@ public class PrestadorClient
     private readonly HttpClient _http;
     public PrestadorClient(HttpClient http) => _http = http;
 
+    public async Task<List<PrestadorReadDto>> GetPublicBySede(Guid sedeId)
+    {
+        return await _http.GetFromJsonAsync<List<PrestadorReadDto>>($"api/prestadores/public/sede/{sedeId}")
+               ?? new List<PrestadorReadDto>();
+    }
     public async Task<List<PrestadorReadDto>> GetAll()
     {
         try

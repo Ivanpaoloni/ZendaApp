@@ -1,139 +1,84 @@
 ﻿@page "/nuevo-prestador"
+@using Microsoft.AspNetCore.Authorization
+@using Zenda.Client.Services
 @using Zenda.Core.DTOs
-@inject HttpClient Http
-@inject NavigationManager Nav
+@attribute [Authorize]
 @inject PrestadorClient PrestadorService
 @inject SedeClient SedeService
+@inject NavigationManager Nav
 
-<div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <button @onclick="Volver" class="flex items-center gap-2 text-primary font-headline font-bold text-sm mb-6 hover:opacity-70 transition-opacity">
-        <span class="material-symbols-outlined">arrow_back</span>
-        Volver
+<div class="max-w-xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+    <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+        <span class="material-symbols-outlined text-sm">arrow_back</span> Volver al equipo
     </button>
-    <h1 class="text-4xl font-headline font-extrabold text-primary tracking-tight">Agregar Profesional</h1>
-    <p class="text-on-surface-variant mt-2 font-body">Completa el perfil para empezar a recibir turnos.</p>
-</div>
 
-<div class="max-w-2xl bg-white p-10 rounded-4xl editorial-shadow border border-surface-container-high">
-    @if (sedes == null)
-    {
-        <div class="flex items-center justify-center py-10">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p class="ml-3 text-primary font-body">Cargando sedes...</p>
-        </div>
-    }
-    else
-    {
-        <EditForm Model="@nuevoPrestador" OnValidSubmit="GuardarPrestador" class="space-y-8">
+    <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
+        <h2 class="text-3xl font-bold text-primary tracking-tighter mb-8 text-center">Nuevo Profesional</h2>
+
+        <EditForm Model="nuevo" OnValidSubmit="HandleSubmit" class="space-y-6">
             <DataAnnotationsValidator />
 
-            <div class="space-y-2">
-                <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">NOMBRE COMPLETO</label>
-                <InputText @bind-Value="nuevoPrestador.Nombre"
-                           class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body"
-                           placeholder="Ej. Ivan Barber" />
-                <ValidationMessage For="@(() => nuevoPrestador.Nombre)" class="text-error text-xs px-1" />
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Nombre del Profesional</label>
+                <InputText @bind-Value="nuevo.Nombre" class="input-zenda" placeholder="Ej: Ivan Barber" />
             </div>
 
-            <div class="space-y-2">
-                <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">SEDE / SUCURSAL</label>
-                @* Select estilizado para que coincida con tu diseño *@
-                <InputSelect @bind-Value="nuevoPrestador.SedeId"
-                             class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body appearance-none cursor-pointer">
-                    <option value="@Guid.Empty">Seleccione una sede...</option>
-                    @foreach (var s in sedes)
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Sede de Trabajo</label>
+                <InputSelect @bind-Value="nuevo.SedeId" class="input-zenda appearance-none">
+                    <option value="@Guid.Empty">Seleccionar sede...</option>
+                    @if (sedes != null)
                     {
-                        <option value="@s.Id">@s.Nombre</option>
+                        @foreach (var s in sedes)
+                        {
+                            <option value="@s.Id">@s.Nombre</option>
+                        }
                     }
                 </InputSelect>
-                <ValidationMessage For="@(() => nuevoPrestador.SedeId)" class="text-error text-xs px-1" />
             </div>
 
-            <div class="space-y-2">
-                <label class="text-xs font-bold tracking-widest uppercase font-body text-on-surface-variant px-1">DURACIÓN TURNO (MIN)</label>
-                <InputNumber @bind-Value="nuevoPrestador.DuracionTurnoMinutos"
-                             class="w-full px-6 py-4 bg-surface-container-low border-none rounded-2xl focus:ring-2 focus:ring-primary focus:bg-white transition-all outline-none font-body" />
-                <ValidationMessage For="@(() => nuevoPrestador.DuracionTurnoMinutos)" class="text-error text-xs px-1" />
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Duración del Turno (Minutos)</label>
+                <InputNumber @bind-Value="nuevo.DuracionTurnoMinutos" class="input-zenda" />
             </div>
 
-            @if (!string.IsNullOrEmpty(mensajeError))
-            {
-                <div class="p-4 bg-error/10 border border-error/20 text-error rounded-2xl text-sm font-body animate-in fade-in zoom-in duration-300">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">error</span>
-                        @mensajeError
-                    </div>
-                </div>
-            }
-
-            <div class="pt-4">
-                <button type="submit" disabled="@enviando"
-                        class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-lg scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:scale-100">
-                    @if (enviando)
-                    {
-                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span>Guardando...</span>
-                    }
-                    else
-                    {
-                        <span>Crear Profesional</span>
-                        <span class="material-symbols-outlined">person_add</span>
-                    }
-                </button>
-            </div>
+            <button type="submit" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all mt-4">
+                Crear Perfil Profesional
+            </button>
         </EditForm>
-    }
+    </div>
 </div>
 
+<style>
+    .input-zenda {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border-radius: 1.25rem;
+        background-color: #f1f5f0;
+        border: 2px solid transparent;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+        .input-zenda:focus {
+            border-color: #166534;
+            background-color: white;
+        }
+</style>
+
 @code {
-    private PrestadorCreateDto nuevoPrestador = new() { DuracionTurnoMinutos = 30 };
+    private PrestadorCreateDto nuevo = new() { DuracionTurnoMinutos = 30 };
     private List<SedeReadDto>? sedes;
-    private bool enviando = false;
-    private string? mensajeError;
 
     protected override async Task OnInitializedAsync()
     {
-        try 
-        {
-            sedes = await SedeService.GetAll();
-            
-            if (sedes != null && sedes.Count == 1)
-            {
-                nuevoPrestador.SedeId = sedes[0].Id;
-            }
-        }
-        catch (Exception ex)
-        {
-            mensajeError = "Error al conectar con el servidor.";
-            sedes = new(); 
-            Console.WriteLine(ex.Message);
-        }
+        sedes = await SedeService.GetAll();
+        if (sedes?.Count == 1) nuevo.SedeId = sedes[0].Id;
     }
 
-    private async Task GuardarPrestador()
+    private async Task HandleSubmit()
     {
-        if (nuevoPrestador.SedeId == Guid.Empty)
-        {
-            mensajeError = "Por favor, selecciona una sede para el profesional.";
-            return;
-        }
-
-        enviando = true;
-        mensajeError = null;
-
-        var resultado = await PrestadorService.Create(nuevoPrestador);
-
-        if (resultado.Success)
-        {
-            Nav.NavigateTo("prestadores");
-        }
-        else
-        {
-            mensajeError = resultado.ErrorMessage;
-        }
-
-        enviando = false;
+        var res = await PrestadorService.Create(nuevo);
+        if (res.Success) Nav.NavigateTo("prestadores");
     }
-
-    private void Volver() => Nav.NavigateTo("prestadores");
 }

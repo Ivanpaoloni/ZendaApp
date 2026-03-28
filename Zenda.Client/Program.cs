@@ -10,25 +10,41 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+// 1. Definimos la URL de la API una sola vez
 var apiUrl = builder.Configuration["BaseApiUrl"] ?? builder.HostEnvironment.BaseAddress;
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
 
-builder.Services.AddScoped<DisponibilidadClient>();
-builder.Services.AddScoped<PrestadorClient>();
-builder.Services.AddScoped<SedeClient>();
-builder.Services.AddScoped<TurnoClient>();
-builder.Services.AddScoped<NegocioClient>();
+// 2. Registramos el Interceptor (MessageHandler)
+builder.Services.AddScoped<AuthMessageHandler>();
 
+// 3. Registramos los Clientes Tipados
+// IMPORTANTE: Al usar AddHttpClient, ya se registran automáticamente como Scoped.
+// Todos estos van a usar el AuthMessageHandler para mandar el token.
+builder.Services.AddHttpClient<NegocioClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>();
+
+builder.Services.AddHttpClient<SedeClient>(client => client.BaseAddress = new Uri(apiUrl))
+.AddHttpMessageHandler<AuthMessageHandler>();
+
+builder.Services.AddHttpClient<PrestadorClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>();
+
+builder.Services.AddHttpClient<TurnoClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>();
+
+builder.Services.AddHttpClient<DisponibilidadClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>();
+
+// 4. Configuración de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 
-//a modo de helper para compartir estado entre componentes, aunque lo ideal sería usar un state management más robusto como Fluxor o Redux
+// 5. Estado global de la App
 builder.Services.AddScoped<AppState>();
 
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri(apiUrl)
-});
+// 6. HttpClient Genérico (OPCIONAL)
+// Solo por si algún componente inyecta HttpClient directamente en lugar de un Client específico.
+// Este NO lleva el interceptor (útil para llamadas públicas).
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
 
 await builder.Build().RunAsync();

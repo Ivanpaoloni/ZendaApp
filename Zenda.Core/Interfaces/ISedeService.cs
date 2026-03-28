@@ -8,5 +8,6 @@ namespace Zenda.Core.Interfaces
         Task<SedeReadDto> CreateAsync(SedeCreateDto dto);
         Task<bool> DeleteAsync(Guid id);
         Task<IEnumerable<SedeReadDto>> GetAllAsync();
+        Task<IEnumerable<SedeReadDto>> GetPublicByNegocioIdAsync(Guid negocioId);
     }
 }

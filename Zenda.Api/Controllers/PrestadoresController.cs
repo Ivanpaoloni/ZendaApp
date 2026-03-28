@@ -1,8 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
-
-namespace Zenda.API.Controllers; // Asegurate de poner el namespace de tu proyecto API
 
 [ApiController]
 [Route("api/[controller]")]
@@ -10,38 +9,38 @@ public class PrestadoresController : ControllerBase
 {
     private readonly IPrestadoresService _service;
 
-    public PrestadoresController(IPrestadoresService service)
+    public PrestadoresController(IPrestadoresService service) => _service = service;
+
+    [AllowAnonymous] // Público: Ver staff de una sede para reservar
+    [HttpGet("public/sede/{sedeId:guid}")]
+    public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetPublicBySede(Guid sedeId)
     {
-        _service = service;
+        var result = await _service.GetPublicBySedeIdAsync(sedeId);
+        return Ok(result);
     }
 
+    [Authorize] // Admin: Mi lista de staff
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetAll()
         => Ok(await _service.GetAllAsync());
 
-    // CORRECCIÓN: Cambiamos de slug a id, y agregamos la restricción :guid
+    [Authorize]
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PrestadorReadDto>> GetById(Guid id)
     {
         var result = await _service.GetByIdAsync(id);
-        return result == null ? NotFound(new { message = "Prestador no encontrado" }) : Ok(result);
+        return result == null ? NotFound() : Ok(result);
     }
 
-    [HttpGet("sede/{sedeId}")]
-    public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetBySede(Guid sedeId)
-    {
-        var prestadores = await _service.GetBySedeAsync(sedeId);
-        return Ok(prestadores);
-    }
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<PrestadorReadDto>> Create(PrestadorCreateDto dto)
     {
         var result = await _service.CreateAsync(dto);
-
-        // CORRECCIÓN: Redirigimos al método GetById usando el Id del nuevo prestador
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
+    [Authorize]
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, PrestadorUpdateDto dto)
     {
@@ -49,6 +48,7 @@ public class PrestadoresController : ControllerBase
         return success ? NoContent() : NotFound();
     }
 
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {

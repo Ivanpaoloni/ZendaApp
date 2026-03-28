@@ -196,23 +196,36 @@
 
     private async Task CargarDatosIniciales()
     {
-        // 1. Buscamos el negocio por su Slug (ej: "zenda-barber")
-        // negocio = await NegocioService.GetBySlug(NegocioSlug);
-        negocio = await _negocioClient.GetById(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        pasoActual = PasoReserva.Cargando;
 
-        // 2. Traemos las sedes de ese negocio
-        // sedesDisponibles = await SedeService.GetByNegocioId(negocio.Id);
-        sedesDisponibles = await _sedeService.GetAll() ; // Mock
+        // 1. Buscamos el negocio por el Slug de la URL (ej: /barberia-ivan)
+        negocio = await _negocioClient.GetPublicBySlug(NegocioSlug);
 
-        // LÓGICA CLAVE: Si solo hay una sede, la seleccionamos automáticamente y saltamos el paso.
+        if (negocio == null)
+        {
+            Nav.NavigateTo("/404"); // O una página de "Negocio no encontrado"
+            return;
+        }
+
+        // 2. Traemos las sedes públicas de este negocio específico
+        sedesDisponibles = await _sedeService.GetPublicByNegocio(negocio.Id);
+
         if (sedesDisponibles.Count == 1)
         {
+            // Si solo hay una sucursal, la elegimos de una y pasamos al staff
             SeleccionarSede(sedesDisponibles.First());
         }
         else if (sedesDisponibles.Count > 1)
         {
             pasoActual = PasoReserva.SeleccionarSede;
         }
+        else
+        {
+            // Caso borde: Negocio sin sedes cargadas
+            pasoActual = PasoReserva.SeleccionarSede;
+        }
+
+        StateHasChanged();
     }
 
     private async void SeleccionarSede(SedeReadDto sede)
@@ -221,8 +234,8 @@
         pasoActual = PasoReserva.Cargando;
         StateHasChanged();
 
-        // LLAMADA REAL: Le pedimos al backend solo los de esta sede
-        prestadoresDeSede = await _prestadorService.GetBySedeId(sede.Id);
+        // 3. Llamada al nuevo endpoint público de prestadores
+        prestadoresDeSede = await _prestadorService.GetPublicBySede(sede.Id);
 
         pasoActual = PasoReserva.SeleccionarPrestador;
         StateHasChanged();

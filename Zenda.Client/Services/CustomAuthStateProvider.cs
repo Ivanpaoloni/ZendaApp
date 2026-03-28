@@ -43,7 +43,11 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     // Método para avisar que alguien cerró sesión
     public void NotifyUserLogout()
     {
-        var authState = Task.FromResult(new AuthenticationState(_anonymous));
+        // Creamos un usuario "anónimo" (vacío)
+        var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
+        var authState = Task.FromResult(new AuthenticationState(anonymousUser));
+
+        // Disparamos el evento para que Blazor actualice la pantalla
         NotifyAuthenticationStateChanged(authState);
     }
 

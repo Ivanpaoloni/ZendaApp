@@ -9,25 +9,49 @@ namespace Zenda.Application.Services;
 public class PrestadoresService : IPrestadoresService
 {
     private readonly IZendaDbContext _context;
+    private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
 
-    public PrestadoresService(IZendaDbContext context, IMapper mapper)
+    public PrestadoresService(IZendaDbContext context, ITenantService tenantService, IMapper mapper)
     {
         _context = context;
+        _tenantService = tenantService;
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<PrestadorReadDto>> GetAllAsync()
+    #region MÉTODOS PÚBLICOS (Para la página de reserva - Sin Token)
+
+    public async Task<IEnumerable<PrestadorReadDto>> GetPublicBySedeIdAsync(Guid sedeId)
     {
+        // Usamos IgnoreQueryFilters porque el cliente anónimo no tiene TenantId en el token.
+        // Filtramos explícitamente por SedeId para mantener el aislamiento.
         var prestadores = await _context.Prestadores
-            .Include(p => p.Horarios)
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.SedeId == sedeId)
             .ToListAsync();
+
         return _mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores);
     }
 
-    // Reemplazamos GetBySlugAsync por GetByIdAsync
+    #endregion
+
+    #region MÉTODOS ADMINISTRATIVOS (Para el Panel - Requieren Token)
+
+    public async Task<IEnumerable<PrestadorReadDto>> GetAllAsync()
+    {
+        // El Global Query Filter del DbContext se encarga de filtrar por NegocioId.
+        var prestadores = await _context.Prestadores
+            .Include(p => p.Horarios)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return _mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores);
+    }
+
     public async Task<PrestadorReadDto?> GetByIdAsync(Guid id)
     {
+        // El filtro global impide que encuentres prestadores de otros negocios.
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -38,11 +62,16 @@ public class PrestadoresService : IPrestadoresService
     public async Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto)
     {
         var prestador = _mapper.Map<Prestador>(dto);
-        //if (prestador.SedeId == Guid.Empty) prestador.SedeId = Guid.Parse("d84bb65e-8ed6-46a8-964c-5250761dad96");
-        // Asignación explícita del Guid secuencial en la capa de servicio
-        prestador.Id = Guid.CreateVersion7();
-        //if (prestador.SedeId == Guid.Empty) prestador.SedeId = null;
-        // Validación de seguridad 
+
+        // 🛡️ SEGURIDAD: Obtenemos el TenantId desde el Token (a través de ITenantService)
+        // Si no hay tenant (usuario no logueado), lanzamos excepción.
+        var tenantId = _tenantService.GetCurrentTenantId();
+        if (tenantId == null) throw new UnauthorizedAccessException("Contexto de negocio no identificado.");
+
+        prestador.NegocioId = tenantId.Value;
+        prestador.Id = Guid.CreateVersion7(); // Usamos v7 para mejor performance en DB
+
+        // Validación de negocio por defecto
         if (prestador.DuracionTurnoMinutos <= 0) prestador.DuracionTurnoMinutos = 30;
 
         _context.Prestadores.Add(prestador);
@@ -50,23 +79,11 @@ public class PrestadoresService : IPrestadoresService
 
         return _mapper.Map<PrestadorReadDto>(prestador);
     }
-    // En PrestadorService.cs
-    public async Task<IEnumerable<PrestadorReadDto>> GetBySedeAsync(Guid sedeId)
-    {
-        return await _context.Prestadores
-            .AsNoTracking()
-            .Where(p => p.SedeId == sedeId)
-            .Select(p => new PrestadorReadDto
-            {
-                Id = p.Id,
-                Nombre = p.Nombre,
-                // Agregá los campos que tengas en tu DTO
-            })
-            .ToListAsync();
-    }
+
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
-        var prestadorDb = await _context.Prestadores.FindAsync(id);
+        // Buscamos dentro de la "burbuja" del Tenant
+        var prestadorDb = await _context.Prestadores.FirstOrDefaultAsync(p => p.Id == id);
         if (prestadorDb == null) return false;
 
         _mapper.Map(dto, prestadorDb);
@@ -76,11 +93,14 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var prestador = await _context.Prestadores.FindAsync(id);
+        // Si el ID pertenece a otro negocio, FirstOrDefaultAsync devolverá null por el filtro global.
+        var prestador = await _context.Prestadores.FirstOrDefaultAsync(p => p.Id == id);
         if (prestador == null) return false;
 
         _context.Prestadores.Remove(prestador);
-        await _context.SaveChangesAsync();
-        return true;
+        var result = await _context.SaveChangesAsync();
+        return result > 0;
     }
+
+    #endregion
 }

@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
-using Zenda.Core.Interfaces;
-
-namespace Zenda.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -10,22 +8,37 @@ public class NegociosController : ControllerBase
 {
     private readonly INegocioService _service;
 
-    public NegociosController(INegocioService service)
+    public NegociosController(INegocioService service) => _service = service;
+
+    [AllowAnonymous]
+    [HttpGet("public/{slug}")]
+    public async Task<ActionResult<NegocioReadDto>> GetPublicBySlug(string slug)
     {
-        _service = service;
+        var negocio = await _service.GetPublicBySlugAsync(slug);
+        return negocio == null ? NotFound() : Ok(negocio);
     }
 
-    [HttpGet("{id}")]
+    [Authorize] // Solo el dueño logueado
+    [HttpGet("perfil")]
+    public async Task<ActionResult<NegocioReadDto>> GetPerfil()
+    {
+        var result = await _service.GetPerfilAsync();
+        return result == null ? NotFound("Perfil no encontrado") : Ok(result);
+    }
+
+    [Authorize] // Gestión administrativa
+    [HttpGet("{id:guid}")]
     public async Task<ActionResult<NegocioReadDto>> GetById(Guid id)
     {
         var negocio = await _service.GetByIdAsync(id);
         return negocio == null ? NotFound() : Ok(negocio);
     }
 
+    [Authorize] // Solo personal autorizado
     [HttpPost]
     public async Task<ActionResult<NegocioReadDto>> Create(NegocioCreateDto dto)
     {
-        var nuevoNegocio = await _service.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = nuevoNegocio.Id }, nuevoNegocio);
+        var result = await _service.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 }

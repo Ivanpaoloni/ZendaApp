@@ -1,7 +1,14 @@
 ﻿@inherits LayoutComponentBase
 @inject NegocioClient NegocioService
+@inject AppState State
+@inject NavigationManager Nav
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+@using Zenda.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Zenda.Core.DTOs
+@using Zenda.Client.Auth
 
 <div class="min-h-screen bg-background font-body">
     <nav class="fixed top-0 w-full z-50 bg-[#f7faf6]/80 backdrop-blur-xl border-b border-surface-container-high">
@@ -9,9 +16,9 @@
 
             <div class="flex items-center gap-3">
                 <div class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline">
-                    @(negocio?.Nombre ?? "Zenda")
+                    @(State.CurrentNegocio?.Nombre ?? "Zenda")
                 </div>
-                @if (negocio != null)
+                @if (State.CurrentNegocio != null)
                 {
                     <span class="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
                         SaaS
@@ -24,13 +31,11 @@
 
                 <AuthorizeView>
                     <Authorized>
-                        @* Solo el personal del negocio ve esto *@
                         <NavLink href="prestadores" class="nav-desktop">Equipo</NavLink>
                         <NavLink href="turnos" class="nav-desktop">Agenda</NavLink>
                         <NavLink href="sedes" class="nav-desktop">Sedes</NavLink>
                     </Authorized>
                     <NotAuthorized>
-                        @* El cliente final solo ve esto (o lo que vos decidas público) *@
                         <NavLink href="reserva" class="nav-desktop">Sacar Turno</NavLink>
                     </NotAuthorized>
                 </AuthorizeView>
@@ -46,6 +51,9 @@
                         <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
                             <span class="material-symbols-outlined text-xl">account_circle</span>
                         </div>
+                        <button @onclick="CerrarSesion" class="ml-2 p-2 text-error hover:bg-error/10 rounded-full transition-colors flex items-center justify-center" title="Cerrar Sesión">
+                            <span class="material-symbols-outlined">logout</span>
+                        </button>
                     </Authorized>
                     <NotAuthorized>
                         <NavLink href="login" class="text-sm font-bold text-primary">Iniciar Sesión</NavLink>
@@ -69,11 +77,6 @@
 
             <AuthorizeView>
                 <Authorized>
-                    <NavLink href="" Match="NavLinkMatch.All" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">dashboard</span>
-                        <span class="text-[10px] font-bold">Inicio</span>
-                    </NavLink>
-
                     <NavLink href="prestadores" class="nav-mobile">
                         <span class="material-symbols-outlined text-[24px]">content_cut</span>
                         <span class="text-[10px] font-bold">Equipo</span>
@@ -101,27 +104,24 @@
 </div>
 
 <style>
-    /* CSS Puro para evitar los errores de compilación de Blazor con @@apply */
-
-    /* Enlaces Escritorio */
+    /* ... (Mismos estilos que ya tenías) ... */
     .nav-desktop {
-        font-family: 'Inter', sans-serif; /* Tu font-headline si es otra */
+        font-family: 'Inter', sans-serif;
         font-size: 0.875rem;
         font-weight: 600;
-        color: #6b7280; /* text-gray-500 aproximado para inactivo */
+        color: #6b7280;
         transition: color 0.2s ease-in-out;
     }
 
         .nav-desktop:hover {
-            color: #166534; /* text-green-800 o tu primary */
+            color: #166534;
         }
 
         .nav-desktop.active {
-            color: #166534; /* Acá pones el HEX de tu color primary */
+            color: #166534;
             font-weight: 800;
         }
 
-    /* Enlaces Móvil */
     .nav-mobile {
         display: flex;
         flex-direction: column;
@@ -130,33 +130,56 @@
         gap: 0.25rem;
         width: 100%;
         height: 100%;
-        color: #9ca3af; /* text-gray-400 */
+        color: #9ca3af;
         transition: color 0.2s ease-in-out;
     }
 
         .nav-mobile.active {
-            color: #166534; /* Tu color primary */
+            color: #166534;
         }
 
-    /* Padding seguro para iPhones */
     .pb-safe {
         padding-bottom: env(safe-area-inset-bottom);
     }
 </style>
 
 @code {
-    private NegocioReadDto? negocio;
-
     protected override async Task OnInitializedAsync()
     {
+        // 1. Nos suscribimos a los cambios del AppState
+        State.OnChange += StateHasChanged;
+
         try
         {
-            var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            negocio = await NegocioService.GetById(idHardcoded);
+            // 2. Cargamos el negocio en el AppState si no está cargado aún
+            if (State.CurrentNegocio == null)
+            {
+                State.CurrentNegocio = await NegocioService.GetPerfilAsync();
+                State.NotifyStateChanged(); // Avisamos que la UI debe actualizarse
+            }
         }
         catch
         {
-            // Fallback silencioso
+            // Fallback (ej: usuario no logueado, lo maneja el interceptor)
         }
+    }
+
+    private async Task CerrarSesion()
+    {
+        await LocalStorage.RemoveItemAsync("authToken");
+        State.Clear();
+
+        // Ahora AuthStateProvider sí existe
+        if (AuthStateProvider is CustomAuthStateProvider customProvider)
+        {
+            customProvider.NotifyUserLogout();
+        }
+
+        Nav.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= StateHasChanged;
     }
 }

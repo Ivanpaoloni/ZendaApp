@@ -26,10 +26,10 @@ namespace Zenda.Infrastructure
             // Es lo que mapea las tablas de Identity (AspNetUsers, etc.)
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Sede>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
-            modelBuilder.Entity<Prestador>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
-            modelBuilder.Entity<Turno>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
-
+            modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            
             // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
             modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
             

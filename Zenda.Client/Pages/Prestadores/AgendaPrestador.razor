@@ -1,155 +1,89 @@
 ﻿@page "/prestadores/agenda"
+@using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
-@using Zenda.Client.Services
+@attribute [Authorize]
 @inject DisponibilidadClient AgendaService
-@inject PrestadorClient PrestadorService
+@inject Zenda.Client.Services.AppState State
 @inject NavigationManager Nav
-@inject AppState State
 
-<div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <button @onclick="Volver" class="flex items-center gap-2 text-primary font-headline font-bold text-sm mb-6 hover:opacity-70 transition-opacity">
-        <span class="material-symbols-outlined">arrow_back</span>
-        Volver
-    </button>
-    <h1 class="text-4xl font-headline font-extrabold text-primary tracking-tight">
-        Agenda de @(nombrePrestador ?? "Cargando...")
-    </h1>
-    <p class="text-on-surface-variant mt-2 font-body">Define los días y horarios de atención semanal.</p>
-</div>
+<div class="max-w-2xl mx-auto space-y-6">
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-primary tracking-tighter">Horarios de @State.PrestadorEnEdicion?.Nombre</h1>
+        <p class="text-on-surface-variant text-sm">Definí los bloques de tiempo para reservas online.</p>
+    </div>
 
-<div class="max-w-3xl bg-white p-8 rounded-4xl editorial-shadow border border-surface-container-high">
-    <div class="space-y-4">
-        @foreach (var dia in diasAgenda)
+    <div class="bg-white rounded-[2.5rem] border border-surface-container-high editorial-shadow overflow-hidden">
+        @foreach (var dia in dias)
         {
-            <div class="flex items-center gap-4 p-4 rounded-2xl transition-all @(dia.Activo ? "bg-primary/5 border-primary/10 border" : "bg-surface-container-low border-transparent border")">
-                <div class="flex items-center gap-3 w-40">
-                    <input type="checkbox" @bind="dia.Activo" class="w-6 h-6 rounded-lg border-2 border-primary/20 text-primary focus:ring-primary cursor-pointer" />
-                    <span class="font-headline font-bold @(dia.Activo ? "text-primary" : "text-on-surface-variant")">
-                        @dia.NombreDia
-                    </span>
+            <div class="flex items-center justify-between p-6 border-b border-surface-container last:border-0 hover:bg-secondary-container/10 transition-colors">
+                <div class="flex items-center gap-4">
+                    <div class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" @bind="dia.Activo" class="sr-only peer">
+                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </div>
+                    <span class="font-bold text-primary w-24">@dia.Nombre</span>
                 </div>
 
                 @if (dia.Activo)
                 {
-                    <div class="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                        <input type="time" @bind="dia.Inicio" class="px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary outline-none font-body text-sm shadow-sm" />
-                        <span class="text-on-surface-variant font-bold text-xs uppercase">A</span>
-                        <input type="time" @bind="dia.Fin" class="px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary outline-none font-body text-sm shadow-sm" />
+                    <div class="flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                        <input type="time" @bind="dia.Inicio" class="p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0" />
+                        <span class="text-[10px] font-black opacity-20">-</span>
+                        <input type="time" @bind="dia.Fin" class="p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0" />
                     </div>
                 }
                 else
                 {
-                    <span class="text-xs font-bold text-on-surface-variant/40 uppercase tracking-widest ml-4 italic">No disponible</span>
+                    <span class="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest italic">Cerrado</span>
                 }
             </div>
         }
     </div>
 
-    @if (!string.IsNullOrEmpty(mensaje))
-    {
-        <div class="mt-6 p-4 rounded-2xl bg-primary/10 text-primary text-sm font-bold animate-pulse">
-            @mensaje
-        </div>
-    }
-
-    <div class="mt-10 pt-6 border-t border-surface-container-high">
-        <button @onclick="GuardarAgenda" disabled="@cargando"
-                class="w-full py-4 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg hover:scale-[1.01] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2 disabled:opacity-50">
-            @if (cargando)
-            {
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            }
-            else
-            {
-                <span>Guardar Cambios</span>
-                <span class="material-symbols-outlined">save</span>
-            }
-        </button>
-    </div>
+    <button @onclick="Guardar" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all">
+        Actualizar Agenda Semanal
+    </button>
 </div>
 
 @code {
-    // Ya no recibimos el parámetro por URL
-    private Guid prestadorId;
-    private string? nombrePrestador;
-    private bool cargando = false;
-    private string? mensaje;
-
-    private List<DiaViewModel> diasAgenda = new()
-    {
-        new DiaViewModel { DiaSemana = 1, NombreDia = "Lunes" },
-        new DiaViewModel { DiaSemana = 2, NombreDia = "Martes" },
-        new DiaViewModel { DiaSemana = 3, NombreDia = "Miércoles" },
-        new DiaViewModel { DiaSemana = 4, NombreDia = "Jueves" },
-        new DiaViewModel { DiaSemana = 5, NombreDia = "Viernes" },
-        new DiaViewModel { DiaSemana = 6, NombreDia = "Sábado" },
-        new DiaViewModel { DiaSemana = 0, NombreDia = "Domingo" }
+    private List<DiaVM> dias = new() {
+        new(1, "Lunes"), new(2, "Martes"), new(3, "Miércoles"),
+        new(4, "Jueves"), new(5, "Viernes"), new(6, "Sábado"), new(0, "Domingo")
     };
 
     protected override async Task OnInitializedAsync()
     {
-        // 1. Validamos que el estado tenga un prestador, sino volvemos
-        if (State.PrestadorEnEdicion == null)
-        {
-            Nav.NavigateTo("prestadores");
-            return;
-        }
+        if (State.PrestadorEnEdicion == null) Nav.NavigateTo("prestadores");
 
-        prestadorId = State.PrestadorEnEdicion.Id;
-        nombrePrestador = State.PrestadorEnEdicion.Nombre;
-
-        // 2. Cargar agenda actual
-        var actual = await AgendaService.GetByPrestador(prestadorId);
+        var actual = await AgendaService.GetByPrestador(State.PrestadorEnEdicion!.Id);
         foreach (var disp in actual)
         {
-            var vm = diasAgenda.FirstOrDefault(d => d.DiaSemana == disp.DiaSemana);
-            if (vm != null)
+            var d = dias.FirstOrDefault(x => x.Num == disp.DiaSemana);
+            if (d != null)
             {
-                vm.Activo = true;
-                if (TimeOnly.TryParse(disp.HoraInicio, out var inicio))
-                    vm.Inicio = DateTime.Today.Add(inicio.ToTimeSpan());
-
-                if (TimeOnly.TryParse(disp.HoraFin, out var fin))
-                    vm.Fin = DateTime.Today.Add(fin.ToTimeSpan());
+                d.Activo = true;
+                d.Inicio = DateTime.Today.Add(TimeOnly.Parse(disp.HoraInicio).ToTimeSpan());
+                d.Fin = DateTime.Today.Add(TimeOnly.Parse(disp.HoraFin).ToTimeSpan());
             }
         }
     }
 
-    private async Task GuardarAgenda()
+    private async Task Guardar()
     {
-        cargando = true;
-        mensaje = "Guardando agenda...";
-
-        var agendaParaEnviar = diasAgenda
-            .Where(d => d.Activo)
-            .Select(d => new DisponibilidadCreateDto
-            {
-                PrestadorId = prestadorId,
-                DiaSemana = d.DiaSemana,
-                HoraInicio = TimeOnly.FromDateTime(d.Inicio),
-                HoraFin = TimeOnly.FromDateTime(d.Fin)
-            }).ToList();
-
-        var exito = await AgendaService.Upsert(prestadorId, agendaParaEnviar);
-
-        mensaje = exito ? "¡Agenda actualizada con éxito!" : "Hubo un error al guardar.";
-        cargando = false;
-
-        if (exito)
+        var agenda = dias.Where(d => d.Activo).Select(d => new DisponibilidadCreateDto
         {
-            await Task.Delay(1500);
-            Nav.NavigateTo("prestadores");
-        }
+            PrestadorId = State.PrestadorEnEdicion!.Id,
+            DiaSemana = d.Num,
+            HoraInicio = TimeOnly.FromDateTime(d.Inicio),
+            HoraFin = TimeOnly.FromDateTime(d.Fin)
+        }).ToList();
+
+        if (await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda)) Nav.NavigateTo("prestadores");
     }
 
-    private void Volver() => Nav.NavigateTo("prestadores");
-
-    public class DiaViewModel
+    public class DiaVM(int num, string nombre)
     {
-        public int DiaSemana { get; set; }
-        public string NombreDia { get; set; } = "";
-        public bool Activo { get; set; }
-        public DateTime Inicio { get; set; } = DateTime.Today.AddHours(9);
-        public DateTime Fin { get; set; } = DateTime.Today.AddHours(18);
+        public int Num = num; public string Nombre = nombre; public bool Activo;
+        public DateTime Inicio = DateTime.Today.AddHours(9); public DateTime Fin = DateTime.Today.AddHours(18);
     }
 }

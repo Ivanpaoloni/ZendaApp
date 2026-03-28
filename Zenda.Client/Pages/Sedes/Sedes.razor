@@ -1,120 +1,233 @@
 ﻿@page "/sedes"
-@inject SedeClient SedeService
-@inject NavigationManager Nav
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@inject SedeClient SedeService
+@inject IJSRuntime JS
 
-<div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
-        CONFIGURACIÓN
-    </span>
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
-            Sedes del Negocio
-        </h1>
-
-        <button @onclick="IrANuevaSede"
-                class="flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-4 rounded-2xl font-headline font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all editorial-shadow">
-            Nueva Sede
-            <span class="material-symbols-outlined text-sm">add</span>
-        </button>
-    </div>
-    <p class="text-on-surface-variant mt-2 font-body">Administra las sucursales donde atienden tus profesionales.</p>
-</div>
-
-@if (sedes == null)
-{
-    <div class="flex flex-col items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        <p class="mt-4 text-primary font-medium animate-pulse">Sincronizando sedes...</p>
-    </div>
-}
-else if (!sedes.Any())
-{
-    <div class="bg-white/50 border-2 border-dashed border-outline-variant rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-        <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined text-3xl text-on-surface-variant">storefront</span>
+<div class="space-y-8 animate-in fade-in duration-500">
+    @* Encabezado *@
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Mis Sedes</h1>
+            <p class="text-on-surface-variant text-sm">Gestioná las ubicaciones físicas de tu negocio.</p>
         </div>
-        <h3 class="font-headline font-bold text-xl text-primary mb-2">Sin sedes activas</h3>
-        <p class="text-on-surface-variant font-body text-sm mb-6 max-w-sm mx-auto">No tenés sucursales registradas. Creá tu primera sede para que los clientes puedan encontrarte.</p>
-        <button @onclick="IrANuevaSede" class="text-primary font-bold text-sm hover:underline flex items-center gap-1">
-            <span class="material-symbols-outlined text-sm">add</span> Crear Sede
+        <button @onclick="() => showForm = !showForm"
+                class="px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
+            <span class="material-symbols-outlined">@(showForm ? "close" : "add")</span>
+            @(showForm ? "Cancelar" : "Nueva Sede")
         </button>
     </div>
-}
-else
-{
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        @foreach (var sede in sedes)
-        {
-            <div class="bg-white p-8 rounded-4xl editorial-shadow border border-transparent hover:border-outline-variant transition-all duration-300 group flex flex-col h-full">
 
-                <div class="flex justify-between items-start mb-8">
-                    <div class="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center group-hover:bg-secondary-container transition-colors duration-300">
-                        <span class="material-symbols-outlined text-primary text-3xl">storefront</span>
+    @* Formulario de Creación *@
+    @if (showForm)
+    {
+        <div class="p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm animate-in slide-in-from-top-4 duration-300">
+            <EditForm Model="nuevaSede" OnValidSubmit="HandleCreate">
+                <DataAnnotationsValidator />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Nombre de la Sede</label>
+                        <InputText @bind-Value="nuevaSede.Nombre" class="input-zenda" placeholder="Ej: Sucursal Centro" />
+                        <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
                     </div>
-                    <span class="bg-green-50 text-green-700 px-3 py-1 rounded-lg text-[11px] font-bold font-body tracking-tight flex items-center gap-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                        Activa
-                    </span>
+                    
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Dirección Exacta</label>
+                        <InputText @bind-Value="nuevaSede.Direccion" class="input-zenda" placeholder="Ej: Av. Corrientes 1234, CABA" />
+                        <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
+                    </div>
+
+                    @* Recuperamos tu selector de Zona Horaria *@
+                    <div class="flex flex-col gap-2 md:col-span-2">
+                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Zona Horaria del Local</label>
+                        <InputSelect @bind-Value="nuevaSede.ZonaHorariaId" class="input-zenda appearance-none cursor-pointer">
+                            @foreach (var tz in zonasHorarias)
+                            {
+                                <option value="@tz.Id">@tz.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => nuevaSede.ZonaHorariaId)" class="text-error text-[10px] font-bold px-1" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="md:col-span-2 p-4 bg-error/10 text-error border border-error/20 rounded-2xl text-sm font-bold flex items-center gap-2">
+                            <span class="material-symbols-outlined">error</span>
+                            @errorMessage
+                        </div>
+                    }
+
+                    <div class="md:col-span-2 mt-2">
+                        @* EL ARREGLO ESTÁ ACÁ: disabled="@isSubmitting" *@
+                        <button type="submit" disabled="@isSubmitting"
+                                class="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:hover:scale-100">
+                            @if (isSubmitting)
+                            {
+                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <span>Guardando...</span>
+                            }
+                            else
+                            {
+                                <span class="material-symbols-outlined">add_business</span>
+                                <span>Crear Sede</span>
+                            }
+                        </button>
+                    </div>
                 </div>
-
-                <div class="flex-grow">
-                    <h3 class="text-2xl font-headline font-bold text-primary mb-1">@sede.Nombre</h3>
-                    <p class="text-on-surface-variant font-body text-sm flex items-center gap-2 mb-4">
-                        <span class="material-symbols-outlined text-xs">location_on</span>
-                        ID: @sede.Id.ToString()?[..8]
-                    </p>
-
-                    @* Ejemplo de link de la sede (si Zenda maneja URLs por sucursal) *@
-                    <button class="text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:opacity-70 transition-opacity">
-                        <span class="material-symbols-outlined text-sm">link</span>
-                        Copiar link de sede
-                    </button>
-                </div>
-
-                <div class="mt-8 pt-6 border-t border-surface-container-high space-y-3">
-                    <button class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
-                        Configurar Sede
-                        <span class="material-symbols-outlined text-sm">settings</span>
-                    </button>
-
-                    <button @onclick="() => EliminarSede(sede.Id)" class="w-full py-3 bg-error/5 text-error rounded-xl font-headline font-bold text-xs hover:bg-error/10 transition-colors flex items-center justify-center gap-2">
-                        Eliminar Sede
-                        <span class="material-symbols-outlined text-sm">delete</span>
-                    </button>
-                </div>
+            </EditForm>
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage) && !showForm)
+    {
+        <div class="p-4 bg-error/10 text-error border border-error/20 rounded-2xl text-sm font-bold flex items-center justify-between animate-in fade-in zoom-in duration-300">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined">warning</span>
+                <span>@errorMessage</span>
+            </div>
+            <button @onclick="() => errorMessage = null" class="hover:opacity-70">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+        </div>
+    }
+    @* Lista de Sedes *@
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @if (sedes == null)
+        {
+            <div class="col-span-full py-12 text-center animate-pulse text-on-surface-variant font-bold">Cargando tus sedes...</div>
+        }
+        else if (!sedes.Any())
+        {
+            <div class="col-span-full py-16 text-center bg-surface-container-low rounded-[2rem] border-2 border-dashed border-surface-container-high">
+                <span class="material-symbols-outlined text-5xl text-primary/30 mb-3 block">storefront</span>
+                <p class="text-on-surface-variant font-medium">Aún no tenés sedes cargadas.<br/>¡Creá la primera para empezar!</p>
             </div>
         }
+        else
+        {
+            @foreach (var sede in sedes)
+            {
+                <div class="group p-6 bg-white rounded-[2rem] border border-surface-container-high hover:border-primary/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-2xl bg-secondary-container/50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                                <span class="material-symbols-outlined text-[28px]">location_on</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-primary leading-tight mb-1">@sede.Nombre</h3>
+                                <p class="text-on-surface-variant text-xs line-clamp-1">@sede.Direccion</p>
+                            </div>
+                        </div>
+                        <button @onclick="() => ConfirmDelete(sede.Id)" title="Eliminar Sede"
+                                class="opacity-0 group-hover:opacity-100 p-2 text-error hover:bg-error/10 rounded-xl transition-all duration-300">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                    <div class="mt-5 flex gap-2">
+                        <span class="px-3 py-1.5 bg-surface-container-low text-[10px] font-bold rounded-xl text-on-surface-variant flex items-center gap-1 border border-surface-container-high">
+                            <span class="material-symbols-outlined text-[14px]">schedule</span>
+                            @sede.ZonaHorariaId
+                        </span>
+                    </div>
+                </div>
+            }
+        }
     </div>
-}
+</div>
+
+<style>
+    .input-zenda {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border-radius: 1.25rem;
+        background-color: #f1f5f0;
+        border: 2px solid transparent;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        outline: none;
+    }
+    .input-zenda:focus {
+        border-color: #166534;
+        background-color: white;
+    }
+</style>
 
 @code {
     private List<SedeReadDto>? sedes;
+    private SedeCreateDto nuevaSede = new();
+    private bool showForm = false;
+    private bool isSubmitting = false;
+    private string? errorMessage;
+    
+    // Agregamos la lista de zonas horarias para el dropdown
+    private IReadOnlyCollection<TimeZoneInfo> zonasHorarias = new List<TimeZoneInfo>();
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarSedes();
+        // Cargamos las zonas horarias del sistema
+        zonasHorarias = TimeZoneInfo.GetSystemTimeZones();
+        nuevaSede.ZonaHorariaId = "America/Argentina/Buenos_Aires"; // Valor por defecto
+        
+        await LoadSedes();
     }
 
-    private async Task CargarSedes()
+    private async Task LoadSedes()
     {
+        sedes = await SedeService.GetAll();
+    }
+
+    private async Task HandleCreate()
+    {
+        isSubmitting = true;
+        errorMessage = null;
+
         try
         {
-            sedes = await SedeService.GetAll();
+            var result = await SedeService.Create(nuevaSede);
+
+            if (result != null)
+            {
+                // Limpiamos el form y ocultamos
+                nuevaSede = new SedeCreateDto { ZonaHorariaId = "America/Argentina/Buenos_Aires" }; 
+                showForm = false;
+                await LoadSedes();
+            }
+            else
+            {
+                errorMessage = "No se pudo crear la sede. Revisá los datos o tu conexión.";
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error cargando sedes: {ex.Message}");
-            sedes = new List<SedeReadDto>();
+            errorMessage = $"Error al procesar: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
         }
     }
 
-    private void IrANuevaSede() => Nav.NavigateTo("/sedes/nueva");
-
-    private async Task EliminarSede(Guid id)
+    private async Task ConfirmDelete(Guid id)
     {
-        // Más adelante podemos integrar un modal real de confirmación (ej. SweetAlert)
-        // Por ahora, solo simula el click para que no borres por error al testear la UI
-        Console.WriteLine($"Intentando eliminar la sede: {id}");
+        errorMessage = null;
+        try
+        {
+            var confirmed = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro?");
+            if (confirmed)
+            {
+                // Ahora si la API manda un BadRequest("No podés borrar..."),
+                // este método lanza una excepción con ese texto.
+                await SedeService.Delete(id);
+
+                await LoadSedes(); // Si llegó acá, es que fue exitoso
+            }
+        }
+        catch (Exception ex)
+        {
+            // 'ex.Message' ahora tendrá el texto: "No se puede eliminar una sede con profesionales asociados."
+            errorMessage = ex.Message;
+        }
     }
 }

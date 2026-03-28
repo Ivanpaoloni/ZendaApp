@@ -1,134 +1,78 @@
 ﻿@page "/prestadores"
+@using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
-@inject NavigationManager Nav
+@attribute [Authorize]
 @inject PrestadorClient PrestadorService
-@inject IJSRuntime JS
+@inject NavigationManager Nav
 @inject Zenda.Client.Services.AppState State
+@inject IJSRuntime JS
 
-<div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
-        EQUIPO PROFESIONAL
-    </span>
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
-            Gestionar Equipo
-        </h1>
-
+<div class="space-y-8 animate-in fade-in duration-500">
+    <div class="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div>
+            <h1 class="text-4xl font-headline font-extrabold text-primary tracking-tighter">Mi Equipo</h1>
+            <p class="text-on-surface-variant text-sm mt-1">Gestioná quiénes atienden en tu negocio.</p>
+        </div>
         <button @onclick='() => Nav.NavigateTo("nuevo-prestador")'
-                class="flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-4 rounded-2xl font-headline font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all editorial-shadow w-full md:w-auto">
-            Nuevo Prestador
+                class="px-6 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 text-sm">
             <span class="material-symbols-outlined text-sm">add</span>
+            Nuevo Profesional
         </button>
     </div>
-    <p class="text-on-surface-variant mt-2 font-body">Administra los profesionales y sus tiempos de atención.</p>
-</div>
 
-@if (prestadores == null)
-{
-    <div class="flex flex-col items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        <p class="mt-4 text-primary font-medium animate-pulse">Sincronizando con Zenda...</p>
-    </div>
-}
-else
-{
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        @foreach (var p in prestadores)
-        {
-            <div class="bg-white p-8 rounded-4xl editorial-shadow border border-transparent hover:border-outline-variant transition-all duration-300 group flex flex-col h-full">
-                <div class="flex justify-between items-start mb-8">
-                    <div class="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center group-hover:bg-secondary-container transition-colors duration-300">
-                        <span class="material-symbols-outlined text-primary text-3xl">person</span>
+    @if (prestadores == null)
+    {
+        <div class="py-20 text-center animate-pulse text-primary font-bold">Sincronizando equipo...</div>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach (var p in prestadores)
+            {
+                <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                            <span class="material-symbols-outlined text-3xl">person</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-black text-primary/40 tracking-widest uppercase">Servicio</span>
+                            <p class="text-xs font-bold text-on-surface">@p.DuracionTurnoMinutos min</p>
+                        </div>
                     </div>
-                    <span class="bg-surface-container-high text-on-surface px-3 py-1 rounded-lg text-[11px] font-bold font-body tracking-tight">
-                        @p.DuracionTurnoMinutos min
-                    </span>
+
+                    <h3 class="text-xl font-bold text-primary mb-4">@p.Nombre</h3>
+
+                    <div class="space-y-2">
+                        <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
+                        </button>
+                        <button @onclick="() => CopiarLink(p)" class="w-full py-3 text-on-surface-variant font-bold text-[10px] uppercase tracking-widest hover:underline flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-xs">content_copy</span> Copiar Link de Reserva
+                        </button>
+                    </div>
                 </div>
-
-                <div class="flex-grow">
-                    <h3 class="text-2xl font-headline font-bold text-primary mb-1">@p.Nombre</h3>
-                    <p class="text-on-surface-variant font-body text-sm flex items-center gap-2">
-                        <span class="material-symbols-outlined text-xs">fingerprint</span>
-                        ID: @p.Id.ToString()?[..8]
-                    </p>
-
-                    @* Botón de Copiar Link movido aquí para mejor UI *@
-                    <button @onclick="() => CopiarLink(p)" class="mt-4 text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:opacity-70 transition-opacity">
-                        <span class="material-symbols-outlined text-sm">link</span>
-                        Copiar link de reserva
-                    </button>
-                </div>
-
-                <div class="mt-8 pt-6 border-t border-surface-container-high space-y-3">
-                    <button @onclick="() => IrAAgenda(p)"
-                            class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
-                        Configurar Disponibilidad
-                        <span class="material-symbols-outlined text-sm">calendar_month</span>
-                    </button>
-
-                    <button @onclick="() => VerTurnos(p)"
-                            class="w-full py-3 bg-surface-container-low text-primary rounded-xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center justify-center gap-2">
-                        Ver Turnos Ocupados
-                        <span class="material-symbols-outlined text-sm">event_available</span>
-                    </button>
-                </div>
-            </div>
-        }
-    </div>
-}
+            }
+        </div>
+    }
+</div>
 
 @code {
     private List<PrestadorReadDto>? prestadores;
 
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            prestadores = await PrestadorService.GetAll();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error cargando prestadores: {ex.Message}");
-            prestadores = new List<PrestadorReadDto>();
-        }
-    }
+    protected override async Task OnInitializedAsync() =>
+        prestadores = await PrestadorService.GetAll();
 
-    // Nueva función para manejar la navegación limpia
     private void IrAAgenda(PrestadorReadDto p)
     {
-        Console.WriteLine($"Intentando ir a la agenda de: {p.Nombre}"); // Esto DEBE aparecer en F12
-
-        try
-        {
-            State.PrestadorEnEdicion = p;
-            Nav.NavigateTo("prestadores/agenda"); // Sin la barra inicial a veces ayuda en Blazor WebAssembly
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al navegar: {ex.Message}");
-        }
-    }
-
-    private void VerTurnos(PrestadorReadDto p)
-    {
         State.PrestadorEnEdicion = p;
-        Nav.NavigateTo("prestadores/agenda-turnos");
+        Nav.NavigateTo("prestadores/agenda");
     }
 
     private async Task CopiarLink(PrestadorReadDto p)
     {
-        try
-        {
-            // Generamos la URL pública
-            var url = $"{Nav.BaseUri}book/{p.Id}";
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
-
-            // Opcional: Podrías usar un Toast aquí para avisar que se copió
-            Console.WriteLine($"Link copiado: {url}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al copiar: {ex.Message}");
-        }
+        // Usamos el Slug del negocio que ya tenemos en el State/Layout
+        var slug = State.CurrentNegocio?.Slug ?? "negocio";
+        var url = $"{Nav.BaseUri}{slug}"; // El cliente elige al profesional en la web
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
     }
 }
