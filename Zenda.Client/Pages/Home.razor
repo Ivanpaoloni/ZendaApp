@@ -21,6 +21,49 @@
     <p class="text-on-surface-variant mt-2 font-body">Acá tenés el resumen de tu negocio para el @DateTime.Today.ToString("dd 'de' MMMM").</p>
 </div>
 
+@if (!cargando && (equipoActivo == 0 || sedesContador == 0))
+{
+    <div class="mb-10 p-8 bg-primary/5 border-2 border-dashed border-primary/20 rounded-4xl animate-in zoom-in duration-500">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                <span class="material-symbols-outlined">rocket_launch</span>
+            </div>
+            <div>
+                <h2 class="text-2xl font-headline font-extrabold text-primary">¡Bienvenido a Zenda, @nombreUsuario!</h2>
+                <p class="text-on-surface-variant text-sm">Completá estos pasos para empezar a recibir reservas.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @if (sedesContador == 0)
+            {
+                <button @onclick='() => Nav.NavigateTo("/sedes")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group">
+                    <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">storefront</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary">Creá tu primera sede</h4>
+                        <p class="text-xs text-on-surface-variant">Necesitás un lugar físico para tus turnos.</p>
+                    </div>
+                </button>
+            }
+
+            @if (equipoActivo == 0)
+            {
+                <button @onclick='() => Nav.NavigateTo("/prestadores")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">person_add</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary">Agregá a tu equipo</h4>
+                        <p class="text-xs text-on-surface-variant">Configurá quiénes brindan los servicios.</p>
+                    </div>
+                </button>
+            }
+        </div>
+    </div>
+}
+
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
 
     <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
@@ -153,7 +196,9 @@
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     [Inject] private TurnoClient _turnoService { get; set; } = default!;
     [Inject] private PrestadorClient _prestadorClient { get; set; } = default!;
+    [Inject] private SedeClient _sedeService { get; set; } = default!;
 
+    private int sedesContador = 0;
     private string textoBotonCopiar = "Copiar Enlace";
     private string iconoBotonCopiar = "content_copy";
     private string linkReserva = "";
@@ -195,33 +240,36 @@
         }
         try
         {
-            
+            var hoy = DateTime.Today;
+
+            // 1. Cargamos Sedes y Prestadores para validar el estado del negocio
+            var sedes = await _sedeService.GetAll();
+            var prestadores = await _prestadorClient.GetAll();
+
+            sedesContador = sedes?.Count ?? 0;
+            equipoActivo = prestadores?.Count ?? 0;
+
+            // 2. Cargamos turnos solo si hay equipo (si no hay equipo, no puede haber turnos)
+            if (equipoActivo > 0)
+            {
+                var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
+
+                turnosHoy = turnos.Count;
+                completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
+
+                var horaActualUtc = DateTime.UtcNow;
+                proximosTurnos = turnos
+                    .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
+                    .OrderBy(t => t.FechaHoraInicioUtc)
+                    .Take(5)
+                    .ToList();
+            }
             var negocio = await _negocioService.GetPerfilAsync();
             if (negocio != null)
             {
                 // Armamos la URL completa (ej: https://tudominio.com/zenda-barber)
                 linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
             }
-
-            var hoy = DateTime.Today;
-            // Traemos TODOS los turnos de la barbería para hoy
-            var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
-            var prestadores = await _prestadorClient.GetAll();
-
-            equipoActivo = prestadores.Count;
-            turnosHoy = turnos.Count;
-            // Asumiendo que tenés un estado "Completado" en tu DTO
-            completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
-
-            // Filtramos los próximos turnos a partir de ahora, ordenados por hora
-            var horaActualUtc = DateTime.UtcNow;
-            proximosTurnos = turnos
-                .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
-                .OrderBy(t => t.FechaHoraInicioUtc)
-                .Take(5) // Mostramos solo los próximos 5
-                .ToList();
-
-            // (Lógica futura para Ocupación y Equipo)
         }
         catch (Exception ex)
         {
