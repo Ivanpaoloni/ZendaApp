@@ -1,0 +1,122 @@
+﻿@page "/register"
+@using Zenda.Application.DTOs.Auth
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<div class="max-w-xl mx-auto mt-8 mb-12 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
+    <div class="text-center mb-8">
+        <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Empezá con Zenda</h2>
+        <p class="text-on-surface-variant text-sm px-4">Creá tu cuenta de administrador y configurá tu primer negocio en segundos.</p>
+    </div>
+
+    <EditForm Model="@regModel" OnValidSubmit="HandleRegister">
+        <DataAnnotationsValidator />
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            @* Datos Personales *@
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Nombre</label>
+                <input @bind-value="regModel.Nombre" class="input-zenda" placeholder="Ej: Ivan" required />
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Apellido</label>
+                <input @bind-value="regModel.Apellido" class="input-zenda" placeholder="Ej: Pérez" required />
+            </div>
+
+            @* Credenciales *@
+            <div class="md:col-span-2 flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Email Profesional</label>
+                <input type="email" @bind-value="regModel.Email" class="input-zenda" placeholder="hola@tuempresa.com" required />
+            </div>
+
+            @* Datos del Negocio *@
+            <div class="md:col-span-2 p-4 bg-secondary-container/20 rounded-3xl border border-primary/5 mt-2">
+                <p class="text-xs font-bold text-primary mb-4 text-center">INFORMACIÓN DEL NEGOCIO</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Nombre del Local</label>
+                        <input @bind-value="regModel.NombreNegocio" class="input-zenda bg-white" placeholder="Ej: Barbería Zenda" required />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">URL (Slug)</label>
+                        <input @bind-value="regModel.SlugNegocio" class="input-zenda bg-white" placeholder="ej-barberia-zenda" required />
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 flex flex-col gap-2">
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Contraseña</label>
+                <input type="password" @bind-value="regModel.Password" class="input-zenda" placeholder="Mínimo 6 caracteres" required />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="mt-6 p-4 rounded-2xl bg-error/10 text-error text-xs font-bold border border-error/20">
+                @errorMessage
+            </div>
+        }
+
+        <button type="submit" disabled="@isSubmitting"
+                class="w-full mt-8 py-4 bg-primary text-white font-bold rounded-[1.5rem] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+            @if (isSubmitting)
+            {
+                <span class="animate-pulse">Creando cuenta...</span>
+            }
+            else
+            {
+
+                <span>Registrar mi negocio</span>
+            }
+        </button>
+    </EditForm>
+</div>
+
+<style>
+    .input-zenda {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        border-radius: 1.25rem;
+        background-color: #f1f5f0; /* secondary-container/30 */
+        border: 2px solid transparent;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        outline: none;
+    }
+
+        .input-zenda:focus {
+            border-color: #166534; /* primary */
+            background-color: white;
+            box-shadow: 0 4px 12px rgba(22, 101, 52, 0.05);
+        }
+</style>
+
+@code {
+    private RegisterOwnerDto regModel = new();
+    private string errorMessage = "";
+    private bool isSubmitting = false;
+
+    private async Task HandleRegister()
+    {
+        isSubmitting = true;
+        errorMessage = "";
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/auth/register-owner", regModel);
+            var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+            if (result!.Success)
+            {
+                // Registro exitoso -> Mandamos al Login
+                Nav.NavigateTo("login");
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
+        }
+        catch { errorMessage = "Error de conexión con la API."; }
+        finally { isSubmitting = false; }
+    }
+}

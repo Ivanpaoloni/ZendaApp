@@ -1,6 +1,9 @@
+using Blazored.LocalStorage;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Zenda.Client;
+using Zenda.Client.Auth;
 using Zenda.Client.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -15,6 +18,10 @@ builder.Services.AddScoped<PrestadorClient>();
 builder.Services.AddScoped<SedeClient>();
 builder.Services.AddScoped<TurnoClient>();
 builder.Services.AddScoped<NegocioClient>();
+
+builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 
 //a modo de helper para compartir estado entre componentes, aunque lo ideal sería usar un state management más robusto como Fluxor o Redux
 builder.Services.AddScoped<AppState>();

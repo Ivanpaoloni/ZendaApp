@@ -1,5 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject NegocioClient NegocioService
+@using Microsoft.AspNetCore.Components.Authorization
 @using Zenda.Core.DTOs
 
 <div class="min-h-screen bg-background font-body">
@@ -20,19 +21,36 @@
 
             <div class="hidden md:flex items-center gap-8">
                 <NavLink href="" Match="NavLinkMatch.All" class="nav-desktop">Inicio</NavLink>
-                <NavLink href="prestadores" class="nav-desktop">Equipo</NavLink>
-                <NavLink href="turnos" class="nav-desktop">Agenda</NavLink>
-                <NavLink href="sedes" class="nav-desktop">Sedes</NavLink>
+
+                <AuthorizeView>
+                    <Authorized>
+                        @* Solo el personal del negocio ve esto *@
+                        <NavLink href="prestadores" class="nav-desktop">Equipo</NavLink>
+                        <NavLink href="turnos" class="nav-desktop">Agenda</NavLink>
+                        <NavLink href="sedes" class="nav-desktop">Sedes</NavLink>
+                    </Authorized>
+                    <NotAuthorized>
+                        @* El cliente final solo ve esto (o lo que vos decidas público) *@
+                        <NavLink href="reserva" class="nav-desktop">Sacar Turno</NavLink>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="text-right hidden sm:block">
-                    <p class="text-xs font-bold text-primary leading-none">Admin Panel</p>
-                    <p class="text-[10px] text-on-surface-variant">@negocio?.Slug</p>
-                </div>
-                <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
-                    <span class="material-symbols-outlined text-xl">account_circle</span>
-                </div>
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="text-right hidden sm:block">
+                            <p class="text-xs font-bold text-primary leading-none">@context.User.Identity?.Name</p>
+                            <p class="text-[10px] text-on-surface-variant">Admin Panel</p>
+                        </div>
+                        <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
+                            <span class="material-symbols-outlined text-xl">account_circle</span>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <NavLink href="login" class="text-sm font-bold text-primary">Iniciar Sesión</NavLink>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
 
         </div>
@@ -49,20 +67,35 @@
                 <span class="text-[10px] font-bold">Inicio</span>
             </NavLink>
 
-            <NavLink href="prestadores" class="nav-mobile">
-                <span class="material-symbols-outlined text-[24px]">content_cut</span>
-                <span class="text-[10px] font-bold">Equipo</span>
-            </NavLink>
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink href="" Match="NavLinkMatch.All" class="nav-mobile">
+                        <span class="material-symbols-outlined text-[24px]">dashboard</span>
+                        <span class="text-[10px] font-bold">Inicio</span>
+                    </NavLink>
 
-            <NavLink href="turnos" class="nav-mobile">
-                <span class="material-symbols-outlined text-[24px]">calendar_month</span>
-                <span class="text-[10px] font-bold">Agenda</span>
-            </NavLink>
+                    <NavLink href="prestadores" class="nav-mobile">
+                        <span class="material-symbols-outlined text-[24px]">content_cut</span>
+                        <span class="text-[10px] font-bold">Equipo</span>
+                    </NavLink>
 
-            <NavLink href="sedes" class="nav-mobile">
-                <span class="material-symbols-outlined text-[24px]">location_on</span>
-                <span class="text-[10px] font-bold">Sedes</span>
-            </NavLink>
+                    <NavLink href="turnos" class="nav-mobile">
+                        <span class="material-symbols-outlined text-[24px]">calendar_month</span>
+                        <span class="text-[10px] font-bold">Agenda</span>
+                    </NavLink>
+
+                    <NavLink href="sedes" class="nav-mobile">
+                        <span class="material-symbols-outlined text-[24px]">location_on</span>
+                        <span class="text-[10px] font-bold">Sedes</span>
+                    </NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink href="reserva" class="nav-mobile">
+                        <span class="material-symbols-outlined text-[24px]">add_circle</span>
+                        <span class="text-[10px] font-bold">Reservar</span>
+                    </NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
     </nav>
 </div>

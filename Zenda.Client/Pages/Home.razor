@@ -1,7 +1,10 @@
 ﻿@page "/"
+@attribute [Authorize]
+
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 @inject NegocioClient _negocioService
+@using Microsoft.AspNetCore.Authorization
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
 

@@ -1,0 +1,9 @@
+﻿@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Redirige al login, pero guardamos la URL actual para volver después si querés
+        Navigation.NavigateTo("login");
+    }
+}
