@@ -50,7 +50,20 @@ public class PrestadoresService : IPrestadoresService
 
         return _mapper.Map<PrestadorReadDto>(prestador);
     }
-
+    // En PrestadorService.cs
+    public async Task<IEnumerable<PrestadorReadDto>> GetBySedeAsync(Guid sedeId)
+    {
+        return await _context.Prestadores
+            .AsNoTracking()
+            .Where(p => p.SedeId == sedeId)
+            .Select(p => new PrestadorReadDto
+            {
+                Id = p.Id,
+                Nombre = p.Nombre,
+                // Agregá los campos que tengas en tu DTO
+            })
+            .ToListAsync();
+    }
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
         var prestadorDb = await _context.Prestadores.FindAsync(id);

@@ -27,6 +27,12 @@ public class PrestadoresController : ControllerBase
         return result == null ? NotFound(new { message = "Prestador no encontrado" }) : Ok(result);
     }
 
+    [HttpGet("sede/{sedeId}")]
+    public async Task<ActionResult<IEnumerable<PrestadorReadDto>>> GetBySede(Guid sedeId)
+    {
+        var prestadores = await _service.GetBySedeAsync(sedeId);
+        return Ok(prestadores);
+    }
     [HttpPost]
     public async Task<ActionResult<PrestadorReadDto>> Create(PrestadorCreateDto dto)
     {

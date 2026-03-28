@@ -203,7 +203,7 @@
         // 2. Traemos las sedes de ese negocio
         // sedesDisponibles = await SedeService.GetByNegocioId(negocio.Id);
         sedesDisponibles = await _sedeService.GetAll() ; // Mock
-        
+
         // LÓGICA CLAVE: Si solo hay una sede, la seleccionamos automáticamente y saltamos el paso.
         if (sedesDisponibles.Count == 1)
         {
@@ -221,11 +221,8 @@
         pasoActual = PasoReserva.Cargando;
         StateHasChanged();
 
-        // 3. Traemos los prestadores que trabajan en esa sede
-        // prestadoresDeSede = await PrestadorService.GetBySedeId(sede.Id);
-        await Task.Delay(300); // Simulamos red
-        
-        prestadoresDeSede = await _prestadorService.GetAll();
+        // LLAMADA REAL: Le pedimos al backend solo los de esta sede
+        prestadoresDeSede = await _prestadorService.GetBySedeId(sede.Id);
 
         pasoActual = PasoReserva.SeleccionarPrestador;
         StateHasChanged();
@@ -256,15 +253,27 @@
     {
         cargandoHorarios = true;
         slots.Clear();
-        horaSeleccionada = null; // Reseteamos la hora si cambia de día
+        horaSeleccionada = null;
 
-        // Si eligió "Cualquiera", por ahora (MVP) tomamos el primero de la lista para buscar disponibilidad
-        var idPrestadorABuscar = prestadorSeleccionado?.Id ?? prestadoresDeSede.FirstOrDefault()?.Id;
-
-        if (idPrestadorABuscar.HasValue)
+        if (prestadorSeleccionado != null)
         {
-            var res = await TurnoService.GetDisponibilidad(idPrestadorABuscar.Value, fechaSeleccionada);
+            // Eligió a alguien específico
+            var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada);
             slots = res?.HorariosLibres ?? new();
+        }
+        else
+        {
+            // Eligió "Cualquiera".
+            // Para el MVP: Consultamos la disponibilidad del primer prestador de la sede.
+            // Idealmente, acá llamarías a un nuevo endpoint en tu API: TurnoService.GetDisponibilidadSede(sedeSeleccionada.Id, fechaSeleccionada)
+            // que te devuelva la unión de todos los horarios libres de todos los peluqueros de esa sede.
+
+            var primerPrestador = prestadoresDeSede.FirstOrDefault();
+            if (primerPrestador != null)
+            {
+                var res = await TurnoService.GetDisponibilidad(primerPrestador.Id, fechaSeleccionada);
+                slots = res?.HorariosLibres ?? new();
+            }
         }
 
         cargandoHorarios = false;
@@ -275,15 +284,39 @@
     private async Task ConfirmarReserva()
     {
         if (string.IsNullOrEmpty(nuevoTurno.NombreClienteInvitado) || string.IsNullOrEmpty(nuevoTurno.TelefonoClienteInvitado))
-            return; // Podrías poner un mensaje de error acá
+            return;
 
         enviandoReserva = true;
         try
         {
-            var idPrestadorFinal = prestadorSeleccionado?.Id ?? prestadoresDeSede.First().Id;
+            // Lógica de asignación "Cualquiera"
+            Guid idPrestadorFinal;
+            string nombrePrestadorReserva;
+
+            if (prestadorSeleccionado != null)
+            {
+                // Eligió alguien puntual
+                idPrestadorFinal = prestadorSeleccionado.Id;
+                nombrePrestadorReserva = prestadorSeleccionado.Nombre;
+            }
+            else
+            {
+                // Eligió "Cualquiera".
+                // Asignamos al primero de la sede (MVP).
+                // TODO: En el futuro, podés elegir uno al azar:
+                // var random = new Random();
+                // var asignado = prestadoresDeSede[random.Next(prestadoresDeSede.Count)];
+
+                var asignado = prestadoresDeSede.First();
+                idPrestadorFinal = asignado.Id;
+                nombrePrestadorReserva = asignado.Nombre;
+            }
             var h = TimeOnly.Parse(horaSeleccionada!);
+            // 1. Esto crea un DateTime con la fecha elegida y la hora (ej: 28/03/2026 09:00:00)
             var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
-            var fechaUtc = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Utc);
+
+            // 2. EL ERROR SUELE ESTAR ACÁ:
+            var fechaUtc = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Local).ToUniversalTime();
 
             var dtoParaEnviar = new TurnoCreateDto
             {
@@ -300,9 +333,8 @@
             {
                 var fechaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy"));
                 var horaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm"));
-                var nombreEnc = Uri.EscapeDataString(prestadorSeleccionado?.Nombre ?? "Tu profesional");
+                var nombreEnc = Uri.EscapeDataString(nombrePrestadorReserva);
 
-                // Redirigimos a la página de éxito que ya tenías armada!
                 Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion=30");
             }
         }
@@ -315,4 +347,5 @@
             enviandoReserva = false;
         }
     }
+
 }

@@ -29,6 +29,18 @@ public class PrestadorClient
             return new List<PrestadorReadDto>();
         }
     }
+    public async Task<List<PrestadorReadDto>?> GetBySedeId(Guid sedeId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<PrestadorReadDto>>($"api/prestadores/sede/{sedeId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener prestadores por sede: {ex.Message}");
+            return new List<PrestadorReadDto>();
+        }
+    }
     public async Task<PrestadorReadDto?> GetById(Guid id)
     {
         try
