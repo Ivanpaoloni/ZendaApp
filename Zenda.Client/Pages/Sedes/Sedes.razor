@@ -1,74 +1,95 @@
 ﻿@page "/sedes"
 @inject SedeClient SedeService
+@inject NavigationManager Nav
 @using Zenda.Core.DTOs
 
-<div class="space-y-8">
-    <div class="flex justify-between items-end">
-        <div>
-            <p class="text-primary font-bold text-xs uppercase tracking-widest mb-1">Configuración</p>
-            <h1 class="text-4xl font-headline font-black text-on-surface tracking-tighter">Sedes</h1>
-        </div>
-        <button @onclick="IrANuevaSede" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-2xl font-headline font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
-            <span class="material-symbols-outlined">add_location</span>
+<div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
+        CONFIGURACIÓN
+    </span>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
+            Sedes del Negocio
+        </h1>
+
+        <button @onclick="IrANuevaSede"
+                class="flex items-center justify-center gap-2 bg-primary text-on-primary px-6 py-4 rounded-2xl font-headline font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all editorial-shadow">
             Nueva Sede
+            <span class="material-symbols-outlined text-sm">add</span>
         </button>
     </div>
+    <p class="text-on-surface-variant mt-2 font-body">Administra las sucursales donde atienden tus profesionales.</p>
+</div>
 
-    @if (sedes == null)
-    {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @for (int i = 0; i < 3; i++)
-            {
-                <div class="h-48 rounded-3xl bg-surface-container-low animate-pulse"></div>
-            }
+@if (sedes == null)
+{
+    <div class="flex flex-col items-center justify-center py-20">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        <p class="mt-4 text-primary font-medium animate-pulse">Sincronizando sedes...</p>
+    </div>
+}
+else if (!sedes.Any())
+{
+    <div class="bg-white/50 border-2 border-dashed border-outline-variant rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined text-3xl text-on-surface-variant">storefront</span>
         </div>
-    }
-    else if (!sedes.Any())
-    {
-        <div class="bg-surface-container-low rounded-3xl p-12 text-center border-2 border-dashed border-outline-variant">
-            <span class="material-symbols-outlined text-5xl text-on-surface-variant mb-4">location_off</span>
-            <p class="text-on-surface-variant font-medium">No hay sedes registradas aún.</p>
-        </div>
-    }
-    else
-    {
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            @foreach (var sede in sedes)
-            {
-                <div class="group bg-surface-container-low border border-surface-container-high rounded-3xl p-6 hover:border-primary/30 transition-all hover:shadow-xl hover:shadow-primary/5 relative overflow-hidden">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center text-primary">
-                            <span class="material-symbols-outlined">storefront</span>
-                        </div>
-                        <div class="flex gap-1">
-                            <button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                                <span class="material-symbols-outlined text-xl">edit</span>
-                            </button>
-                            <button @onclick="() => EliminarSede(sede.Id)" class="p-2 text-on-surface-variant hover:text-error transition-colors">
-                                <span class="material-symbols-outlined text-xl">delete</span>
-                            </button>
-                        </div>
+        <h3 class="font-headline font-bold text-xl text-primary mb-2">Sin sedes activas</h3>
+        <p class="text-on-surface-variant font-body text-sm mb-6 max-w-sm mx-auto">No tenés sucursales registradas. Creá tu primera sede para que los clientes puedan encontrarte.</p>
+        <button @onclick="IrANuevaSede" class="text-primary font-bold text-sm hover:underline flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">add</span> Crear Sede
+        </button>
+    </div>
+}
+else
+{
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        @foreach (var sede in sedes)
+        {
+            <div class="bg-white p-8 rounded-4xl editorial-shadow border border-transparent hover:border-outline-variant transition-all duration-300 group flex flex-col h-full">
+
+                <div class="flex justify-between items-start mb-8">
+                    <div class="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center group-hover:bg-secondary-container transition-colors duration-300">
+                        <span class="material-symbols-outlined text-primary text-3xl">storefront</span>
                     </div>
+                    <span class="bg-green-50 text-green-700 px-3 py-1 rounded-lg text-[11px] font-bold font-body tracking-tight flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        Activa
+                    </span>
+                </div>
 
-                    <h3 class="text-xl font-headline font-bold text-on-surface mb-1">@sede.Nombre</h3>
-                    <p class="text-sm text-on-surface-variant mb-4 flex items-center gap-1">
-                        <span class="material-symbols-outlined text-xs">link</span>
-                        zenda.app/@sede.Id.ToString().Substring(0, 8)
+                <div class="flex-grow">
+                    <h3 class="text-2xl font-headline font-bold text-primary mb-1">@sede.Nombre</h3>
+                    <p class="text-on-surface-variant font-body text-sm flex items-center gap-2 mb-4">
+                        <span class="material-symbols-outlined text-xs">location_on</span>
+                        ID: @sede.Id.ToString()?[..8]
                     </p>
 
-                    <div class="pt-4 border-t border-surface-container-high flex justify-between items-center">
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Estado</span>
-                        <span class="px-3 py-1 bg-green-500/10 text-green-600 text-[10px] font-black rounded-full uppercase">Activa</span>
-                    </div>
+                    @* Ejemplo de link de la sede (si Zenda maneja URLs por sucursal) *@
+                    <button class="text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:opacity-70 transition-opacity">
+                        <span class="material-symbols-outlined text-sm">link</span>
+                        Copiar link de sede
+                    </button>
                 </div>
-            }
-        </div>
-    }
-</div>
+
+                <div class="mt-8 pt-6 border-t border-surface-container-high space-y-3">
+                    <button class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
+                        Configurar Sede
+                        <span class="material-symbols-outlined text-sm">settings</span>
+                    </button>
+
+                    <button @onclick="() => EliminarSede(sede.Id)" class="w-full py-3 bg-error/5 text-error rounded-xl font-headline font-bold text-xs hover:bg-error/10 transition-colors flex items-center justify-center gap-2">
+                        Eliminar Sede
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
 
 @code {
     private List<SedeReadDto>? sedes;
-    [Inject] NavigationManager Navigation { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,20 +98,23 @@
 
     private async Task CargarSedes()
     {
-        sedes = await SedeService.GetAll();
+        try
+        {
+            sedes = await SedeService.GetAll();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando sedes: {ex.Message}");
+            sedes = new List<SedeReadDto>();
+        }
     }
 
-    private void IrANuevaSede() => Navigation.NavigateTo("/sedes/nueva");
+    private void IrANuevaSede() => Nav.NavigateTo("/sedes/nueva");
 
     private async Task EliminarSede(Guid id)
     {
-        // Aquí llamaríamos al delete que armamos en la API
-        // Por ahora un confirm simple
-        var confirmado = await Task.FromResult(true); // Placeholder para diálogo
-        if (confirmado)
-        {
-            // await SedeService.Delete(id);
-            // await CargarSedes();
-        }
+        // Más adelante podemos integrar un modal real de confirmación (ej. SweetAlert)
+        // Por ahora, solo simula el click para que no borres por error al testear la UI
+        Console.WriteLine($"Intentando eliminar la sede: {id}");
     }
 }

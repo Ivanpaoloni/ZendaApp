@@ -31,4 +31,11 @@ public class TurnosController : ControllerBase
     {
         return Ok(await _turnosService.GetDisponibilidadAsync(prestadorId, fecha));
     }
+
+    [HttpGet("fecha/{fecha}")]
+    public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetTurnosPorFecha(DateTime fecha)
+    {
+        var turnos = await _turnosService.GetTurnosByFechaAsync(fecha);
+        return Ok(turnos);
+    }
 }

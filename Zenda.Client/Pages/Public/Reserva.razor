@@ -1,0 +1,183 @@
+﻿@page "/{NegocioSlug}"
+@layout EmptyLayout
+@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+
+@inject NavigationManager Nav
+
+<div class="min-h-screen bg-surface-container-low pb-20">
+
+    <div class="bg-white p-8 rounded-b-[3rem] editorial-shadow mb-8 text-center animate-in slide-in-from-top duration-700 relative overflow-hidden">
+        <div class="relative z-10">
+            <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-4xl text-primary">storefront</span>
+            </div>
+            <h1 class="text-3xl font-headline font-extrabold text-primary">@(negocio?.Nombre ?? "Cargando...")</h1>
+            <p class="text-on-surface-variant font-body text-sm mt-1">
+                @ObtenerTextoPaso()
+            </p>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto px-6">
+
+        @if (pasoActual == PasoReserva.Cargando)
+        {
+            <div class="flex justify-center py-20">
+                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }
+
+        @if (pasoActual == PasoReserva.SeleccionarSede)
+        {
+            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                @foreach (var sede in sedesDisponibles)
+                {
+                    <button @onclick="() => SeleccionarSede(sede)"
+                            class="w-full bg-white p-6 rounded-3xl editorial-shadow flex items-center gap-4 hover:border-primary border-2 border-transparent transition-all text-left group">
+                        <div class="w-12 h-12 rounded-2xl bg-surface-container-low text-primary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                            <span class="material-symbols-outlined">location_on</span>
+                        </div>
+                        <div class="flex-grow">
+                            <h3 class="font-headline font-bold text-lg text-primary">@sede.Nombre</h3>
+                            <p class="text-xs text-on-surface-variant">@sede.Direccion</p>
+                        </div>
+                        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
+                    </button>
+                }
+            </div>
+        }
+
+        @if (pasoActual == PasoReserva.SeleccionarPrestador)
+        {
+            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button @onclick="VolverASedes" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
+                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Sede
+                </button>
+
+                <div class="grid grid-cols-2 gap-4">
+                    @* Opción: Cualquiera disponible *@
+                    <button @onclick="() => SeleccionarPrestador(null)"
+                            class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group h-full">
+                        <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-2xl">group</span>
+                        </div>
+                        <h3 class="font-headline font-bold text-sm text-primary">Cualquiera</h3>
+                        <p class="text-[10px] text-on-surface-variant mt-1">El primero libre</p>
+                    </button>
+
+                    @foreach (var prestador in prestadoresDeSede)
+                    {
+                        <button @onclick="() => SeleccionarPrestador(prestador)"
+                                class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group">
+                            <div class="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-2xl">content_cut</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-sm text-primary">@prestador.Nombre</h3>
+                            <p class="text-[10px] text-on-surface-variant mt-1">Profesional</p>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (pasoActual == PasoReserva.SeleccionarTurno)
+        {
+            <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button @onclick="VolverAPrestadores" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-6 ml-2">
+                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Profesional
+                </button>
+
+                <div class="bg-primary/5 p-4 rounded-2xl mb-6 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary">info</span>
+                    <p class="text-xs font-body text-primary">
+                        Reservando en <strong>@sedeSeleccionada?.Nombre</strong> con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong>.
+                    </p>
+                </div>
+
+                @* <CalendarioReservas PrestadorId="prestadorSeleccionado?.Id" SedeId="sedeSeleccionada?.Id" /> *@
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string NegocioSlug { get; set; } = "";
+
+    private enum PasoReserva { Cargando, SeleccionarSede, SeleccionarPrestador, SeleccionarTurno }
+    private PasoReserva pasoActual = PasoReserva.Cargando;
+    [Inject] private PrestadorClient _prestadorService { get; set; } = default!;
+    [Inject] private SedeClient _sedeService { get; set; } = default!;
+    [Inject] private NegocioClient _negocioClient { get; set; } = default!;
+    // Modelos de datos (Mockeados para el ejemplo)
+    private NegocioReadDto? negocio;
+    private List<SedeReadDto> sedesDisponibles = new();
+    private List<PrestadorReadDto> prestadoresDeSede = new();
+
+    // Selecciones del usuario
+    private SedeReadDto? sedeSeleccionada;
+    private PrestadorReadDto? prestadorSeleccionado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatosIniciales();
+    }
+
+    private async Task CargarDatosIniciales()
+    {
+        // 1. Buscamos el negocio por su Slug (ej: "zenda-barber")
+        // negocio = await NegocioService.GetBySlug(NegocioSlug);
+        negocio = await _negocioClient.GetById(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+
+        // 2. Traemos las sedes de ese negocio
+        // sedesDisponibles = await SedeService.GetByNegocioId(negocio.Id);
+        sedesDisponibles = await _sedeService.GetAll() ; // Mock
+        
+        // LÓGICA CLAVE: Si solo hay una sede, la seleccionamos automáticamente y saltamos el paso.
+        if (sedesDisponibles.Count == 1)
+        {
+            SeleccionarSede(sedesDisponibles.First());
+        }
+        else if (sedesDisponibles.Count > 1)
+        {
+            pasoActual = PasoReserva.SeleccionarSede;
+        }
+    }
+
+    private async void SeleccionarSede(SedeReadDto sede)
+    {
+        sedeSeleccionada = sede;
+        pasoActual = PasoReserva.Cargando;
+        StateHasChanged();
+
+        // 3. Traemos los prestadores que trabajan en esa sede
+        // prestadoresDeSede = await PrestadorService.GetBySedeId(sede.Id);
+        await Task.Delay(300); // Simulamos red
+        
+        prestadoresDeSede = await _prestadorService.GetAll();
+
+        pasoActual = PasoReserva.SeleccionarPrestador;
+        StateHasChanged();
+    }
+
+    private void SeleccionarPrestador(PrestadorReadDto? prestador)
+    {
+        prestadorSeleccionado = prestador;
+        pasoActual = PasoReserva.SeleccionarTurno;
+    }
+
+    // Navegación hacia atrás
+    private void VolverASedes() => pasoActual = PasoReserva.SeleccionarSede;
+    private void VolverAPrestadores() => pasoActual = PasoReserva.SeleccionarPrestador;
+
+    private string ObtenerTextoPaso()
+    {
+        return pasoActual switch
+        {
+            PasoReserva.SeleccionarSede => "1. Elegí la sucursal",
+            PasoReserva.SeleccionarPrestador => "2. Elegí tu profesional",
+            PasoReserva.SeleccionarTurno => "3. Seleccioná día y hora",
+            _ => "Preparando agenda..."
+        };
+    }
+}

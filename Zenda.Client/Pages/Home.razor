@@ -1,7 +1,232 @@
 ﻿@page "/"
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject NegocioClient _negocioService
+@using Zenda.Client.Services
+@using Zenda.Core.DTOs
 
-<PageTitle>Home</PageTitle>
+<div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
+        RESUMEN DE HOY
+    </span>
+    <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
+        Hola, Admin 👋
+    </h1>
+    <p class="text-on-surface-variant mt-2 font-body">Acá tenés el resumen de tu negocio para el @DateTime.Today.ToString("dd 'de' MMMM").</p>
+</div>
 
-<h1>Hello, world!</h1>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
 
-Welcome to your new app.
+    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
+        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined">calendar_today</span>
+        </div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Turnos Hoy</p>
+        <p class="text-3xl font-headline font-black text-primary">@turnosHoy</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
+        <div class="w-10 h-10 rounded-xl bg-green-500/10 text-green-600 flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined">check_circle</span>
+        </div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Completados</p>
+        <p class="text-3xl font-headline font-black text-green-600">@completadosHoy</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
+        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined">group</span>
+        </div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Equipo Activo</p>
+        <p class="text-3xl font-headline font-black text-blue-600">@equipoActivo</p>
+    </div>
+
+    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
+        <div class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center mb-4">
+            <span class="material-symbols-outlined">trending_up</span>
+        </div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Ocupación</p>
+        <p class="text-3xl font-headline font-black text-orange-600">85%</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-300">
+
+    <div class="lg:col-span-2 space-y-6">
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-headline font-bold text-primary">Próximos en llegar</h2>
+            <button @onclick='() => Nav.NavigateTo("/turnos")' class="text-sm font-bold text-primary hover:underline flex items-center gap-1">
+                Ver agenda completa <span class="material-symbols-outlined text-sm">arrow_forward</span>
+            </button>
+        </div>
+
+        <div class="bg-white rounded-4xl editorial-shadow p-2">
+            @if (cargando)
+            {
+                <div class="flex justify-center items-center py-10">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                </div>
+            }
+            else if (!proximosTurnos.Any())
+            {
+                <div class="p-8 text-center border-2 border-dashed border-outline-variant rounded-3xl m-2">
+                    <span class="material-symbols-outlined text-4xl text-on-surface-variant/50 mb-2">free_cancellation</span>
+                    <h4 class="font-headline font-bold text-primary">Día relajado</h4>
+                    <p class="text-sm text-on-surface-variant">No hay más turnos programados para hoy.</p>
+                </div>
+            }
+            else
+            {
+                @foreach (var turno in proximosTurnos)
+                {
+                    var horaLocal = turno.FechaHoraInicioUtc.ToLocalTime();
+                    var tiempoFaltante = CalcularTiempoFaltante(turno.FechaHoraInicioUtc);
+
+                    <div class="p-4 md:p-6 flex items-center gap-4 hover:bg-surface-container-low rounded-3xl transition-colors cursor-pointer border-b border-surface-container-high last:border-b-0 group">
+
+                        <div class="w-14 h-14 rounded-2xl bg-surface-container-high text-on-surface flex flex-col items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors shadow-sm group-hover:shadow-primary/20">
+                            <span class="font-headline font-black text-lg leading-none">@horaLocal.ToString("HH")</span>
+                            <span class="text-[10px] font-bold">@horaLocal.ToString("mm")</span>
+                        </div>
+
+                        <div class="flex-grow">
+                            <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
+                            <p class="text-sm text-on-surface-variant flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">content_cut</span>
+                                @* Si tu DTO no trae el nombre del prestador, podés poner "Turno Confirmado" o ajustar el backend *@
+                                Profesional Asignado
+                            </p>
+                        </div>
+
+                        <span class="hidden md:inline-block px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-lg uppercase whitespace-nowrap">
+                            @tiempoFaltante
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="space-y-6">
+        <h2 class="text-2xl font-headline font-bold text-primary">Acciones Rápidas</h2>
+
+        <div class="bg-primary p-8 rounded-4xl editorial-shadow text-on-primary relative overflow-hidden group">
+            <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
+
+            <h3 class="font-headline font-bold text-xl mb-2 relative z-10">Tu link de reservas</h3>
+            <p class="text-sm text-on-primary/80 mb-6 relative z-10">Compartí este enlace en tu Instagram o WhatsApp para recibir turnos.</p>
+
+            <button @onclick="CopiarLink" class="w-full py-4 bg-white text-primary rounded-2xl font-headline font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2 relative z-10">
+                <span class="material-symbols-outlined text-sm">@iconoBotonCopiar</span>
+                @textoBotonCopiar
+            </button>
+        </div>
+
+        <button @onclick='() => Nav.NavigateTo("/sedes")' class="w-full bg-white p-6 rounded-3xl editorial-shadow flex items-center justify-between group hover:border-primary/20 border border-transparent transition-all">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-surface-container-low text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">storefront</span>
+                </div>
+                <div class="text-left">
+                    <h4 class="font-headline font-bold text-primary">Gestionar Sedes</h4>
+                    <p class="text-xs text-on-surface-variant">Configurar sucursales</p>
+                </div>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
+        </button>
+    </div>
+
+</div>
+
+@code {
+    [Inject] private TurnoClient _turnoService { get; set; } = default!;
+    [Inject] private PrestadorClient _prestadorClient { get; set; } = default!;
+
+    private string textoBotonCopiar = "Copiar Enlace";
+    private string iconoBotonCopiar = "content_copy";
+    private string linkReserva = "";
+
+    private int turnosHoy = 0;
+    private int completadosHoy = 0;
+    private int equipoActivo = 0;
+    private string ocupacion = "0%";
+    private List<TurnoReadDto> proximosTurnos = new();
+
+    private bool cargando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var idHardcoded = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var negocio = await _negocioService.GetById(idHardcoded);
+
+            if (negocio != null)
+            {
+                // Armamos la URL completa (ej: https://tudominio.com/zenda-barber)
+                linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
+            }
+
+            var hoy = DateTime.Today;
+            // Traemos TODOS los turnos de la barbería para hoy
+            var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
+            var prestadores = await _prestadorClient.GetAll();
+
+            equipoActivo = prestadores.Count;
+            turnosHoy = turnos.Count;
+            // Asumiendo que tenés un estado "Completado" en tu DTO
+            completadosHoy = turnos.Count(t => t.Estado.Equals("Completado", StringComparison.OrdinalIgnoreCase));
+
+            // Filtramos los próximos turnos a partir de ahora, ordenados por hora
+            var horaActualUtc = DateTime.UtcNow;
+            proximosTurnos = turnos
+                .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
+                .OrderBy(t => t.FechaHoraInicioUtc)
+                .Take(5) // Mostramos solo los próximos 5
+                .ToList();
+
+            // (Lógica futura para Ocupación y Equipo)
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando dashboard: {ex.Message}");
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private string CalcularTiempoFaltante(DateTime fechaUtc)
+    {
+        var diferencia = fechaUtc - DateTime.UtcNow;
+
+        if (diferencia.TotalMinutes <= 0) return "¡Ahora!";
+        if (diferencia.TotalMinutes < 60) return $"En {Math.Ceiling(diferencia.TotalMinutes)} min";
+
+        var horas = Math.Floor(diferencia.TotalHours);
+        var minutos = Math.Ceiling(diferencia.TotalMinutes % 60);
+
+        if (minutos == 0) return $"En {horas} hs";
+        return $"En {horas} hs y {minutos} min";
+    }
+
+    private async Task CopiarLink()
+    {
+        if (string.IsNullOrEmpty(linkReserva)) return;
+
+        // Copiamos al portapapeles usando JS nativo
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", linkReserva);
+        
+        // Efecto visual de éxito
+        textoBotonCopiar = "¡Copiado!";
+        iconoBotonCopiar = "check_circle";
+        StateHasChanged();
+        
+        // Volvemos a la normalidad después de 2 segundos
+        await Task.Delay(2000);
+        textoBotonCopiar = "Copiar Enlace";
+        iconoBotonCopiar = "content_copy";
+        StateHasChanged();
+    }
+}

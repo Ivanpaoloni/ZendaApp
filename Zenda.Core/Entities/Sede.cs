@@ -10,4 +10,5 @@ public class Sede : BaseEntity, ITenantEntity
     public string Nombre { get; set; } = string.Empty; // Ej: "Local Palermo"
 
     public List<Prestador> Prestadores { get; set; } = new();
+    public string Direccion { get; set; } = string.Empty;
 }

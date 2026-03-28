@@ -11,7 +11,7 @@ public class PrestadorClient
         try
         {
             // Usamos GetAsync para inspeccionar la respuesta antes de parsear
-            var response = await _http.GetAsync("api/prestadores");
+            var response = await _http.GetAsync("api/Prestadores");
 
             if (response.IsSuccessStatusCode)
             {

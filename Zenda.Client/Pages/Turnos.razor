@@ -1,0 +1,121 @@
+﻿@page "/turnos"
+@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@inject TurnoClient TurnoService
+
+<div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
+        PANEL DE CONTROL
+    </span>
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
+            Agenda del Día
+        </h1>
+
+        <input type="date" @bind="fechaFiltro" @bind:after="CargarTurnos"
+               class="p-4 bg-white rounded-2xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none max-w-[200px]" />
+    </div>
+</div>
+
+@if (cargando)
+{
+    <div class="flex flex-col items-center justify-center py-20">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+    </div>
+}
+else if (!turnosDelDia.Any())
+{
+    <div class="bg-white/50 border-2 border-dashed border-outline-variant rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant/50 mb-4">coffee</span>
+        <h3 class="font-headline font-bold text-xl text-primary mb-2">Agenda libre</h3>
+        <p class="text-on-surface-variant font-body text-sm">No hay turnos programados para esta fecha.</p>
+    </div>
+}
+else
+{
+    <div class="space-y-4">
+        @* Ordenamos por la hora de inicio *@
+        @foreach (var turno in turnosDelDia.OrderBy(t => t.FechaHoraInicioUtc))
+        {
+            <div class="bg-white p-6 md:p-8 rounded-3xl editorial-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-outline-variant border border-transparent transition-all group">
+
+                <div class="flex items-center gap-6">
+                    <div class="bg-surface-container-low text-primary p-4 rounded-2xl text-center min-w-[100px]">
+                        @* Convertimos de UTC a la hora local del dispositivo para mostrarlo bien *@
+                        <p class="font-headline font-black text-2xl">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm")</p>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">hs</p>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="font-headline font-bold text-xl text-primary">@turno.NombreClienteInvitado</h3>
+                            @* Etiqueta de estado dinámica *@
+                            <span class="px-2 py-1 bg-surface-container-high text-[9px] font-bold uppercase tracking-wider rounded-lg text-on-surface">
+                                @turno.Estado
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-4 text-sm text-on-surface-variant font-body">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">phone_iphone</span>
+                                @turno.TelefonoClienteInvitado
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">mail</span>
+                                @turno.EmailClienteInvitado
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 border-t border-surface-container-high md:border-t-0 pt-4 md:pt-0">
+                    <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, turno.FechaHoraInicioUtc.ToLocalTime())" target="_blank"
+                       class="w-12 h-12 bg-[#25D366]/10 text-[#075E54] rounded-2xl flex items-center justify-center hover:bg-[#25D366]/20 transition-colors" title="Contactar">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-5 h-5" alt="WA" />
+                    </a>
+
+                    @* Botón placeholder para futuras acciones (ej: Marcar Asistió) *@
+                    <button class="px-6 py-3 bg-surface-container-low text-primary rounded-2xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center gap-2">
+                        Gestionar
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private DateTime fechaFiltro = DateTime.Today;
+    private bool cargando = true;
+    private List<TurnoReadDto> turnosDelDia = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarTurnos();
+    }
+
+    private async Task CargarTurnos()
+    {
+        cargando = true;
+        try
+        {
+            // Llamada real al backend!
+            turnosDelDia = await TurnoService.GetByFecha(fechaFiltro) ?? new List<TurnoReadDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando agenda: {ex.Message}");
+            turnosDelDia = new();
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private string GenerarWhatsAppUrl(string telefono, string nombre, DateTime inicioLocal)
+    {
+        var mensaje = $"¡Hola {nombre}! Te escribo de Zenda para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
+        return $"https://wa.me/{telefono}?text={Uri.EscapeDataString(mensaje)}";
+    }
+}
