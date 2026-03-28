@@ -23,7 +23,7 @@ namespace Zenda.Core.DTOs
         [Phone(ErrorMessage = "El formato del teléfono no es válido.")]
         public string TelefonoClienteInvitado { get; set; } = string.Empty;
     }
-
+    
     public class TurnoReadDto
     {
         public Guid Id { get; set; }

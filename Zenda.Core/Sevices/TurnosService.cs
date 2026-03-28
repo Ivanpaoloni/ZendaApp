@@ -38,6 +38,7 @@ public class TurnosService : ITurnosService
 
         int duracion = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30;
 
+        // Normalizamos la fecha a UTC para el filtro de base de datos
         int diaBuscado = (int)fecha.DayOfWeek;
         var fechaFiltroInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
         var fechaFiltroFin = fechaFiltroInicio.AddDays(1);
@@ -47,11 +48,10 @@ public class TurnosService : ITurnosService
             .ToListAsync();
 
         var turnosOcupados = await _context.Turnos
-            // Filtramos usando las propiedades UTC reales
             .Where(t => t.PrestadorId == prestadorId &&
                         t.FechaHoraInicioUtc >= fechaFiltroInicio &&
                         t.FechaHoraInicioUtc < fechaFiltroFin &&
-                        t.Estado != "Cancelado") // Buena práctica: ignorar turnos cancelados en la disponibilidad
+                        t.Estado != "Cancelado")
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
@@ -66,19 +66,28 @@ public class TurnosService : ITurnosService
             {
                 var finSlot = inicioSlot.AddMinutes(duracion);
 
+                // Verificamos si este slot choca con algún turno ocupado
+                // Convertimos el UTC de la DB a Local para comparar "Horas Murales"
                 bool estaOcupado = turnosOcupados.Any(t =>
-                    TimeOnly.FromDateTime(t.FechaHoraInicioUtc) < finSlot &&
-                    inicioSlot < TimeOnly.FromDateTime(t.FechaHoraFinUtc));
+                {
+                    var hInicioOcupado = TimeOnly.FromDateTime(t.FechaHoraInicioUtc.ToLocalTime());
+                    var hFinOcupado = TimeOnly.FromDateTime(t.FechaHoraFinUtc.ToLocalTime());
+
+                    return hInicioOcupado < finSlot && inicioSlot < hFinOcupado;
+                });
 
                 if (!estaOcupado)
                 {
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
-                if (finSlot <= inicioSlot) break;
                 inicioSlot = finSlot;
+
+                // Seguridad ante configuraciones de 0 minutos o errores
+                if (duracion <= 0) break;
             }
         }
+
         return respuesta;
     }
 

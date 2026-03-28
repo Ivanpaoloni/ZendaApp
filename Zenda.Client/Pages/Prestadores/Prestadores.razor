@@ -2,7 +2,7 @@
 @using Zenda.Core.DTOs
 @inject NavigationManager Nav
 @inject PrestadorClient PrestadorService
-@* Inyectamos el State *@
+@inject IJSRuntime JS
 @inject Zenda.Client.Services.AppState State
 
 <div class="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -43,17 +43,23 @@ else
                         <span class="material-symbols-outlined text-xs">fingerprint</span>
                         ID: @p.Id.ToString()?[..8]
                     </p>
+
+                    @* Botón de Copiar Link movido aquí para mejor UI *@
+                    <button @onclick="() => CopiarLink(p)" class="mt-4 text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:opacity-70 transition-opacity">
+                        <span class="material-symbols-outlined text-sm">link</span>
+                        Copiar link de reserva
+                    </button>
                 </div>
 
                 <div class="mt-8 pt-6 border-t border-surface-container-high space-y-3">
-                    @* Cambiamos el onclick para usar la función IrAAgenda *@
                     <button @onclick="() => IrAAgenda(p)"
                             class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm scale-100 hover:scale-[1.02] active:scale-95 transition-all editorial-shadow flex items-center justify-center gap-2">
-                        Configurar Horarios
+                        Configurar Disponibilidad
                         <span class="material-symbols-outlined text-sm">calendar_month</span>
                     </button>
 
-                    <button class="w-full py-3 bg-surface-container-low text-primary rounded-xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center justify-center gap-2">
+                    <button @onclick="() => VerTurnos(p)"
+                            class="w-full py-3 bg-surface-container-low text-primary rounded-xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center justify-center gap-2">
                         Ver Turnos Ocupados
                         <span class="material-symbols-outlined text-sm">event_available</span>
                     </button>
@@ -100,6 +106,29 @@ else
         catch (Exception ex)
         {
             Console.WriteLine($"Error al navegar: {ex.Message}");
+        }
+    }
+
+    private void VerTurnos(PrestadorReadDto p)
+    {
+        State.PrestadorEnEdicion = p;
+        Nav.NavigateTo("prestadores/agenda-turnos");
+    }
+
+    private async Task CopiarLink(PrestadorReadDto p)
+    {
+        try
+        {
+            // Generamos la URL pública
+            var url = $"{Nav.BaseUri}book/{p.Id}";
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+
+            // Opcional: Podrías usar un Toast aquí para avisar que se copió
+            Console.WriteLine($"Link copiado: {url}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al copiar: {ex.Message}");
         }
     }
 }

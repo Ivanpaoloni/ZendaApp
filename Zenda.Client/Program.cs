@@ -13,9 +13,12 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) 
 builder.Services.AddScoped<DisponibilidadClient>();
 builder.Services.AddScoped<PrestadorClient>();
 builder.Services.AddScoped<SedeClient>();
-//builder.Services.AddScoped<TurnoClient>();
+builder.Services.AddScoped<TurnoClient>();
 builder.Services.AddScoped<NegocioClient>();
+
+//a modo de helper para compartir estado entre componentes, aunque lo ideal sería usar un state management más robusto como Fluxor o Redux
 builder.Services.AddScoped<AppState>();
+
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri(apiUrl)

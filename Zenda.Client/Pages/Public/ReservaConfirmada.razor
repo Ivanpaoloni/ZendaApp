@@ -1,0 +1,93 @@
+﻿@page "/reserva-confirmada"
+@layout EmptyLayout
+@inject NavigationManager Nav
+
+<div class="min-h-screen bg-surface-container-low flex items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white rounded-[3rem] editorial-shadow p-10 text-center animate-in zoom-in-95 duration-500">
+
+        <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
+            <span class="material-symbols-outlined text-5xl">check_circle</span>
+        </div>
+
+        <h1 class="text-3xl font-headline font-extrabold text-primary mb-2">
+            ¡Turno Confirmado!
+        </h1>
+        <p class="text-on-surface-variant font-body mb-8">
+            Tu reserva ha sido procesada con éxito.
+        </p>
+
+        <div class="bg-surface-container-low rounded-3xl p-6 mb-10 space-y-4 text-left border border-surface-container-high">
+            <div class="flex items-center gap-4">
+                <span class="material-symbols-outlined text-primary/60">calendar_today</span>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Fecha y Hora</p>
+                    <p class="font-headline font-bold text-primary">@FechaDisplay - @HoraDisplay hs</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <span class="material-symbols-outlined text-primary/60">person</span>
+                <div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Profesional</p>
+                    <p class="font-headline font-bold text-primary">@NombrePrestador</p>
+                </div>
+            </div>
+        </div>
+
+        <a href="@GenerarGoogleCalendarUrl()" target="_blank"
+           class="w-full py-4 px-4 bg-primary/5 text-primary rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all mb-6">
+            <span class="material-symbols-outlined">calendar_add_on</span>
+            Agendar en Google Calendar
+        </a>
+
+        <div class="space-y-3">
+            <button @onclick='() => Nav.NavigateTo("/")'
+                    class="w-full py-4 bg-primary text-on-primary rounded-2xl font-headline font-bold hover:brightness-110 active:scale-95 transition-all">
+                Volver al inicio
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public string? Fecha { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Hora { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Nombre { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Duracion { get; set; }
+
+    private string FechaDisplay => Fecha ?? "--/--/----";
+    private string HoraDisplay => Hora ?? "--:--";
+    private string NombrePrestador => Nombre ?? "Profesional";
+
+    private string GenerarGoogleCalendarUrl()
+    {
+        try
+        {
+            var titulo = Uri.EscapeDataString($"Turno en Zenda: {NombrePrestador}");
+            var detalles = Uri.EscapeDataString("¡No faltes! Tu reserva está confirmada en Zenda.");
+
+            // Parseamos la fecha (espera dd/MM/yyyy)
+            var partesFecha = FechaDisplay.Split('/');
+            var partesHora = HoraDisplay.Split(':');
+
+            // Formato Google: YYYYMMDDTHHmmSS
+            // Armamos el inicio
+            var inicioStr = $"{partesFecha[2]}{partesFecha[1]}{partesFecha[0]}T{partesHora[0]}{partesHora[1]}00";
+
+            // Calculamos el fin sumando la duración
+            if (!int.TryParse(Duracion, out var minutos)) minutos = 30;
+
+            // Usamos DateTime para calcular el fin correctamente (por si pasa de hora)
+            var fechaBase = new DateTime(int.Parse(partesFecha[2]), int.Parse(partesFecha[1]), int.Parse(partesFecha[0]),
+                                         int.Parse(partesHora[0]), int.Parse(partesHora[1]), 0);
+            var fechaFin = fechaBase.AddMinutes(minutos);
+            var finStr = fechaFin.ToString("yyyyMMddTHHmmss");
+
+            return $"https://www.google.com/calendar/render?action=TEMPLATE&text={titulo}&dates={inicioStr}/{finStr}&details={detalles}&sf=true&output=xml";
+        }
+        catch
+        {
+            return "#";
+        }
+    }
+}

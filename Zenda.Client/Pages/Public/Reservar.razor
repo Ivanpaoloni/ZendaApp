@@ -1,0 +1,155 @@
+﻿@page "/book/{Slug}"
+@layout EmptyLayout
+@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@inject TurnoClient TurnoService
+@inject PrestadorClient PrestadorService
+@inject NavigationManager Nav
+
+<div class="min-h-screen bg-surface-container-low pb-20">
+    <div class="bg-white p-8 rounded-b-[3rem] editorial-shadow mb-8 text-center animate-in slide-in-from-top duration-700">
+        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span class="material-symbols-outlined text-4xl text-primary">content_cut</span>
+        </div>
+        <h1 class="text-3xl font-headline font-extrabold text-primary">@(nombrePrestador ?? "Cargando...")</h1>
+        <p class="text-on-surface-variant font-body text-sm">Reserva tu lugar en segundos</p>
+    </div>
+
+    <div class="max-w-md mx-auto px-6 space-y-8">
+        <section class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">1. Selecciona el día</label>
+            <input type="date" @bind="fechaSeleccionada" @bind:after="CargarDisponibilidad"
+                   min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                   class="w-full p-5 bg-white rounded-3xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none" />
+        </section>
+
+        <section class="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+            <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">2. Selecciona la hora</label>
+            @if (cargando)
+            {
+                <div class="flex justify-center py-10">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+            }
+            else if (slots.Any())
+            {
+                <div class="grid grid-cols-3 gap-3">
+                    @foreach (var hora in slots)
+                    {
+                        <button @onclick="() => SeleccionarHora(hora)"
+                                class="py-4 rounded-2xl font-headline font-bold text-sm transition-all @(horaSeleccionada == hora ? "bg-primary text-on-primary scale-95" : "bg-white text-primary hover:bg-primary/5")">
+                            @hora
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="bg-white/50 p-8 rounded-3xl border border-dashed border-outline-variant text-center">
+                    <p class="text-sm text-on-surface-variant italic">No hay lugares este día</p>
+                </div>
+            }
+        </section>
+
+        @if (!string.IsNullOrEmpty(horaSeleccionada))
+        {
+            <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary animate-in zoom-in-95 duration-300 space-y-4">
+                <h3 class="font-headline font-bold text-xl text-primary mb-2">Tus datos</h3>
+
+                <input @bind="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamas?"
+                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary" />
+
+                <input @bind="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email (opcional)" type="email"
+                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary" />
+
+                <input @bind="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp" type="tel"
+                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary" />
+
+                <button @onclick="ConfirmarReserva" disabled="@enviando"
+                        class="w-full py-5 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all">
+                    @(enviando ? "Reservando..." : "Confirmar Turno")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private string? nombrePrestador;
+    private int duracionPrestador; // Guardamos esto para el link de calendario
+    private DateTime fechaSeleccionada = DateTime.Today;
+    private List<string> slots = new();
+    private string? horaSeleccionada;
+    private bool cargando = false;
+    private bool enviando = false;
+    private TurnoCreateDto nuevoTurno = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Guid.TryParse(Slug, out var id))
+        {
+            var p = await PrestadorService.GetById(id);
+            if (p != null)
+            {
+                nombrePrestador = p.Nombre;
+                duracionPrestador = p.DuracionTurnoMinutos;
+                await CargarDisponibilidad();
+            }
+        }
+    }
+
+    private async Task CargarDisponibilidad()
+    {
+        if (Guid.TryParse(Slug, out var id))
+        {
+            cargando = true;
+            slots.Clear();
+            horaSeleccionada = null; // Reset al cambiar fecha
+            var res = await TurnoService.GetDisponibilidad(id, fechaSeleccionada);
+            slots = res?.HorariosLibres ?? new();
+            cargando = false;
+        }
+    }
+
+    private void SeleccionarHora(string hora) => horaSeleccionada = hora;
+
+    private async Task ConfirmarReserva()
+    {
+        if (string.IsNullOrEmpty(nuevoTurno.NombreClienteInvitado) || !Guid.TryParse(Slug, out var id)) return;
+
+        enviando = true;
+        try
+        {
+            var h = TimeOnly.Parse(horaSeleccionada!);
+            var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
+            var fechaUtc = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Utc);
+
+            var dtoParaEnviar = new TurnoCreateDto
+            {
+                PrestadorId = id,
+                NombreClienteInvitado = nuevoTurno.NombreClienteInvitado,
+                TelefonoClienteInvitado = nuevoTurno.TelefonoClienteInvitado,
+                EmailClienteInvitado = nuevoTurno.EmailClienteInvitado,
+                Inicio = fechaUtc
+            };
+
+            var resultado = await TurnoService.Reservar(dtoParaEnviar);
+
+            if (resultado != null)
+            {
+                var fechaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy"));
+                var horaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm"));
+                var nombreEnc = Uri.EscapeDataString(nombrePrestador ?? "Tu profesional");
+
+                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionPrestador}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error crítico: {ex.Message}");
+        }
+        finally { enviando = false; }
+    }
+}
