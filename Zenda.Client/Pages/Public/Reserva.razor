@@ -83,19 +83,81 @@
 
         @if (pasoActual == PasoReserva.SeleccionarTurno)
         {
-            <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <button @onclick="VolverAPrestadores" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-6 ml-2">
+            <div class="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                <button @onclick="VolverAPrestadores" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-2 ml-2">
                     <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Profesional
                 </button>
 
-                <div class="bg-primary/5 p-4 rounded-2xl mb-6 flex items-center gap-3">
+                <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10">
                     <span class="material-symbols-outlined text-primary">info</span>
                     <p class="text-xs font-body text-primary">
-                        Reservando en <strong>@sedeSeleccionada?.Nombre</strong> con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong>.
+                        Con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong> en <strong>@sedeSeleccionada?.Nombre</strong>.
                     </p>
                 </div>
 
-                @* <CalendarioReservas PrestadorId="prestadorSeleccionado?.Id" SedeId="sedeSeleccionada?.Id" /> *@
+                <section>
+                    <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">1. Selecciona el día</label>
+                    <input type="date" @bind="fechaSeleccionada" @bind:after="CargarDisponibilidad"
+                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                           class="w-full p-5 bg-white rounded-3xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none" />
+                </section>
+
+                <section>
+                    <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">2. Selecciona la hora</label>
+                    @if (cargandoHorarios)
+                    {
+                        <div class="flex justify-center py-6">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    }
+                    else if (slots.Any())
+                    {
+                        <div class="grid grid-cols-3 gap-3">
+                            @foreach (var hora in slots)
+                            {
+                                <button @onclick="() => SeleccionarHora(hora)"
+                                        class="py-4 rounded-2xl font-headline font-bold text-sm transition-all @(horaSeleccionada == hora ? "bg-primary text-on-primary shadow-lg shadow-primary/30 scale-95" : "bg-white text-primary editorial-shadow hover:border-primary border border-transparent")">
+                                    @hora
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
+                            <p class="text-sm text-on-surface-variant italic">No hay lugares para este día.</p>
+                        </div>
+                    }
+                </section>
+
+                @if (!string.IsNullOrEmpty(horaSeleccionada))
+                {
+                    <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary animate-in zoom-in-95 duration-300 space-y-4">
+                        <h3 class="font-headline font-bold text-xl text-primary mb-2">3. Tus datos</h3>
+
+                        <input @bind="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamás?"
+                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                        <input @bind="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp" type="tel"
+                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                        <input @bind="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email (opcional)" type="email"
+                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                        <button @onclick="ConfirmarReserva" disabled="@enviandoReserva"
+                                class="w-full py-5 mt-2 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
+                            @if (enviandoReserva)
+                            {
+                                <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                <span>Reservando...</span>
+                            }
+                            else
+                            {
+                                <span>Confirmar Turno</span>
+                            }
+                        </button>
+                    </div>
+                }
             </div>
         }
     </div>
@@ -109,6 +171,15 @@
     [Inject] private PrestadorClient _prestadorService { get; set; } = default!;
     [Inject] private SedeClient _sedeService { get; set; } = default!;
     [Inject] private NegocioClient _negocioClient { get; set; } = default!;
+    [Inject] private TurnoClient TurnoService { get; set; } = default!;
+
+    private DateTime fechaSeleccionada = DateTime.Today;
+    private List<string> slots = new();
+    private string? horaSeleccionada;
+    private bool cargandoHorarios = false;
+    private bool enviandoReserva = false;
+    private TurnoCreateDto nuevoTurno = new();
+
     // Modelos de datos (Mockeados para el ejemplo)
     private NegocioReadDto? negocio;
     private List<SedeReadDto> sedesDisponibles = new();
@@ -179,5 +250,69 @@
             PasoReserva.SeleccionarTurno => "3. Seleccioná día y hora",
             _ => "Preparando agenda..."
         };
+    }
+
+    private async Task CargarDisponibilidad()
+    {
+        cargandoHorarios = true;
+        slots.Clear();
+        horaSeleccionada = null; // Reseteamos la hora si cambia de día
+
+        // Si eligió "Cualquiera", por ahora (MVP) tomamos el primero de la lista para buscar disponibilidad
+        var idPrestadorABuscar = prestadorSeleccionado?.Id ?? prestadoresDeSede.FirstOrDefault()?.Id;
+
+        if (idPrestadorABuscar.HasValue)
+        {
+            var res = await TurnoService.GetDisponibilidad(idPrestadorABuscar.Value, fechaSeleccionada);
+            slots = res?.HorariosLibres ?? new();
+        }
+
+        cargandoHorarios = false;
+    }
+
+    private void SeleccionarHora(string hora) => horaSeleccionada = hora;
+
+    private async Task ConfirmarReserva()
+    {
+        if (string.IsNullOrEmpty(nuevoTurno.NombreClienteInvitado) || string.IsNullOrEmpty(nuevoTurno.TelefonoClienteInvitado))
+            return; // Podrías poner un mensaje de error acá
+
+        enviandoReserva = true;
+        try
+        {
+            var idPrestadorFinal = prestadorSeleccionado?.Id ?? prestadoresDeSede.First().Id;
+            var h = TimeOnly.Parse(horaSeleccionada!);
+            var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
+            var fechaUtc = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Utc);
+
+            var dtoParaEnviar = new TurnoCreateDto
+            {
+                PrestadorId = idPrestadorFinal,
+                NombreClienteInvitado = nuevoTurno.NombreClienteInvitado,
+                TelefonoClienteInvitado = nuevoTurno.TelefonoClienteInvitado,
+                EmailClienteInvitado = nuevoTurno.EmailClienteInvitado,
+                Inicio = fechaUtc
+            };
+
+            var resultado = await TurnoService.Reservar(dtoParaEnviar);
+
+            if (resultado != null)
+            {
+                var fechaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy"));
+                var horaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm"));
+                var nombreEnc = Uri.EscapeDataString(prestadorSeleccionado?.Nombre ?? "Tu profesional");
+
+                // Redirigimos a la página de éxito que ya tenías armada!
+                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion=30");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error crítico: {ex.Message}");
+        }
+        finally
+        {
+            enviandoReserva = false;
+        }
     }
 }
