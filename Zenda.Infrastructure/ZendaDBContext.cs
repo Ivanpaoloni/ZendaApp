@@ -1,14 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Infrastructure
 {
-    public class ZendaDbContext : DbContext, IZendaDbContext
+    // Cambiamos DbContext por IdentityDbContext<ApplicationUser>
+    public class ZendaDbContext : IdentityDbContext<ApplicationUser>, IZendaDbContext
     {
-        public ZendaDbContext(DbContextOptions<ZendaDbContext> options) : base(options) { }
-
-        // Agregamos el Negocio como raíz
+        private readonly ITenantService _tenantService;
+        public ZendaDbContext(DbContextOptions<ZendaDbContext> options, ITenantService tenantService) : base(options)
+        {
+            _tenantService = tenantService;
+        }
+        public Guid? CurrentTenantId => _tenantService.GetCurrentTenantId();
         public DbSet<Disponibilidad> Disponibilidad { get; set; }
         public DbSet<Negocio> Negocios { get; set; }
         public DbSet<Prestador> Prestadores { get; set; }
@@ -17,9 +22,17 @@ namespace Zenda.Infrastructure
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // ¡Esto siempre debe estar primero
+            // Es lo que mapea las tablas de Identity (AspNetUsers, etc.)
             base.OnModelCreating(modelBuilder);
 
-            // 1. Configuración de Negocio (El Tenant)
+            modelBuilder.Entity<Sede>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<Prestador>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<Turno>().HasQueryFilter(e => CurrentTenantId == null || e.NegocioId == CurrentTenantId);
+
+            // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
+            modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
+            
             modelBuilder.Entity<Negocio>(entity =>
             {
                 entity.HasKey(n => n.Id);
@@ -33,7 +46,6 @@ namespace Zenda.Infrastructure
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // 2. Configuración de Sedes
             modelBuilder.Entity<Sede>(entity =>
             {
                 // 1 Sede -> N Prestadores
@@ -43,7 +55,6 @@ namespace Zenda.Infrastructure
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // 3. Prestadores
             modelBuilder.Entity<Prestador>(entity =>
             {
                 entity.HasOne(p => p.Sede)
@@ -52,7 +63,6 @@ namespace Zenda.Infrastructure
                       .OnDelete(DeleteBehavior.Restrict);
             });
 
-            // 4. Disponibilidad y Turnos
             modelBuilder.Entity<Disponibilidad>(entity =>
             {
                 entity.HasOne(d => d.Prestador)

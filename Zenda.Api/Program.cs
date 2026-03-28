@@ -1,8 +1,13 @@
 using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using Zenda.Api.Middlewares;
 using Zenda.Application.Services;
+using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 using Zenda.Infrastructure;
 
@@ -18,14 +23,52 @@ builder.Services.AddSwaggerGen();
 // Registro del Contexto con su Interfaz
 builder.Services.AddDbContext<ZendaDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// 3. Configurar Identity
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    // Acá podés relajar o endurecer las reglas de las contraseñas
+    options.Password.RequireDigit = true;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+})
+.AddEntityFrameworkStores<ZendaDbContext>()
+.AddDefaultTokenProviders();
+
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.ASCII.GetBytes(jwtSettings["Key"] ?? "UnaClaveSuperSecretaYLargaParaZenda2026!@#");
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,   // En prod idealmente van en true
+        ValidateAudience = false, // En prod idealmente van en true
+        RequireExpirationTime = true,
+        ValidateLifetime = true
+    };
+});
+
 // Mapeo de la Interfaz al Contexto real
 builder.Services.AddScoped<IZendaDbContext>(provider => provider.GetRequiredService<ZendaDbContext>());
 
+// 1. Habilitar el acceso al HttpContext para leer tokens/sesiones
+builder.Services.AddHttpContextAccessor();
+
 // Registro del Servicio
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
 builder.Services.AddScoped<INegocioService, NegocioService>();
 builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
 builder.Services.AddScoped<ISedeService, SedeService>();
+builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ITurnosService, TurnosService>();
 
 #endregion
@@ -65,6 +108,10 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
+
+app.UseAuthentication(); // Primero verifica QUIÉN es el usuario (lee el token)
+app.UseAuthorization();  // Después verifica QUÉ puede hacer (roles)
+
 app.MapControllers();
 
 #region Health Checks Endpoints
