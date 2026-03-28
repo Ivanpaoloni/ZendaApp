@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Json;
 using Zenda.Core.DTOs;
+using Zenda.Core.Enums;
 
 namespace Zenda.Client.Services;
 
@@ -37,5 +38,18 @@ public class TurnoClient : BaseClient
             Console.WriteLine($"Error al obtener turnos por fecha: {ex.Message}");
             return new List<TurnoReadDto>(); // Fallback seguro para la UI
         }
+    }
+    public async Task<bool> ActualizarEstado(Guid turnoId, EstadoTurnoEnum nuevoEstado)
+    {
+        // Enviamos el enum directamente en el cuerpo de la petición
+        var response = await _http.PatchAsJsonAsync($"api/turnos/{turnoId}/estado", nuevoEstado);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        var error = await response.Content.ReadAsStringAsync();
+        throw new Exception(ParseError(error)); // Usando tu BaseClient con ParseError
     }
 }

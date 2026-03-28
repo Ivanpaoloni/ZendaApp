@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Zenda.Application.Services;
 using Zenda.Core.DTOs;
+using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
 
 [ApiController]
@@ -37,5 +39,20 @@ public class TurnosController : ControllerBase
     {
         var turnos = await _turnosService.GetTurnosByFechaAsync(fecha);
         return Ok(turnos);
+    }
+    [HttpPatch("{id}/estado")]
+    public async Task<IActionResult> UpdateEstado(Guid id, [FromBody] EstadoTurnoEnum nuevoEstado)
+    {
+        try
+        {
+            var exito = await _turnosService.CambiarEstadoAsync(id, nuevoEstado);
+            if (!exito) return NotFound("Turno no encontrado o no pertenece a su negocio.");
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

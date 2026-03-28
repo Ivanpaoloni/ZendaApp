@@ -1,6 +1,7 @@
 ﻿@page "/turnos"
 @using Zenda.Core.DTOs
 @using Zenda.Client.Services
+@using Zenda.Core.Enums
 @inject TurnoClient TurnoService
 
 <div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -37,11 +38,11 @@ else
         @* Ordenamos por la hora de inicio *@
         @foreach (var turno in turnosDelDia.OrderBy(t => t.FechaHoraInicioUtc))
         {
-            <div class="bg-white p-6 md:p-8 rounded-3xl editorial-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-outline-variant border border-transparent transition-all group">
+            <div class="bg-white p-6 md:p-8 rounded-3xl editorial-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 border border-transparent hover:border-primary/10 transition-all group">
 
                 <div class="flex items-center gap-6">
+                    @* Bloque de Hora *@
                     <div class="bg-surface-container-low text-primary p-4 rounded-2xl text-center min-w-[100px]">
-                        @* Convertimos de UTC a la hora local del dispositivo para mostrarlo bien *@
                         <p class="font-headline font-black text-2xl">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm")</p>
                         <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">hs</p>
                     </div>
@@ -49,35 +50,57 @@ else
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <h3 class="font-headline font-bold text-xl text-primary">@turno.NombreClienteInvitado</h3>
-                            @* Etiqueta de estado dinámica *@
-                            <span class="px-2 py-1 bg-surface-container-high text-[9px] font-bold uppercase tracking-wider rounded-lg text-on-surface">
+
+                            @* Badge de Estado con Color Dinámico *@
+                            <span class="px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg transition-colors">
                                 @turno.Estado
                             </span>
                         </div>
 
-                        <div class="flex items-center gap-4 text-sm text-on-surface-variant font-body">
+                        <div class="flex items-center gap-3 text-sm text-on-surface-variant font-body">
+                            <span class="flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">content_cut</span>
+                                @turno.PrestadorNombre
+                            </span>
+                            <span class="opacity-20">|</span>
                             <span class="flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs">phone_iphone</span>
                                 @turno.TelefonoClienteInvitado
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <span class="material-symbols-outlined text-xs">mail</span>
-                                @turno.EmailClienteInvitado
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-3 border-t border-surface-container-high md:border-t-0 pt-4 md:pt-0">
-                    <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, turno.FechaHoraInicioUtc.ToLocalTime())" target="_blank"
-                       class="w-12 h-12 bg-[#25D366]/10 text-[#075E54] rounded-2xl flex items-center justify-center hover:bg-[#25D366]/20 transition-colors" title="Contactar">
+                <div class="flex items-center gap-2 border-t border-surface-container-high md:border-t-0 pt-4 md:pt-0">
+
+                    @* Botón de WhatsApp (Siempre visible) *@
+                    <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, turno.FechaHoraInicioUtc.ToLocalTime())"
+                       target="_blank"
+                       class="w-11 h-11 bg-[#25D366]/10 text-[#075E54] rounded-xl flex items-center justify-center hover:bg-[#25D366]/20 transition-colors" title="WhatsApp">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-5 h-5" alt="WA" />
                     </a>
 
-                    @* Botón placeholder para futuras acciones (ej: Marcar Asistió) *@
-                    <button class="px-6 py-3 bg-surface-container-low text-primary rounded-2xl font-headline font-bold text-xs hover:bg-secondary-container transition-colors flex items-center gap-2">
-                        Gestionar
-                    </button>
+                    @* Acciones según estado (Usando el Enum que definimos) *@
+                    @if (turno.Estado == EstadoTurnoEnum.Pendiente)
+                    {
+                        <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Confirmado)"
+                                class="px-4 py-3 bg-primary/10 text-primary rounded-xl font-bold text-[11px] uppercase hover:bg-primary hover:text-white transition-all">
+                            Confirmar
+                        </button>
+                    }
+
+                    @if (turno.Estado == EstadoTurnoEnum.Confirmado || turno.Estado == EstadoTurnoEnum.Pendiente)
+                    {
+                        <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Completado)"
+                                class="px-4 py-3 bg-green-500/10 text-green-700 rounded-xl font-bold text-[11px] uppercase hover:bg-green-500 hover:text-white transition-all">
+                            Finalizar
+                        </button>
+
+                        <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Cancelado)"
+                                class="p-3 text-error hover:bg-error/10 rounded-xl transition-all" title="Cancelar">
+                            <span class="material-symbols-outlined">block</span>
+                        </button>
+                    }
                 </div>
             </div>
         }
@@ -92,6 +115,23 @@ else
     protected override async Task OnInitializedAsync()
     {
         await CargarTurnos();
+    }
+    // Método para manejar los clics de los botones
+    private async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
+    {
+        try
+        {
+            var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
+            if (exito)
+            {
+                await CargarTurnos(); // Recargamos la lista para ver el cambio
+            }
+        }
+        catch (Exception ex)
+        {
+            // Aquí podrías usar un Toast o notificación de error
+            Console.WriteLine($"Error al cambiar estado: {ex.Message}");
+        }
     }
 
     private async Task CargarTurnos()

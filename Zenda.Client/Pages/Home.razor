@@ -9,6 +9,7 @@
 @using System.Security.Claims
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
+@using Zenda.Core.Enums
 
 <div class="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
     <span class="inline-block px-4 py-1.5 mb-4 bg-secondary-container text-on-secondary-container rounded-full text-[10px] font-bold tracking-widest uppercase font-body">
@@ -98,8 +99,13 @@
                             <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
                             <p class="text-sm text-on-surface-variant flex items-center gap-1">
                                 <span class="material-symbols-outlined text-xs">content_cut</span>
-                                @(turno.PrestadorNombre)
+                                @turno.PrestadorNombre
                             </p>
+
+                            @* Badge con color dinámico *@
+                            <span class="inline-block mt-2 px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg">
+                                @turno.Estado
+                            </span>
                         </div>
 
                         <span class="hidden md:inline-block px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-lg uppercase whitespace-nowrap">
@@ -205,7 +211,7 @@
             equipoActivo = prestadores.Count;
             turnosHoy = turnos.Count;
             // Asumiendo que tenés un estado "Completado" en tu DTO
-            completadosHoy = turnos.Count(t => t.Estado.Equals("Completado", StringComparison.OrdinalIgnoreCase));
+            completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
 
             // Filtramos los próximos turnos a partir de ahora, ordenados por hora
             var horaActualUtc = DateTime.UtcNow;

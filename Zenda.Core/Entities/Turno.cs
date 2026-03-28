@@ -1,4 +1,5 @@
-﻿using Zenda.Core.Models;
+﻿using Zenda.Core.Enums;
+using Zenda.Core.Models;
 
 namespace Zenda.Core.Entities;
 
@@ -23,7 +24,5 @@ public class Turno : BaseEntity, ITenantEntity
     public string NombreClienteInvitado { get; set; } = string.Empty;
     public string TelefonoClienteInvitado { get; set; } = string.Empty;
     public string EmailClienteInvitado { get; set; } = string.Empty;
-
-    // Estado del turno: Pendiente, Confirmado, Cancelado
-    public string Estado { get; set; } = "Pendiente";
+    public EstadoTurnoEnum Estado { get; set; } = EstadoTurnoEnum.Pendiente;
 }

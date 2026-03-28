@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
+using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Application.Services;
@@ -9,12 +10,23 @@ namespace Zenda.Application.Services;
 public class TurnosService : ITurnosService
 {
     private readonly IZendaDbContext _context;
+    private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
 
-    public TurnosService(IZendaDbContext context, IMapper mapper)
+    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService)
     {
         _context = context;
         _mapper = mapper;
+        _tenantService = tenantService;
+    }
+    public async Task<TurnoReadDto> GetByIdAsync(Guid id)
+    {
+        var turno = await _context.Turnos.FindAsync(id);
+
+        if (turno == null)
+            return new();
+
+        return _mapper.Map<TurnoReadDto>(turno);
     }
 
     public async Task<IEnumerable<TurnoReadDto>> GetByPrestadorAsync(Guid prestadorId)
@@ -75,7 +87,7 @@ public class TurnosService : ITurnosService
             .Where(t => t.PrestadorId == prestadorId &&
                         t.FechaHoraInicioUtc >= inicioDiaUtc &&
                         t.FechaHoraInicioUtc < finDiaUtc &&
-                        t.Estado != "Cancelado")
+                        t.Estado != EstadoTurnoEnum.Cancelado)
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
@@ -160,7 +172,7 @@ public class TurnosService : ITurnosService
         // BARRERA 3: ¿El horario ya fue reservado por otra persona hace un milisegundo?
         bool turnoOcupado = await _context.Turnos.AnyAsync(t =>
             t.PrestadorId == dto.PrestadorId &&
-            t.Estado != "Cancelado" &&
+            t.Estado != EstadoTurnoEnum.Cancelado &&
             (fechaUtcDefinitiva < t.FechaHoraFinUtc && fechaFinUtcDefinitiva > t.FechaHoraInicioUtc)
         );
 
@@ -182,7 +194,7 @@ public class TurnosService : ITurnosService
             NombreClienteInvitado = dto.NombreClienteInvitado,
             TelefonoClienteInvitado = dto.TelefonoClienteInvitado,
             EmailClienteInvitado = dto.EmailClienteInvitado,
-            Estado = "Confirmado"
+            Estado = EstadoTurnoEnum.Confirmado
         };
 
         _context.Turnos.Add(nuevoTurno);
@@ -199,7 +211,7 @@ public class TurnosService : ITurnosService
 
         var turnosDb = await _context.Turnos
             .AsNoTracking()
-            .Include(t => t.Prestador) 
+            .Include(t => t.Prestador)
             .Where(t => t.FechaHoraInicioUtc >= fechaInicio && t.FechaHoraInicioUtc < fechaFin)
             .OrderBy(t => t.FechaHoraInicioUtc)
             .ToListAsync();
@@ -207,5 +219,29 @@ public class TurnosService : ITurnosService
         var turnosDto = _mapper.Map<List<TurnoReadDto>>(turnosDb);
 
         return turnosDto;
+    }
+
+    public async Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado)
+    {
+        // 1. Buscamos el turno asegurándonos que pertenezca al NegocioId del token actual
+        // (Asumo que tenés un _tenantService o similar para obtener el NegocioId actual)
+        var negocioId = _tenantService.GetCurrentTenantId();
+
+        var turno = await _context.Turnos
+            .FirstOrDefaultAsync(t => t.Id == turnoId && t.Prestador.NegocioId == negocioId);
+
+        if (turno == null) return false;
+
+        // 2. Lógica de transición (Opcional pero recomendado)
+        // Ejemplo: Si ya está completado, no podés volverlo a pendiente
+        if (turno.Estado == EstadoTurnoEnum.Completado && nuevoEstado == EstadoTurnoEnum.Pendiente)
+        {
+            throw new Exception("No se puede reabrir un turno ya finalizado.");
+        }
+
+        // 3. Aplicamos el cambio
+        turno.Estado = nuevoEstado;
+
+        return await _context.SaveChangesAsync() > 0;
     }
 }

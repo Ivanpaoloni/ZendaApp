@@ -29,10 +29,10 @@ namespace Zenda.Infrastructure
             modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
-            
+
             // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
             modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
-            
+
             modelBuilder.Entity<Negocio>(entity =>
             {
                 entity.HasKey(n => n.Id);
@@ -73,10 +73,15 @@ namespace Zenda.Infrastructure
 
             modelBuilder.Entity<Turno>(entity =>
             {
+                // 1. Relación con Prestador (Lo que ya tenías)
                 entity.HasOne(t => t.Prestador)
                       .WithMany(p => p.Turnos)
                       .HasForeignKey(t => t.PrestadorId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                // 2. Conversión de Enum a String (Lo nuevo)
+                // Esto hace que en C# uses 'EstadoTurno' pero en SQL se lea "Pendiente", "Confirmado", etc.
+                entity.Property(t => t.Estado).HasConversion<string>().HasMaxLength(20); // Opcional, pero recomendado para performance
             });
         }
     }
