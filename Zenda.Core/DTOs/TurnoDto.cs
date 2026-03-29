@@ -10,7 +10,7 @@ namespace Zenda.Core.DTOs
         [Required(ErrorMessage = "El servicio es obligatorio.")]
         public Guid ServicioId { get; set; }
         [Required]
-        public DateTime Inicio { get; set; } // Está perfecto mantenerlo simple para el front
+        public DateTime Inicio { get; set; }
 
         // --- Datos del Invitado (MVP) ---
         [Required(ErrorMessage = "El nombre es obligatorio.")]
@@ -29,19 +29,19 @@ namespace Zenda.Core.DTOs
     public class TurnoReadDto
     {
         public Guid Id { get; set; }
-
-        // Es buena práctica devolver estas fechas explícitamente como UTC
         public DateTime FechaHoraInicioUtc { get; set; }
         public DateTime FechaHoraFinUtc { get; set; }
 
-        // Datos del cliente
         public string NombreClienteInvitado { get; set; } = string.Empty;
         public string EmailClienteInvitado { get; set; } = string.Empty;
         public string TelefonoClienteInvitado { get; set; } = string.Empty; 
         public Guid PrestadorId { get; set; }
         public string PrestadorNombre { get; set; } = string.Empty;
         public EstadoTurnoEnum Estado { get; set; } = EstadoTurnoEnum.Pendiente;
+
         public Guid ServicioId { get; set; }
         public string ServicioNombre { get; set; } = string.Empty;
+        public int DuracionMinutos { get; set; }
+        public decimal Precio { get; set; }
     }
 }

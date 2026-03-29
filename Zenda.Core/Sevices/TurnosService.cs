@@ -239,17 +239,34 @@ public class TurnosService : ITurnosService
         var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
         var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
 
-        // 5. Buscamos los turnos
-        // Nota: Como este endpoint es del Dashboard (requiere auth), 
-        // NO usamos IgnoreQueryFilters() para que Entity Framework aplique la seguridad de tu Tenant automáticamente.
-        var turnosDb = await _context.Turnos
-            .AsNoTracking()
-            .Include(t => t.Prestador)
-            .Where(t => t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc)
-            .OrderBy(t => t.FechaHoraInicioUtc)
-            .ToListAsync();
+        var turnos = await _context.Turnos
+        .AsNoTracking()
+        .Include(t => t.Servicio)
+        .Where(t => t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc)
+        .OrderBy(t => t.FechaHoraInicioUtc)
+        .Select(t => new TurnoReadDto
+        {
+            Id = t.Id,
+            NombreClienteInvitado = t.NombreClienteInvitado,
+            TelefonoClienteInvitado = t.TelefonoClienteInvitado,
+            EmailClienteInvitado = t.EmailClienteInvitado,
 
-        return _mapper.Map<List<TurnoReadDto>>(turnosDb);
+            // Datos del Prestador (Flattening)
+            PrestadorId = t.PrestadorId,
+            PrestadorNombre = t.Prestador!.Nombre,
+
+            ServicioId = t.ServicioId,
+            ServicioNombre = t.Servicio.Nombre,
+            Precio = t.Servicio.Precio,
+            DuracionMinutos = t.Servicio.DuracionMinutos,
+
+            FechaHoraInicioUtc = t.FechaHoraInicioUtc,
+            FechaHoraFinUtc = t.FechaHoraFinUtc,
+            Estado = t.Estado
+        })
+        .ToListAsync();
+
+        return turnos;
     }
 
     public async Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado)

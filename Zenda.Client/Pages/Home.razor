@@ -174,8 +174,6 @@
         </div>
     </div>
 
-    @* ... (La sección derecha de Acciones Rápidas queda igual) ... *@
-
     <div class="space-y-6">
         <h2 class="text-2xl font-headline font-bold text-primary">Acciones Rápidas</h2>
 
@@ -260,15 +258,12 @@
         try
         {
             var hoy = DateTime.Today;
-
-            // 1. Cargamos Sedes y Prestadores para validar el estado del negocio
             var sedes = await _sedeService.GetAll();
             var prestadores = await _prestadorClient.GetAll();
 
             sedesContador = sedes?.Count ?? 0;
             equipoActivo = prestadores?.Count ?? 0;
 
-            // 2. Cargamos turnos solo si hay equipo (si no hay equipo, no puede haber turnos)
             if (equipoActivo > 0)
             {
                 var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
@@ -276,22 +271,25 @@
                 turnosHoy = turnos.Count;
                 completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
 
-                // 🎯 NUEVO: Calculamos la plata proyectada para el día (asumiendo que TurnoReadDto incluye el precio, o si no, lo podemos estimar).
-                // Idealmente, en el backend tu TurnoReadDto debería traer `decimal ServicioPrecio`.
-                // Por ahora, si no lo tenés en el DTO, dejamos la variable lista para cuando lo agregues.
-                //ingresosProyectadosHoy = turnos.Where(t => t.Estado != EstadoTurnoEnum.Cancelado).Sum(t => t.ServicioPrecio);
+                // Calculamos la plata proyectada para el día (asumiendo que TurnoReadDto incluye el precio, o si no, lo podemos estimar).
+                if (turnos != null)
+                {
+                    //  solo los turnos válidos (no cancelados)
+                    ingresosProyectadosHoy = turnos
+                        .Where(t => t.Estado != EstadoTurnoEnum.Cancelado)
+                        .Sum(t => t.Precio);
 
-                var horaActualUtc = DateTime.UtcNow;
-                proximosTurnos = turnos
+                    var horaActualUtc = DateTime.UtcNow;
+                    proximosTurnos = turnos
                     .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
                     .OrderBy(t => t.FechaHoraInicioUtc)
                     .Take(5)
                     .ToList();
+                }
             }
             var negocio = await _negocioService.GetPerfilAsync();
             if (negocio != null)
             {
-                // Armamos la URL completa (ej: https://tudominio.com/zenda-barber)
                 linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
                 nombreNegocio = negocio.Nombre;
             }
@@ -339,18 +337,15 @@
         StateHasChanged();
     }
 
-    // NUEVO: Lógica para abrir WhatsApp Web/App
+    // Lógica para abrir WhatsApp Web/App
     private void AbrirWhatsApp(string telefono, string nombreCliente)
     {
         if (string.IsNullOrWhiteSpace(telefono)) return;
 
-        // Limpiamos el teléfono (sacamos espacios, guiones, etc.)
         var numLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-
-        // Armamos un mensaje de saludo automático
         var mensaje = Uri.EscapeDataString($"¡Hola {nombreCliente}! Te escribo de {nombreNegocio ?? "la barbería/estética"}.");
-
         var url = $"https://wa.me/{numLimpio}?text={mensaje}";
-        Nav.NavigateTo(url, forceLoad: true); // forceLoad abre una nueva pestaña si el navegador lo permite, o navega directo.
+
+        Nav.NavigateTo(url, forceLoad: true); 
     }
 }
