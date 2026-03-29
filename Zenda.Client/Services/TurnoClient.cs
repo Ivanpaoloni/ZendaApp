@@ -9,10 +9,12 @@ public class TurnoClient : BaseClient
     private readonly HttpClient _http;
     public TurnoClient(HttpClient http) => _http = http;
 
-    public async Task<DisponibilidadFechaDto?> GetDisponibilidad(Guid prestadorId, DateTime fecha)
+    public async Task<DisponibilidadFechaDto?> GetDisponibilidad(Guid prestadorId, DateTime fecha, Guid servicioId)
     {
         var fechaStr = fecha.ToString("yyyy-MM-dd");
-        return await _http.GetFromJsonAsync<DisponibilidadFechaDto>($"api/turnos/disponibilidad/{prestadorId}?fecha={fechaStr}");
+
+        var response = await _http.GetFromJsonAsync<DisponibilidadFechaDto>($"api/Turnos/disponibilidad/{prestadorId}?fecha={fechaStr}&servicioId={servicioId}");
+        return response;
     }
 
     public async Task<TurnoReadDto?> Reservar(TurnoCreateDto dto)

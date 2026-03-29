@@ -40,7 +40,7 @@ public class TurnosService : ITurnosService
         return _mapper.Map<IEnumerable<TurnoReadDto>>(turnos);
     }
 
-    public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid prestadorId, DateTime fecha)
+    public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid prestadorId, DateTime fecha, Guid servicioId)
     {
         // 1. Traemos al prestador
         var prestador = await _context.Prestadores
@@ -54,23 +54,25 @@ public class TurnosService : ITurnosService
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
         // =================================================================
-        // 2. NUEVO ESCUDO: ¿El día consultado ya pasó en la vida real?
+        // 2. ESCUDO: ¿El día consultado ya pasó en la vida real?
         // =================================================================
         var fechaHoraActualSede = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
         var fechaActualSede = fechaHoraActualSede.Date;
 
-        // Inicializamos la respuesta vacía
         var respuesta = new DisponibilidadFechaDto { Fecha = fecha.Date };
 
-        // Si la fecha que me piden es MENOR a hoy, corto acá y devuelvo la lista vacía.
-        if (fecha.Date < fechaActualSede)
-        {
-            return respuesta;
-        }
-        // =================================================================
+        if (fecha.Date < fechaActualSede) return respuesta;
 
-        // Si pasamos el escudo, seguimos con la lógica normal...
-        int duracion = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30;
+        // =================================================================
+        //  MAGIA 1: Obtenemos la duración REAL del servicio elegido
+        // =================================================================
+        int duracionServicio = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30; // Fallback
+
+        var servicio = await _context.Servicios.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == servicioId);
+        if (servicio != null && servicio.DuracionMinutos > 0)
+        {
+            duracionServicio = servicio.DuracionMinutos;
+        }
 
         var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
         var finDiaLocal = inicioDiaLocal.AddDays(1);
@@ -94,22 +96,25 @@ public class TurnosService : ITurnosService
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
-        // 3. Evaluamos la hora actual solo si es "Hoy"
         var horaActualSede = TimeOnly.FromDateTime(fechaHoraActualSede);
         bool esHoy = fecha.Date == fechaActualSede;
+
+        //  MAGIA 2: El intervalo de la grilla (El paso)
+        int intervaloGrillaMinutos = 15;
 
         foreach (var rango in configuracion)
         {
             var inicioSlot = rango.HoraInicio;
             var limiteFin = rango.HoraFin;
 
-            while (inicioSlot.AddMinutes(duracion) <= limiteFin)
+            // Mientras el servicio ENCUADRE dentro del horario laboral...
+            while (inicioSlot.AddMinutes(duracionServicio) <= limiteFin)
             {
-                var finSlot = inicioSlot.AddMinutes(duracion);
+                var finSlot = inicioSlot.AddMinutes(duracionServicio);
 
-                // Verificamos si la hora ya pasó HOY
                 bool yaPaso = esHoy && inicioSlot <= horaActualSede;
 
+                // Verificamos el solapamiento usando la duración real del servicio
                 bool estaOcupado = turnosOcupados.Any(t =>
                 {
                     var hInicioOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede));
@@ -123,8 +128,9 @@ public class TurnosService : ITurnosService
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
-                inicioSlot = finSlot;
-                if (duracion <= 0) break;
+                //  MAGIA 3: Avanzamos 15 minutos, sin importar cuánto dure el servicio. 
+                // Esto permite descubrir los "huecos" entre turnos.
+                inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
             }
         }
 

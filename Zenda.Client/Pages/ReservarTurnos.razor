@@ -1,4 +1,4 @@
-﻿@page "/reservar/{PrestadorId:guid}"
+﻿@* @page "/reservar/{PrestadorId:guid}"
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
 @inject TurnoClient TurnoService
@@ -95,7 +95,7 @@
     {
         cargando = true;
         horaSeleccionada = null;
-        var res = await TurnoService.GetDisponibilidad(PrestadorId, fechaSeleccionada);
+        var res = await TurnoService.GetDisponibilidad(PrestadorId, fechaSeleccionada, servicioId);
         slots = res?.HorariosLibres ?? new();
         cargando = false;
     }
@@ -119,4 +119,4 @@
 
         enviando = false;
     }
-}
+} *@

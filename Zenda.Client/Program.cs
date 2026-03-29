@@ -50,4 +50,8 @@ builder.Services.AddScoped<AppState>();
 // Este NO lleva el interceptor (útil para llamadas públicas).
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
 
+var culture = new System.Globalization.CultureInfo("es-AR");
+System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
+System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
+
 await builder.Build().RunAsync();

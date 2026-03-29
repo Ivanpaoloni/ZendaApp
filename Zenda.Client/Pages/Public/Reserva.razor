@@ -361,7 +361,7 @@
 
         if (prestadorSeleccionado != null)
         {
-            var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada);
+            var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada, servicioSeleccionado!.Id); 
             slots = res?.HorariosLibres ?? new();
         }
         else
@@ -370,7 +370,7 @@
             var primerPrestador = prestadoresFiltrados.FirstOrDefault();
             if (primerPrestador != null)
             {
-                var res = await TurnoService.GetDisponibilidad(primerPrestador.Id, fechaSeleccionada);
+                var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado!.Id, fechaSeleccionada, servicioSeleccionado!.Id);
                 slots = res?.HorariosLibres ?? new();
             }
         }
