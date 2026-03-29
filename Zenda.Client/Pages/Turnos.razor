@@ -74,8 +74,8 @@
                         @* Botón de WhatsApp (Siempre visible) *@
                         <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, turno.FechaHoraInicioUtc.ToLocalTime())"
                            target="_blank"
-                           class="w-11 h-11 bg-[#25D366]/10 text-[#075E54] rounded-xl flex items-center justify-center hover:bg-[#25D366]/20 transition-colors" title="WhatsApp">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-5 h-5" alt="WA" />
+                           class="w-11 h-11 bg-[#25D366]/10 text-[#25D366] rounded-xl flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all shadow-sm" title="WhatsApp">
+                            <i class="fa-brands fa-whatsapp text-2xl"></i>
                         </a>
 
                         @* Acciones según estado (Usando el Enum que definimos) *@
@@ -95,7 +95,7 @@
                             </button>
 
                             <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Cancelado)"
-                                    class="p-3 text-error hover:bg-error/10 rounded-xl transition-all" title="Cancelar">
+                                    class="w-11 h-11 text-on-surface-variant/70 bg-surface-container-low hover:bg-error/10 hover:text-error rounded-xl transition-all" title="Cancelar Turno">
                                 <span class="material-symbols-outlined">block</span>
                             </button>
                         }

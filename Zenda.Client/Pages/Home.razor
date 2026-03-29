@@ -64,6 +64,7 @@
     </div>
 }
 
+@* --- WIDGETS DE RESUMEN --- *@
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
 
     <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
@@ -84,21 +85,22 @@
 
     <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
         <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">group</span>
+            <span class="material-symbols-outlined">payments</span>
         </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Equipo Activo</p>
-        <p class="text-3xl font-headline font-black text-blue-600">@equipoActivo</p>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Caja Proyectada</p>
+        <p class="text-3xl font-headline font-black text-blue-600">@ingresosProyectadosHoy.ToString("C0")</p>
     </div>
 
     <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
         <div class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">trending_up</span>
+            <span class="material-symbols-outlined">group</span>
         </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Ocupación</p>
-        <p class="text-3xl font-headline font-black text-orange-600">85%</p>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Equipo Activo</p>
+        <p class="text-3xl font-headline font-black text-orange-600">@equipoActivo</p>
     </div>
 </div>
 
+@* --- LISTA DE TURNOS Y ACCIONES --- *@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-300">
 
     <div class="lg:col-span-2 space-y-6">
@@ -131,34 +133,48 @@
                     var horaLocal = turno.FechaHoraInicioUtc.ToLocalTime();
                     var tiempoFaltante = CalcularTiempoFaltante(turno.FechaHoraInicioUtc);
 
-                    <div class="p-4 md:p-6 flex items-center gap-4 hover:bg-surface-container-low rounded-3xl transition-colors cursor-pointer border-b border-surface-container-high last:border-b-0 group">
+                    <div class="p-4 md:p-6 flex items-center gap-4 hover:bg-surface-container-low rounded-3xl transition-colors border-b border-surface-container-high last:border-b-0 group relative">
 
+                        @* Hora *@
                         <div class="w-14 h-14 rounded-2xl bg-surface-container-high text-on-surface flex flex-col items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:text-on-primary transition-colors shadow-sm group-hover:shadow-primary/20">
                             <span class="font-headline font-black text-lg leading-none">@horaLocal.ToString("HH")</span>
                             <span class="text-[10px] font-bold">@horaLocal.ToString("mm")</span>
                         </div>
 
+                        @* Datos del Turno *@
                         <div class="flex-grow">
-                            <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
-                            <p class="text-sm text-on-surface-variant flex items-center gap-1">
-                                <span class="material-symbols-outlined text-xs">content_cut</span>
-                                @turno.PrestadorNombre
-                            </p>
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
+                                <span class="hidden md:inline-block px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg">
+                                    @turno.Estado
+                                </span>
+                            </div>
 
-                            @* Badge con color dinámico *@
-                            <span class="inline-block mt-2 px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg">
-                                @turno.Estado
-                            </span>
+                            <p class="text-sm text-on-surface-variant flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">content_cut</span>
+                                @turno.ServicioNombre con @turno.PrestadorNombre
+                            </p>
                         </div>
 
-                        <span class="hidden md:inline-block px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-lg uppercase whitespace-nowrap">
-                            @tiempoFaltante
-                        </span>
+                        @* Acciones Rápidas (WhatsApp) *@
+                        <div class="flex items-center gap-2">
+                            <span class="hidden lg:inline-block px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-lg uppercase whitespace-nowrap mr-2">
+                                @tiempoFaltante
+                            </span>
+
+                            <button @onclick="() => AbrirWhatsApp(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado)"
+                                    title="Contactar por WhatsApp"
+                                    class="w-10 h-10 rounded-full bg-green-50 text-green-600 hover:bg-green-500 hover:text-white flex items-center justify-center transition-all shadow-sm">
+                                <i class="fa-brands fa-whatsapp text-lg"></i>
+                            </button>
+                        </div>
                     </div>
                 }
             }
         </div>
     </div>
+
+    @* ... (La sección derecha de Acciones Rápidas queda igual) ... *@
 
     <div class="space-y-6">
         <h2 class="text-2xl font-headline font-bold text-primary">Acciones Rápidas</h2>
@@ -203,6 +219,9 @@
     private string iconoBotonCopiar = "content_copy";
     private string linkReserva = "";
     private string nombreUsuario = "Admin";
+    private string nombreNegocio = "ZendaApp";
+
+    private decimal ingresosProyectadosHoy = 0;
 
     private int turnosHoy = 0;
     private int completadosHoy = 0;
@@ -257,6 +276,11 @@
                 turnosHoy = turnos.Count;
                 completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
 
+                // 🎯 NUEVO: Calculamos la plata proyectada para el día (asumiendo que TurnoReadDto incluye el precio, o si no, lo podemos estimar).
+                // Idealmente, en el backend tu TurnoReadDto debería traer `decimal ServicioPrecio`.
+                // Por ahora, si no lo tenés en el DTO, dejamos la variable lista para cuando lo agregues.
+                //ingresosProyectadosHoy = turnos.Where(t => t.Estado != EstadoTurnoEnum.Cancelado).Sum(t => t.ServicioPrecio);
+
                 var horaActualUtc = DateTime.UtcNow;
                 proximosTurnos = turnos
                     .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
@@ -269,6 +293,7 @@
             {
                 // Armamos la URL completa (ej: https://tudominio.com/zenda-barber)
                 linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
+                nombreNegocio = negocio.Nombre;
             }
         }
         catch (Exception ex)
@@ -312,5 +337,20 @@
         textoBotonCopiar = "Copiar Enlace";
         iconoBotonCopiar = "content_copy";
         StateHasChanged();
+    }
+
+    // NUEVO: Lógica para abrir WhatsApp Web/App
+    private void AbrirWhatsApp(string telefono, string nombreCliente)
+    {
+        if (string.IsNullOrWhiteSpace(telefono)) return;
+
+        // Limpiamos el teléfono (sacamos espacios, guiones, etc.)
+        var numLimpio = new string(telefono.Where(char.IsDigit).ToArray());
+
+        // Armamos un mensaje de saludo automático
+        var mensaje = Uri.EscapeDataString($"¡Hola {nombreCliente}! Te escribo de {nombreNegocio ?? "la barbería/estética"}.");
+
+        var url = $"https://wa.me/{numLimpio}?text={mensaje}";
+        Nav.NavigateTo(url, forceLoad: true); // forceLoad abre una nueva pestaña si el navegador lo permite, o navega directo.
     }
 }

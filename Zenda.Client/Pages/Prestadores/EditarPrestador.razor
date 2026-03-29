@@ -151,7 +151,6 @@
                 Nombre = p.Nombre,
                 SedeId = p.SedeId,
                 DuracionTurnoMinutos = p.DuracionTurnoMinutos,
-                // Cargamos los IDs de los servicios que este prestador ya tiene asignados
                 ServiciosIds = p.Servicios?.Select(s => s.Id).ToList() ?? new()
             };
         }
