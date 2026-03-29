@@ -44,6 +44,7 @@ public class TurnosService : ITurnosService
     {
         // 1. Traemos al prestador
         var prestador = await _context.Prestadores
+            .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede })
             .FirstOrDefaultAsync(p => p.Id == prestadorId);
@@ -80,10 +81,12 @@ public class TurnosService : ITurnosService
         int diaBuscado = (int)fecha.DayOfWeek;
 
         var configuracion = await _context.Disponibilidad
+            .IgnoreQueryFilters()
             .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
             .ToListAsync();
 
         var turnosOcupados = await _context.Turnos
+            .IgnoreQueryFilters()
             .Where(t => t.PrestadorId == prestadorId &&
                         t.FechaHoraInicioUtc >= inicioDiaUtc &&
                         t.FechaHoraInicioUtc < finDiaUtc &&
@@ -132,6 +135,7 @@ public class TurnosService : ITurnosService
     {
         // 1. Buscamos el prestador con su Sede y su Disponibilidad
         var prestador = await _context.Prestadores
+            .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Include(p => p.Horarios)
             .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
@@ -170,7 +174,7 @@ public class TurnosService : ITurnosService
         }
 
         // BARRERA 3: ¿El horario ya fue reservado por otra persona hace un milisegundo?
-        bool turnoOcupado = await _context.Turnos.AnyAsync(t =>
+        bool turnoOcupado = await _context.Turnos.IgnoreQueryFilters().AnyAsync(t =>
             t.PrestadorId == dto.PrestadorId &&
             t.Estado != EstadoTurnoEnum.Cancelado &&
             (fechaUtcDefinitiva < t.FechaHoraFinUtc && fechaFinUtcDefinitiva > t.FechaHoraInicioUtc)
