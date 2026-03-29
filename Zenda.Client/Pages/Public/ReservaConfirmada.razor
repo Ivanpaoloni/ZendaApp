@@ -34,11 +34,21 @@
             </div>
         </div>
 
+        @if (!string.IsNullOrEmpty(DireccionSede))
+        {
+            <a href="@GenerarGoogleMapsUrl()" target="_blank"
+               class="w-full py-4 px-4 bg-orange-500/10 text-orange-700 rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-orange-500/20 transition-all mb-4">
+                <span class="material-symbols-outlined">map</span>
+                ¿Cómo llegar? Ver en Maps
+            </a>
+        }
+
         <a href="@GenerarGoogleCalendarUrl()" target="_blank"
-           class="w-full py-4 px-4 bg-primary/5 text-primary rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all mb-6">
+           class="w-full py-4 px-4 bg-primary/5 text-primary rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all mb-4">
             <span class="material-symbols-outlined">calendar_add_on</span>
             Agendar en Google Calendar
         </a>
+
         <a href="@GenerarWhatsAppUrl()" target="_blank"
            class="w-full py-4 px-4 bg-[#25D366]/10 text-[#075E54] rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#25D366]/20 transition-all mb-4">
             <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-5 h-5" alt="WA" />
@@ -58,10 +68,23 @@
     [Parameter, SupplyParameterFromQuery] public string? Hora { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? Nombre { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? Duracion { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? Direccion { get; set; }
 
+    private string DireccionSede => Direccion ?? "";
     private string FechaDisplay => Fecha ?? "--/--/----";
     private string HoraDisplay => Hora ?? "--:--";
     private string NombrePrestador => Nombre ?? "Profesional";
+
+    private string GenerarGoogleMapsUrl()
+    {
+        if (string.IsNullOrEmpty(DireccionSede)) return "#";
+
+        // Le concatenamos el contexto geográfico para que Google no se pierda
+        // "Bogotá 2240, Flores, CABA, Argentina"
+        var direccionCompleta = $"{DireccionSede}, Argentina";
+
+        return $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(direccionCompleta)}";
+    }
 
     private string GenerarGoogleCalendarUrl()
     {

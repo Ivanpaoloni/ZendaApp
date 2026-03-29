@@ -5,9 +5,10 @@
 @attribute [Authorize]
 @inject PrestadorClient PrestadorService
 @inject SedeClient SedeService
+@inject ServicioClient ServicioService
 @inject NavigationManager Nav
 
-<div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
     <div class="flex items-center justify-between">
         <h2 class="text-3xl font-bold text-primary tracking-tighter">Editar Profesional</h2>
         <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-on-surface-variant hover:text-primary transition-colors">
@@ -16,9 +17,14 @@
     </div>
 
     <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
-        @if (model == null) {
-            <p>Cargando datos...</p>
-        } else {
+        @if (model == null)
+        {
+            <div class="flex justify-center py-10">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        }
+        else
+        {
             <EditForm Model="model" OnValidSubmit="HandleUpdate" class="space-y-6">
                 <DataAnnotationsValidator />
 
@@ -29,43 +35,152 @@
 
                 <div class="flex flex-col gap-2">
                     <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Sede Principal</label>
-                    <InputSelect @bind-Value="model.SedeId" class="input-zenda">
-                        @foreach (var s in sedes) {
+                    <InputSelect @bind-Value="model.SedeId" class="input-zenda appearance-none">
+                        @foreach (var s in sedes)
+                        {
                             <option value="@s.Id">@s.Nombre</option>
                         }
                     </InputSelect>
                 </div>
 
-                <button type="submit" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all">
-                    Guardar Cambios
+                <hr class="border-surface-container-high my-6" />
+
+                <div>
+                    <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-4 block">Servicios que realiza</label>
+
+                    @if (catalogo == null)
+                    {
+                        <p class="text-sm text-on-surface-variant">Cargando catálogo...</p>
+                    }
+                    else
+                    {
+                        <div class="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                            @foreach (var categoria in catalogo)
+                            {
+                                <div class="bg-surface-container-low rounded-2xl p-4">
+                                    <h4 class="font-bold text-primary mb-3">@categoria.Nombre</h4>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        @foreach (var servicio in categoria.Servicios)
+                                        {
+                                            <label class="flex items-center gap-3 cursor-pointer group">
+                                                <input type="checkbox"
+                                                       checked="@model.ServiciosIds.Contains(servicio.Id)"
+                                                       @onchange="@(e => ToggleServicio(servicio.Id, e.Value))"
+                                                       class="w-5 h-5 rounded-lg border-2 border-primary/30 text-primary focus:ring-primary focus:ring-offset-0 bg-white transition-all cursor-pointer" />
+                                                <span class="text-sm font-body text-on-surface group-hover:text-primary transition-colors">@servicio.Nombre</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <button type="submit" disabled="@guardando" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex justify-center items-center gap-2">
+                    @if (guardando)
+                    {
+                        <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    }
+                    else
+                    {
+
+                        <span>Guardar Cambios</span>
+                    }
                 </button>
             </EditForm>
         }
     </div>
 </div>
 
+<style>
+    .input-zenda {
+        width: 100%;
+        padding: 1rem 1.25rem;
+        border-radius: 1.25rem;
+        background-color: #f1f5f0;
+        border: 2px solid transparent;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+        .input-zenda:focus {
+            border-color: #166534;
+            background-color: white;
+        }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 10px;
+    }
+</style>
+
 @code {
     [Parameter] public Guid Id { get; set; }
     private PrestadorUpdateDto? model;
     private List<SedeReadDto> sedes = new();
+    private List<CategoriaServicioReadDto>? catalogo;
+    private bool guardando = false;
 
     protected override async Task OnInitializedAsync()
     {
-        var p = await PrestadorService.GetById(Id);
-        sedes = await SedeService.GetAll();
-        
-        if (p != null) {
-            model = new PrestadorUpdateDto { 
-                Id = p.Id, 
-                Nombre = p.Nombre, 
-                SedeId = p.SedeId, 
-                DuracionTurnoMinutos = p.DuracionTurnoMinutos 
+        // 1. Cargamos datos paralelos para que sea más rápido
+        var taskSedes = SedeService.GetAll();
+        var taskCatalogo = ServicioService.GetCatalogo();
+        var taskPrestador = PrestadorService.GetById(Id);
+
+        await Task.WhenAll(taskSedes, taskCatalogo, taskPrestador);
+
+        sedes = taskSedes.Result ?? new();
+        catalogo = taskCatalogo.Result ?? new();
+        var p = taskPrestador.Result;
+
+        if (p != null)
+        {
+            model = new PrestadorUpdateDto
+            {
+                Id = p.Id,
+                Nombre = p.Nombre,
+                SedeId = p.SedeId,
+                DuracionTurnoMinutos = p.DuracionTurnoMinutos,
+                // Cargamos los IDs de los servicios que este prestador ya tiene asignados
+                ServiciosIds = p.Servicios?.Select(s => s.Id).ToList() ?? new()
             };
         }
     }
 
-    private async Task HandleUpdate() {
-        var res = await PrestadorService.Update(Id, model!);
+    private void ToggleServicio(Guid servicioId, object? checkedValue)
+    {
+        if (model == null) return;
+
+        bool isChecked = (bool)(checkedValue ?? false);
+
+        if (isChecked && !model.ServiciosIds.Contains(servicioId))
+        {
+            model.ServiciosIds.Add(servicioId);
+        }
+        else if (!isChecked && model.ServiciosIds.Contains(servicioId))
+        {
+            model.ServiciosIds.Remove(servicioId);
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        if (model == null) return;
+
+        guardando = true;
+        var res = await PrestadorService.Update(Id, model);
+        guardando = false;
+
         if (res.Success) Nav.NavigateTo("prestadores");
     }
 }

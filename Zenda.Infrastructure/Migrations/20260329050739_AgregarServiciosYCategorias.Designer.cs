@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Zenda.Infrastructure;
@@ -11,9 +12,11 @@ using Zenda.Infrastructure;
 namespace Zenda.Infrastructure.Migrations
 {
     [DbContext(typeof(ZendaDbContext))]
-    partial class ZendaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329050739_AgregarServiciosYCategorias")]
+    partial class AgregarServiciosYCategorias
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -174,21 +177,6 @@ namespace Zenda.Infrastructure.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("PrestadorServicio", b =>
-                {
-                    b.Property<Guid>("PrestadoresId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ServiciosId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("PrestadoresId", "ServiciosId");
-
-                    b.HasIndex("ServiciosId");
-
-                    b.ToTable("PrestadorServicio");
                 });
 
             modelBuilder.Entity("Servicio", b =>
@@ -568,21 +556,6 @@ namespace Zenda.Infrastructure.Migrations
                     b.HasOne("Zenda.Core.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("PrestadorServicio", b =>
-                {
-                    b.HasOne("Zenda.Core.Entities.Prestador", null)
-                        .WithMany()
-                        .HasForeignKey("PrestadoresId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Servicio", null)
-                        .WithMany()
-                        .HasForeignKey("ServiciosId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

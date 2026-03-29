@@ -9,7 +9,7 @@ namespace Zenda.Core.DTOs
         public Guid SedeId { get; set; }
         public string Nombre { get; set; } = string.Empty;
         public int DuracionTurnoMinutos { get; set; } = 30;
-
+        public List<Guid> ServiciosIds { get; set; } = new();
         // Opcional: Si desde el front ya mandan la disponibilidad inicial
         // public List<DisponibilidadCreateDto> Horarios { get; set; } = new();
     }
@@ -24,6 +24,7 @@ namespace Zenda.Core.DTOs
 
         // Asumiendo que tenés un DTO de lectura para la disponibilidad
         public List<DisponibilidadReadDto> Horarios { get; set; } = new();
+        public List<ServicioReadDto> Servicios { get; set; } = new();
     }
 
     public class PrestadorUpdateDto
@@ -39,5 +40,6 @@ namespace Zenda.Core.DTOs
 
         [Range(1, 480, ErrorMessage = "La duración debe ser entre 1 y 480 minutos")]
         public int DuracionTurnoMinutos { get; set; }
+        public List<Guid> ServiciosIds { get; set; } = new();
     }
 }

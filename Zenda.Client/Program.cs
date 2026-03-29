@@ -34,6 +34,9 @@ builder.Services.AddHttpClient<TurnoClient>(client => client.BaseAddress = new U
 builder.Services.AddHttpClient<DisponibilidadClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>();
 
+builder.Services.AddHttpClient<ServicioClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>();
+
 // 4. Configuración de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();

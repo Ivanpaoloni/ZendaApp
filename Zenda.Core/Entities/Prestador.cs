@@ -16,4 +16,5 @@ public class Prestador : BaseEntity, ITenantEntity
 
     public List<Disponibilidad> Horarios { get; set; } = new();
     public List<Turno> Turnos { get; set; } = new();
+    public ICollection<Servicio> Servicios { get; set; } = new List<Servicio>();
 }

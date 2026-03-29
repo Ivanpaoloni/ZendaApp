@@ -133,6 +133,10 @@ public class TurnosService : ITurnosService
 
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
+        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);
+
+        if (servicio == null)
+            throw new Exception("El servicio seleccionado no existe o no está disponible.");
         // 1. Buscamos el prestador con su Sede y su Disponibilidad
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
@@ -148,7 +152,7 @@ public class TurnosService : ITurnosService
         // Tratamos la fecha de entrada como "Hora del Local" y la pasamos a UTC
         var fechaCruda = DateTime.SpecifyKind(dto.Inicio, DateTimeKind.Unspecified);
         var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaCruda, zonaSede);
-        var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(prestador.DuracionTurnoMinutos);
+        var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(servicio.DuracionMinutos);
 
         // ==========================================
         // BARRERAS DE VALIDACIÓN DEL NEGOCIO (BACKEND)
@@ -198,7 +202,8 @@ public class TurnosService : ITurnosService
             NombreClienteInvitado = dto.NombreClienteInvitado,
             TelefonoClienteInvitado = dto.TelefonoClienteInvitado,
             EmailClienteInvitado = dto.EmailClienteInvitado,
-            Estado = EstadoTurnoEnum.Confirmado
+            Estado = EstadoTurnoEnum.Confirmado,
+            ServicioId = dto.ServicioId
         };
 
         _context.Turnos.Add(nuevoTurno);

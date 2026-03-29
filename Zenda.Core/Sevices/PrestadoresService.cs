@@ -23,11 +23,10 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<IEnumerable<PrestadorReadDto>> GetPublicBySedeIdAsync(Guid sedeId)
     {
-        // Usamos IgnoreQueryFilters porque el cliente anónimo no tiene TenantId en el token.
-        // Filtramos explícitamente por SedeId para mantener el aislamiento.
         var prestadores = await _context.Prestadores
             .IgnoreQueryFilters()
             .AsNoTracking()
+            .Include(p => p.Servicios) //  NUEVO: Traemos qué servicios hace cada uno
             .Where(p => p.SedeId == sedeId)
             .ToListAsync();
 
@@ -40,9 +39,9 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<IEnumerable<PrestadorReadDto>> GetAllAsync()
     {
-        // El Global Query Filter del DbContext se encarga de filtrar por NegocioId.
         var prestadores = await _context.Prestadores
             .Include(p => p.Horarios)
+            .Include(p => p.Servicios) //  NUEVO: Para ver las habilidades en el dashboard
             .AsNoTracking()
             .ToListAsync();
 
@@ -51,9 +50,9 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<PrestadorReadDto?> GetByIdAsync(Guid id)
     {
-        // El filtro global impide que encuentres prestadores de otros negocios.
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
+            .Include(p => p.Servicios) //  NUEVO: Necesario para la vista de edición
             .FirstOrDefaultAsync(p => p.Id == id);
 
         return prestador == null ? null : _mapper.Map<PrestadorReadDto>(prestador);
@@ -63,15 +62,23 @@ public class PrestadoresService : IPrestadoresService
     {
         var prestador = _mapper.Map<Prestador>(dto);
 
-        // 🛡️ SEGURIDAD: Obtenemos el TenantId desde el Token (a través de ITenantService)
-        // Si no hay tenant (usuario no logueado), lanzamos excepción.
         var tenantId = _tenantService.GetCurrentTenantId();
         if (tenantId == null) throw new UnauthorizedAccessException("Contexto de negocio no identificado.");
 
         prestador.NegocioId = tenantId.Value;
-        prestador.Id = Guid.CreateVersion7(); // Usamos v7 para mejor performance en DB
+        prestador.Id = Guid.CreateVersion7();
 
-        // Validación de negocio por defecto
+        //  NUEVO: Asignación de Habilidades (Servicios)
+        if (dto.ServiciosIds != null && dto.ServiciosIds.Any())
+        {
+            // Buscamos los servicios reales en la BD asegurándonos que sean de este negocio
+            var serviciosAsignados = await _context.Servicios
+                .Where(s => s.NegocioId == tenantId.Value && dto.ServiciosIds.Contains(s.Id))
+                .ToListAsync();
+
+            prestador.Servicios = serviciosAsignados;
+        }
+
         if (prestador.DuracionTurnoMinutos <= 0) prestador.DuracionTurnoMinutos = 30;
 
         _context.Prestadores.Add(prestador);
@@ -82,17 +89,38 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
-        // Buscamos al prestador. Si el ID no pertenece a este NegocioId, 
-        // el Global Query Filter hará que 'prestadorDb' sea NULL.
+        var tenantId = _tenantService.GetCurrentTenantId();
+        if (tenantId == null) return false;
+
         var prestadorDb = await _context.Prestadores
+            .Include(p => p.Horarios)
+            .Include(p => p.Servicios) //  NUEVO: Fundamental hacer el Include para actualizar la relación M2M
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (prestadorDb == null) return false;
 
-        // Mapeamos los cambios del DTO a la Entidad de la DB
         _mapper.Map(dto, prestadorDb);
 
-        // Validaciones extra de negocio si hicieran falta
+        // NUEVO: Actualización de Habilidades (Servicios)
+        if (dto.ServiciosIds != null)
+        {
+            // 1. Limpiamos las relaciones actuales (EF Core detecta esto y borra en la tabla intermedia)
+            prestadorDb.Servicios.Clear();
+
+            // 2. Si mandó nuevos IDs, los buscamos y los agregamos
+            if (dto.ServiciosIds.Any())
+            {
+                var nuevosServicios = await _context.Servicios
+                    .Where(s => s.NegocioId == tenantId.Value && dto.ServiciosIds.Contains(s.Id))
+                    .ToListAsync();
+
+                foreach (var servicio in nuevosServicios)
+                {
+                    prestadorDb.Servicios.Add(servicio);
+                }
+            }
+        }
+
         if (prestadorDb.DuracionTurnoMinutos <= 0) prestadorDb.DuracionTurnoMinutos = 30;
 
         await _context.SaveChangesAsync();
@@ -101,7 +129,6 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        // Si el ID pertenece a otro negocio, FirstOrDefaultAsync devolverá null por el filtro global.
         var prestador = await _context.Prestadores.FirstOrDefaultAsync(p => p.Id == id);
         if (prestador == null) return false;
 

@@ -70,6 +70,7 @@ builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
 builder.Services.AddScoped<ISedeService, SedeService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ITurnosService, TurnosService>();
+builder.Services.AddScoped<IServicioService, ServicioService>();
 
 #endregion
 

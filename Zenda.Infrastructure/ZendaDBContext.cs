@@ -19,6 +19,8 @@ namespace Zenda.Infrastructure
         public DbSet<Prestador> Prestadores { get; set; }
         public DbSet<Sede> Sedes { get; set; }
         public DbSet<Turno> Turnos { get; set; }
+        public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
+        public DbSet<Servicio> Servicios { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -82,6 +84,30 @@ namespace Zenda.Infrastructure
                 // 2. Conversión de Enum a String (Lo nuevo)
                 // Esto hace que en C# uses 'EstadoTurno' pero en SQL se lea "Pendiente", "Confirmado", etc.
                 entity.Property(t => t.Estado).HasConversion<string>().HasMaxLength(20); // Opcional, pero recomendado para performance
+            });
+
+            modelBuilder.Entity<CategoriaServicio>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nombre).IsRequired().HasMaxLength(50);
+
+                // Un Negocio tiene muchas Categorías
+                entity.HasMany(c => c.Servicios)
+                      .WithOne(s => s.Categoria)
+                      .HasForeignKey(s => s.CategoriaId)
+                      .OnDelete(DeleteBehavior.Restrict); // No borramos servicios si se borra la categoría por error
+            });
+
+            modelBuilder.Entity<Servicio>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Nombre).IsRequired().HasMaxLength(100);
+
+                // Configuración para el precio (Sugerido para SQL Server/Postgres)
+                entity.Property(e => e.Precio)
+                      .HasPrecision(18, 2);
+
+                entity.Property(e => e.DuracionMinutos).IsRequired();
             });
         }
     }

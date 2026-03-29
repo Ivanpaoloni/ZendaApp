@@ -53,5 +53,12 @@ public class MappingProfile : Profile
         CreateMap<Negocio, NegocioReadDto>();
         CreateMap<NegocioCreateDto, Negocio>();
         #endregion
+
+        #region servicios 
+        CreateMap<CategoriaServicio, CategoriaServicioReadDto>();
+        CreateMap<CategoriaServicioCreateDto, CategoriaServicio>();
+        CreateMap<Servicio, ServicioReadDto>();
+        CreateMap<ServicioCreateDto, Servicio>();
+        #endregion
     }
 }

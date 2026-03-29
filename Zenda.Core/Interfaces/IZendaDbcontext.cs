@@ -12,6 +12,9 @@ public interface IZendaDbContext
     DbSet<Disponibilidad> Disponibilidad { get; set; }
     DbSet<Turno> Turnos { get; set; }
     DatabaseFacade Database { get; }
+    DbSet<CategoriaServicio> CategoriasServicio { get; set; }
+    DbSet<Servicio> Servicios { get; set; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     // Agregamos FindAsync para que el Service lo use sin depender de la implementación
     ValueTask<TEntity?> FindAsync<TEntity>(params object?[]? keyValues) where TEntity : class;

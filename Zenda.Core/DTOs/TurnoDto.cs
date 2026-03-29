@@ -7,7 +7,8 @@ namespace Zenda.Core.DTOs
     {
         [Required]
         public Guid PrestadorId { get; set; }
-
+        [Required(ErrorMessage = "El servicio es obligatorio.")]
+        public Guid ServicioId { get; set; }
         [Required]
         public DateTime Inicio { get; set; } // Está perfecto mantenerlo simple para el front
 
@@ -40,5 +41,7 @@ namespace Zenda.Core.DTOs
         public Guid PrestadorId { get; set; }
         public string PrestadorNombre { get; set; } = string.Empty;
         public EstadoTurnoEnum Estado { get; set; } = EstadoTurnoEnum.Pendiente;
+        public Guid ServicioId { get; set; }
+        public string ServicioNombre { get; set; } = string.Empty;
     }
 }

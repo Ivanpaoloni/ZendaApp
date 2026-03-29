@@ -48,36 +48,97 @@
             </div>
         }
 
+        @if (pasoActual == PasoReserva.SeleccionarServicio)
+        {
+            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                @if (sedesDisponibles.Count > 1)
+                {
+                    <button @onclick="VolverASedes" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
+                        <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Sede
+                    </button>
+                }
+
+                @if (!serviciosDeSede.Any())
+                {
+                    <p class="text-center text-on-surface-variant">No hay servicios disponibles en esta sede.</p>
+                }
+                else
+                {
+                    @* Agrupamos los servicios por categoría para mostrarlos ordenados *@
+                    @foreach (var categoria in serviciosDeSede.GroupBy(s => s.CategoriaNombre))
+                    {
+                        <div class="mb-6">
+                            <h4 class="text-[10px] font-black tracking-widest uppercase text-on-surface-variant ml-2 mb-2">@categoria.Key</h4>
+                            <div class="space-y-3">
+                                @foreach (var servicio in categoria)
+                                {
+                                    <button @onclick="() => SeleccionarServicio(servicio)"
+                                            class="w-full bg-white p-4 rounded-[2rem] editorial-shadow flex items-center justify-between hover:border-primary border-2 border-transparent transition-all text-left group">
+                                        <div>
+                                            <h3 class="font-bold text-sm text-primary group-hover:text-primary transition-colors">@servicio.Nombre</h3>
+                                            <p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
+                                                <span class="material-symbols-outlined text-[14px]">schedule</span> @servicio.DuracionMinutos min
+                                            </p>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span class="font-headline font-black text-primary text-sm">@servicio.Precio.ToString("C0")</span>
+                                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
+                                        </div>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
         @if (pasoActual == PasoReserva.SeleccionarPrestador)
         {
             <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <button @onclick="VolverASedes" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
-                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Sede
+                <button @onclick="VolverAServicios" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
+                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Servicio
                 </button>
 
-                <div class="grid grid-cols-2 gap-4">
-                    @* Opción: Cualquiera disponible *@
-                    <button @onclick="() => SeleccionarPrestador(null)"
-                            class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group h-full">
-                        <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                            <span class="material-symbols-outlined text-2xl">group</span>
-                        </div>
-                        <h3 class="font-headline font-bold text-sm text-primary">Cualquiera</h3>
-                        <p class="text-[10px] text-on-surface-variant mt-1">El primero libre</p>
-                    </button>
-
-                    @foreach (var prestador in prestadoresDeSede)
-                    {
-                        <button @onclick="() => SeleccionarPrestador(prestador)"
-                                class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group">
-                            <div class="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                <span class="material-symbols-outlined text-2xl">content_cut</span>
-                            </div>
-                            <h3 class="font-headline font-bold text-sm text-primary">@prestador.Nombre</h3>
-                            <p class="text-[10px] text-on-surface-variant mt-1">Profesional</p>
-                        </button>
-                    }
+                <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10 mb-6">
+                    <span class="material-symbols-outlined text-primary">cut</span>
+                    <p class="text-xs font-body text-primary">
+                        Elegiste <strong>@servicioSeleccionado?.Nombre</strong>. ¿Con quién te atendés?
+                    </p>
                 </div>
+
+                @if (!prestadoresFiltrados.Any())
+                {
+                    <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
+                        <p class="text-sm text-on-surface-variant">Ningún profesional realiza este servicio en esta sede.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="grid grid-cols-2 gap-4">
+                        @* Opción: Cualquiera disponible *@
+                        <button @onclick="() => SeleccionarPrestador(null)"
+                                class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group h-full">
+                            <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-2xl">group</span>
+                            </div>
+                            <h3 class="font-headline font-bold text-sm text-primary">Cualquiera</h3>
+                            <p class="text-[10px] text-on-surface-variant mt-1">El primero libre</p>
+                        </button>
+
+                        @foreach (var prestador in prestadoresFiltrados)
+                        {
+                            <button @onclick="() => SeleccionarPrestador(prestador)"
+                                    class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group">
+                                <div class="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <span class="material-symbols-outlined text-2xl">content_cut</span>
+                                </div>
+                                <h3 class="font-headline font-bold text-sm text-primary">@prestador.Nombre</h3>
+                                <p class="text-[10px] text-on-surface-variant mt-1">Profesional</p>
+                            </button>
+                        }
+                    </div>
+                }
             </div>
         }
 
@@ -91,7 +152,7 @@
                 <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10">
                     <span class="material-symbols-outlined text-primary">info</span>
                     <p class="text-xs font-body text-primary">
-                        Con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong> en <strong>@sedeSeleccionada?.Nombre</strong>.
+                        <strong>@servicioSeleccionado?.Nombre</strong> con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong>.
                     </p>
                 </div>
 
@@ -166,11 +227,14 @@
 @code {
     [Parameter] public string NegocioSlug { get; set; } = "";
 
-    private enum PasoReserva { Cargando, SeleccionarSede, SeleccionarPrestador, SeleccionarTurno }
+    // 🎯 NUEVO: Agregamos SeleccionarServicio al flujo
+    private enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno }
     private PasoReserva pasoActual = PasoReserva.Cargando;
+
     [Inject] private PrestadorClient _prestadorService { get; set; } = default!;
     [Inject] private SedeClient _sedeService { get; set; } = default!;
     [Inject] private NegocioClient _negocioClient { get; set; } = default!;
+    [Inject] private ServicioClient _servicioClient { get; set; } = default!; // 🎯 NUEVO Client Inyectado
     [Inject] private TurnoClient TurnoService { get; set; } = default!;
 
     private DateTime fechaSeleccionada = DateTime.Today;
@@ -180,13 +244,18 @@
     private bool enviandoReserva = false;
     private TurnoCreateDto nuevoTurno = new();
 
-    // Modelos de datos (Mockeados para el ejemplo)
+    // Modelos de datos
     private NegocioReadDto? negocio;
     private List<SedeReadDto> sedesDisponibles = new();
     private List<PrestadorReadDto> prestadoresDeSede = new();
 
+    // 🎯 NUEVO: Lista de servicios a mostrar
+    private List<ServicioPublicoDto> serviciosDeSede = new();
+    private List<PrestadorReadDto> prestadoresFiltrados = new();
+
     // Selecciones del usuario
     private SedeReadDto? sedeSeleccionada;
+    private ServicioPublicoDto? servicioSeleccionado; // 🎯 NUEVO
     private PrestadorReadDto? prestadorSeleccionado;
 
     protected override async Task OnInitializedAsync()
@@ -198,21 +267,18 @@
     {
         pasoActual = PasoReserva.Cargando;
 
-        // 1. Buscamos el negocio por el Slug de la URL (ej: /barberia-ivan)
         negocio = await _negocioClient.GetPublicBySlug(NegocioSlug);
 
         if (negocio == null)
         {
-            Nav.NavigateTo("/404"); // O una página de "Negocio no encontrado"
+            Nav.NavigateTo("/404");
             return;
         }
 
-        // 2. Traemos las sedes públicas de este negocio específico
         sedesDisponibles = await _sedeService.GetPublicByNegocio(negocio.Id);
 
         if (sedesDisponibles.Count == 1)
         {
-            // Si solo hay una sucursal, la elegimos de una y pasamos al staff
             SeleccionarSede(sedesDisponibles.First());
         }
         else if (sedesDisponibles.Count > 1)
@@ -221,7 +287,6 @@
         }
         else
         {
-            // Caso borde: Negocio sin sedes cargadas
             pasoActual = PasoReserva.SeleccionarSede;
         }
 
@@ -234,11 +299,30 @@
         pasoActual = PasoReserva.Cargando;
         StateHasChanged();
 
-        // 3. Llamada al nuevo endpoint público de prestadores
-        prestadoresDeSede = await _prestadorService.GetPublicBySede(sede.Id);
+        // 🎯 NUEVO: Cargamos servicios y prestadores en paralelo para ganar velocidad
+        var taskServicios = _servicioClient.GetServiciosPublicosPorSede(sede.Id);
+        var taskPrestadores = _prestadorService.GetPublicBySede(sede.Id);
+
+        await Task.WhenAll(taskServicios, taskPrestadores);
+
+        serviciosDeSede = taskServicios.Result ?? new();
+        prestadoresDeSede = taskPrestadores.Result ?? new();
+
+        pasoActual = PasoReserva.SeleccionarServicio;
+        StateHasChanged();
+    }
+
+    // 🎯 NUEVO: Método para procesar la selección del servicio
+    private void SeleccionarServicio(ServicioPublicoDto servicio)
+    {
+        servicioSeleccionado = servicio;
+
+        // Filtramos los prestadores que tienen este servicio en sus habilidades
+        prestadoresFiltrados = prestadoresDeSede
+            .Where(p => p.Servicios != null && p.Servicios.Any(s => s.Id == servicio.Id))
+            .ToList();
 
         pasoActual = PasoReserva.SeleccionarPrestador;
-        StateHasChanged();
     }
 
     private async Task SeleccionarPrestador(PrestadorReadDto? prestador)
@@ -250,6 +334,7 @@
 
     // Navegación hacia atrás
     private void VolverASedes() => pasoActual = PasoReserva.SeleccionarSede;
+    private void VolverAServicios() => pasoActual = PasoReserva.SeleccionarServicio; // 🎯 NUEVO
     private void VolverAPrestadores() => pasoActual = PasoReserva.SeleccionarPrestador;
 
     private string ObtenerTextoPaso()
@@ -257,8 +342,9 @@
         return pasoActual switch
         {
             PasoReserva.SeleccionarSede => "1. Elegí la sucursal",
-            PasoReserva.SeleccionarPrestador => "2. Elegí tu profesional",
-            PasoReserva.SeleccionarTurno => "3. Seleccioná día y hora",
+            PasoReserva.SeleccionarServicio => "2. ¿Qué te querés hacer?", // 🎯 NUEVO
+            PasoReserva.SeleccionarPrestador => "3. Elegí tu profesional",
+            PasoReserva.SeleccionarTurno => "4. Seleccioná día y hora",
             _ => "Preparando agenda..."
         };
     }
@@ -269,20 +355,19 @@
         slots.Clear();
         horaSeleccionada = null;
 
+        // Idealmente aquí el endpoint de GetDisponibilidad debería aceptar el `servicioSeleccionado.Id`
+        // para buscar huecos que duren lo que dura el servicio (Ej: 45 min).
+        // Por ahora mantenemos la lógica base.
+
         if (prestadorSeleccionado != null)
         {
-            // Eligió a alguien específico
             var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada);
             slots = res?.HorariosLibres ?? new();
         }
         else
         {
-            // Eligió "Cualquiera".
-            // Para el MVP: Consultamos la disponibilidad del primer prestador de la sede.
-            // Idealmente, acá llamarías a un nuevo endpoint en tu API: TurnoService.GetDisponibilidadSede(sedeSeleccionada.Id, fechaSeleccionada)
-            // que te devuelva la unión de todos los horarios libres de todos los peluqueros de esa sede.
-
-            var primerPrestador = prestadoresDeSede.FirstOrDefault();
+            // Eligió Cualquiera. Evaluamos sobre la lista filtrada de los que saben hacer el servicio
+            var primerPrestador = prestadoresFiltrados.FirstOrDefault();
             if (primerPrestador != null)
             {
                 var res = await TurnoService.GetDisponibilidad(primerPrestador.Id, fechaSeleccionada);
@@ -303,42 +388,33 @@
         enviandoReserva = true;
         try
         {
-            // Lógica de asignación "Cualquiera"
             Guid idPrestadorFinal;
             string nombrePrestadorReserva;
 
             if (prestadorSeleccionado != null)
             {
-                // Eligió alguien puntual
                 idPrestadorFinal = prestadorSeleccionado.Id;
                 nombrePrestadorReserva = prestadorSeleccionado.Nombre;
             }
             else
             {
-                // Eligió "Cualquiera".
-                // Asignamos al primero de la sede (MVP).
-                // TODO: En el futuro, podés elegir uno al azar:
-                // var random = new Random();
-                // var asignado = prestadoresDeSede[random.Next(prestadoresDeSede.Count)];
-
-                var asignado = prestadoresDeSede.First();
+                var asignado = prestadoresFiltrados.First();
                 idPrestadorFinal = asignado.Id;
                 nombrePrestadorReserva = asignado.Nombre;
             }
+
             var h = TimeOnly.Parse(horaSeleccionada!);
             var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
-
-            // CLAVE: Le decimos a .NET "esta es una fecha pura, sin zona horaria asignada (Unspecified)"
-            // No intentamos convertir a UTC acá. Mandamos el dato crudo.
             var fechaCruda = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Unspecified);
 
             var dtoParaEnviar = new TurnoCreateDto
             {
                 PrestadorId = idPrestadorFinal,
+                ServicioId = servicioSeleccionado!.Id, 
                 NombreClienteInvitado = nuevoTurno.NombreClienteInvitado,
                 TelefonoClienteInvitado = nuevoTurno.TelefonoClienteInvitado,
                 EmailClienteInvitado = nuevoTurno.EmailClienteInvitado,
-                Inicio = fechaCruda // ¡Mandamos las 09:00 intactas!
+                Inicio = fechaCruda
             };
 
             var resultado = await TurnoService.Reservar(dtoParaEnviar);
@@ -348,8 +424,11 @@
                 var fechaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy"));
                 var horaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm"));
                 var nombreEnc = Uri.EscapeDataString(nombrePrestadorReserva);
+                var direccionEnc = Uri.EscapeDataString(sedeSeleccionada?.Direccion ?? "");
 
-                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion=30");
+                var duracionReal = servicioSeleccionado?.DuracionMinutos ?? 30;
+
+                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}");
             }
         }
         catch (Exception ex)
@@ -361,5 +440,4 @@
             enviandoReserva = false;
         }
     }
-
 }

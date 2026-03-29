@@ -5,9 +5,10 @@
 @attribute [Authorize]
 @inject PrestadorClient PrestadorService
 @inject SedeClient SedeService
+@inject ServicioClient ServicioService
 @inject NavigationManager Nav
 
-<div class="max-w-xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+<div class="max-w-xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-20">
     <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
         <span class="material-symbols-outlined text-sm">arrow_back</span> Volver al equipo
     </button>
@@ -38,12 +39,61 @@
             </div>
 
             <div class="flex flex-col gap-2">
-                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Duración del Turno (Minutos)</label>
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Duración Base del Turno (Minutos)</label>
                 <InputNumber @bind-Value="nuevo.DuracionTurnoMinutos" class="input-zenda" />
+                <span class="text-xs text-on-surface-variant px-1">*Se usará si el servicio no tiene duración específica.</span>
             </div>
 
-            <button type="submit" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all mt-4">
-                Crear Perfil Profesional
+            <hr class="border-surface-container-high my-6" />
+
+            <div>
+                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-4 block">Servicios que realiza (Habilidades)</label>
+
+                @if (catalogo == null)
+                {
+                    <p class="text-sm text-on-surface-variant">Cargando catálogo...</p>
+                }
+                else if (!catalogo.Any())
+                {
+                    <div class="bg-yellow-50 text-yellow-800 p-4 rounded-2xl text-sm">
+                        No tenés servicios creados. Creá servicios en tu catálogo primero.
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        @foreach (var categoria in catalogo)
+                        {
+                            <div class="bg-surface-container-low rounded-2xl p-4">
+                                <h4 class="font-bold text-primary mb-3">@categoria.Nombre</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    @foreach (var servicio in categoria.Servicios)
+                                    {
+                                        <label class="flex items-center gap-3 cursor-pointer group">
+                                            <input type="checkbox"
+                                                   checked="@nuevo.ServiciosIds.Contains(servicio.Id)"
+                                                   @onchange="@(e => ToggleServicio(servicio.Id, e.Value))"
+                                                   class="w-5 h-5 rounded-lg border-2 border-primary/30 text-primary focus:ring-primary focus:ring-offset-0 bg-white transition-all cursor-pointer" />
+                                            <span class="text-sm font-body text-on-surface group-hover:text-primary transition-colors">@servicio.Nombre</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <button type="submit" disabled="@guardando" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all mt-4 flex justify-center items-center gap-2">
+                @if (guardando)
+                {
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                }
+                else
+                {
+
+                    <span>Crear Perfil Profesional</span>
+                }
             </button>
         </EditForm>
     </div>
@@ -64,21 +114,55 @@
             border-color: #166534;
             background-color: white;
         }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 10px;
+    }
 </style>
 
 @code {
-    private PrestadorCreateDto nuevo = new() { DuracionTurnoMinutos = 30 };
+    private PrestadorCreateDto nuevo = new() { DuracionTurnoMinutos = 30, ServiciosIds = new() };
     private List<SedeReadDto>? sedes;
+    private List<CategoriaServicioReadDto>? catalogo;
+    private bool guardando = false;
 
     protected override async Task OnInitializedAsync()
     {
         sedes = await SedeService.GetAll();
         if (sedes?.Count == 1) nuevo.SedeId = sedes[0].Id;
+
+        catalogo = await ServicioService.GetCatalogo();
+    }
+
+    private void ToggleServicio(Guid servicioId, object? checkedValue)
+    {
+        bool isChecked = (bool)(checkedValue ?? false);
+
+        if (isChecked && !nuevo.ServiciosIds.Contains(servicioId))
+        {
+            nuevo.ServiciosIds.Add(servicioId);
+        }
+        else if (!isChecked && nuevo.ServiciosIds.Contains(servicioId))
+        {
+            nuevo.ServiciosIds.Remove(servicioId);
+        }
     }
 
     private async Task HandleSubmit()
     {
+        guardando = true;
         var res = await PrestadorService.Create(nuevo);
+        guardando = false;
+
         if (res.Success) Nav.NavigateTo("prestadores");
     }
 }
