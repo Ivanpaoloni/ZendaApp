@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Application.Services;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
@@ -14,7 +15,7 @@ public class TurnosController : ControllerBase
     {
         _turnosService = turnosService;
     }
-    
+    [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
     {
@@ -27,7 +28,7 @@ public class TurnosController : ControllerBase
     {
         return Ok(await _turnosService.GetByPrestadorAsync(prestadorId));
     }
-
+    [AllowAnonymous]
     [HttpGet("disponibilidad/{prestadorId}")]
     public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad(Guid prestadorId, [FromQuery] DateTime fecha)
     {
@@ -40,6 +41,7 @@ public class TurnosController : ControllerBase
         var turnos = await _turnosService.GetTurnosByFechaAsync(fecha);
         return Ok(turnos);
     }
+    [Authorize]
     [HttpPatch("{id}/estado")]
     public async Task<IActionResult> UpdateEstado(Guid id, [FromBody] EstadoTurnoEnum nuevoEstado)
     {

@@ -34,13 +34,28 @@
                 transform: translateX(100%);
             }
         }
+        #blazor-error-ui {
+            display: none; /* Escondido por defecto */
+        }
+
+        /* Blazor le pone esta clase cuando hay un error real */
+        #blazor-error-ui.show {
+            display: flex;
+        }
     </style>
 
 
-    <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">🗙</span>
+    <div id="blazor-error-ui" class="hidden fixed bottom-4 left-4 right-4 z-[100] p-4 bg-primary text-white rounded-2xl shadow-2xl flex items-center justify-between animate-in slide-in-from-bottom-10">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined">warning</span>
+            <span class="font-body text-sm font-semibold">Ups! Algo salió mal.</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <a href="." class="reload bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-xs font-bold transition-all">Recargar</a>
+            <button class="dismiss text-white/50 hover:text-white">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+        </div>
     </div>
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
