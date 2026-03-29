@@ -209,20 +209,36 @@ public class TurnosService : ITurnosService
 
     public async Task<IEnumerable<TurnoReadDto>> GetTurnosByFechaAsync(DateTime fecha)
     {
-        // 1. Extraemos solo la fecha (00:00:00) y la forzamos explícitamente a UTC
-        var fechaInicio = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Utc);
-        var fechaFin = fechaInicio.AddDays(1);
+        // 1. Obtenemos el ID del negocio actual (del usuario logueado)
+        var negocioId = _tenantService.GetCurrentTenantId();
 
+        // 2. Buscamos la Sede de este negocio para saber su Zona Horaria real.
+        // (Si en el futuro agregás un filtro por sucursal en el Dashboard, buscarías esa Sede específica)
+        var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+
+        // Fallback de seguridad por si la sede se borró o algo falló
+        var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
+
+        // 3. Establecemos el inicio y fin del DÍA LOCAL de esa sede específica
+        var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
+        var finDiaLocal = inicioDiaLocal.AddDays(1);
+
+        // 4. Convertimos a la ventana UTC exacta para la base de datos
+        var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
+        var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
+
+        // 5. Buscamos los turnos
+        // Nota: Como este endpoint es del Dashboard (requiere auth), 
+        // NO usamos IgnoreQueryFilters() para que Entity Framework aplique la seguridad de tu Tenant automáticamente.
         var turnosDb = await _context.Turnos
             .AsNoTracking()
             .Include(t => t.Prestador)
-            .Where(t => t.FechaHoraInicioUtc >= fechaInicio && t.FechaHoraInicioUtc < fechaFin)
+            .Where(t => t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc)
             .OrderBy(t => t.FechaHoraInicioUtc)
             .ToListAsync();
 
-        var turnosDto = _mapper.Map<List<TurnoReadDto>>(turnosDb);
-
-        return turnosDto;
+        return _mapper.Map<List<TurnoReadDto>>(turnosDb);
     }
 
     public async Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado)
