@@ -10,4 +10,8 @@ public interface IServicioService
     // Agregamos este que nos va a servir para la reserva pública más adelante
     Task<IEnumerable<ServicioReadDto>> GetServiciosPublicosBySedeAsync(Guid sedeId);
     Task<IEnumerable<ServicioPublicoDto>> GetServiciosPublicosPorSedeAsync(Guid sedeId);
+    Task<bool> DeleteServicioAsync(Guid id);
+    Task<bool> UpdateServicioAsync(Guid id, ServicioCreateDto dto);
+    Task<bool> UpdateCategoriaAsync(Guid id, CategoriaServicioCreateDto dto);
+    Task<bool> DeleteCategoriaAsync(Guid id);
 }

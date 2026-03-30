@@ -12,7 +12,7 @@
             <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Catálogo de Servicios</h1>
             <p class="text-on-surface-variant text-sm">Definí qué hacés, cuánto dura y qué valor tiene.</p>
         </div>
-        <button @onclick="AbrirModalCategoria"
+        <button @onclick="() => AbrirModalCategoria()"
                 class="px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
             <span class="material-symbols-outlined">add_circle</span>
             Nueva Categoría
@@ -38,7 +38,7 @@
             <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-4">inventory_2</span>
             <h3 class="font-headline font-bold text-lg text-primary">Tu catálogo está vacío</h3>
             <p class="text-sm text-on-surface-variant mb-6 mt-1">Comenzá creando tu primera categoría (ej: Barbería, Estética).</p>
-            <button @onclick="AbrirModalCategoria" class="text-primary font-bold hover:underline">Crear mi primera categoría</button>
+            <button @onclick="() => AbrirModalCategoria()" class="text-primary font-bold hover:underline">Crear mi primera categoría</button>
         </div>
     }
     else
@@ -48,12 +48,21 @@
             {
                 <div class="bg-white rounded-[2rem] editorial-shadow overflow-hidden border border-surface-container-high h-fit">
 
-                    <div class="p-6 bg-surface-container-low border-b border-surface-container-high flex justify-between items-center">
+                    <div class="p-6 bg-surface-container-low border-b border-surface-container-high flex justify-between items-center group/cat">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                                 <span class="material-symbols-outlined">folder</span>
                             </div>
                             <h2 class="font-headline font-bold text-xl text-primary">@categoria.Nombre</h2>
+
+                            <div class="opacity-0 group-hover/cat:opacity-100 transition-opacity flex gap-1 ml-2">
+                                <button @onclick="() => AbrirModalCategoria(categoria)" class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
+                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button @onclick="() => EliminarCategoria(categoria.Id)" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-all" title="Eliminar">
+                                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                            </div>
                         </div>
                         <button @onclick="() => AbrirModalServicio(categoria.Id)"
                                 class="text-xs font-bold text-primary hover:bg-primary/10 px-3 py-2 rounded-xl transition-colors flex items-center gap-1">
@@ -70,20 +79,34 @@
                         @foreach (var servicio in categoria.Servicios)
                         {
                             <div class="p-4 hover:bg-surface-container-low rounded-2xl transition-colors flex items-center justify-between group cursor-pointer border-b border-surface-container-high last:border-0">
+
+                                @* Lado Izquierdo: Nombre y Duración *@
                                 <div>
                                     <h3 class="font-bold text-primary text-sm">@servicio.Nombre</h3>
                                     <p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
                                         <span class="material-symbols-outlined text-[14px]">schedule</span> @servicio.DuracionMinutos min
                                     </p>
                                 </div>
+
+                                @* Lado Derecho: Precio y Botones de Acción *@
                                 <div class="flex items-center gap-4">
                                     <span class="font-headline font-black text-primary">@servicio.Precio.ToString("C0")</span>
+
                                     <div class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                        <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
+                                        @* Botón Editar *@
+                                        <button @onclick="() => AbrirModalServicio(categoria.Id, servicio)"
+                                                class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
                                             <span class="material-symbols-outlined text-[18px]">edit</span>
+                                        </button>
+
+                                        @* Botón Eliminar *@
+                                        <button @onclick="() => EliminarServicio(categoria.Id, servicio.Id)"
+                                                class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-all" title="Eliminar">
+                                            <span class="material-symbols-outlined text-[18px]">delete</span>
                                         </button>
                                     </div>
                                 </div>
+
                             </div>
                         }
                     </div>
@@ -224,14 +247,26 @@
     // ==========================================
     // LÓGICA DE CATEGORÍAS
     // ==========================================
-    private void AbrirModalCategoria()
+    // 🎯 NUEVA VARIABLE
+    private Guid? categoriaEnEdicionId = null;
+
+    // 🎯 ACTUALIZADO: Maneja la apertura para Crear o Editar
+    private void AbrirModalCategoria(CategoriaServicioReadDto? catEditar = null)
     {
-        nuevaCategoria = new CategoriaServicioCreateDto();
+        if (catEditar == null)
+        {
+            categoriaEnEdicionId = null;
+            nuevaCategoria = new CategoriaServicioCreateDto();
+        }
+        else
+        {
+            categoriaEnEdicionId = catEditar.Id;
+            nuevaCategoria = new CategoriaServicioCreateDto { Nombre = catEditar.Nombre };
+        }
         mostrarModalCategoria = true;
     }
 
-    private void CerrarModalCategoria() => mostrarModalCategoria = false;
-
+    // 🎯 ACTUALIZADO: Guarda la nueva o actualiza la existente
     private async Task GuardarCategoria()
     {
         if (string.IsNullOrWhiteSpace(nuevaCategoria.Nombre)) return;
@@ -239,18 +274,30 @@
         try
         {
             guardando = true;
-            var catCreada = await _servicioClient.CreateCategoria(nuevaCategoria);
 
-            if (catCreada != null)
+            if (categoriaEnEdicionId == null)
             {
-                // Actualizamos la lista local en lugar de volver a llamar a la API
-                categorias.Add(catCreada);
-                CerrarModalCategoria();
+                var catCreada = await _servicioClient.CreateCategoria(nuevaCategoria);
+                if (catCreada != null)
+                {
+                    categorias.Add(catCreada);
+                    CerrarModalCategoria();
+                }
+            }
+            else
+            {
+                var exito = await _servicioClient.UpdateCategoria(categoriaEnEdicionId.Value, nuevaCategoria);
+                if (exito)
+                {
+                    var catLocal = categorias.FirstOrDefault(c => c.Id == categoriaEnEdicionId.Value);
+                    if (catLocal != null) catLocal.Nombre = nuevaCategoria.Nombre;
+                    CerrarModalCategoria();
+                }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error al crear categoría: {ex.Message}");
+            Console.WriteLine($"Error al guardar categoría: {ex.Message}");
         }
         finally
         {
@@ -258,9 +305,31 @@
         }
     }
 
+    // 🎯 NUEVO: Lógica de eliminación con manejo de errores visual
+    private async Task EliminarCategoria(Guid id)
+    {
+        try
+        {
+            var exito = await _servicioClient.DeleteCategoria(id);
+            if (exito)
+            {
+                categorias.RemoveAll(c => c.Id == id);
+                mensajeError = null; // Limpiamos errores previos
+            }
+        }
+        catch (Exception ex)
+        {
+            // Atrapamos la excepción (ej: la trava de seguridad) y la mostramos en la alerta roja superior
+            mensajeError = ex.Message;
+        }
+    }
+
+    private void CerrarModalCategoria() => mostrarModalCategoria = false;
+
     // ==========================================
     // LÓGICA DE SERVICIOS
     // ==========================================
+    private Guid? servicioEnEdicionId = null;
     private void AbrirModalServicio(Guid categoriaId)
     {
         nuevoServicio = new ServicioCreateDto
@@ -269,6 +338,37 @@
             DuracionMinutos = 30,
             Precio = 0
         };
+        mensajeErrorModal = null;
+        mostrarModalServicio = true;
+    }
+
+
+    private void AbrirModalServicio(Guid categoriaId, ServicioReadDto? servicioEditar = null)
+    {
+        if (servicioEditar == null)
+        {
+            // MODO CREAR NUEVO
+            servicioEnEdicionId = null;
+            nuevoServicio = new ServicioCreateDto
+            {
+                CategoriaId = categoriaId,
+                DuracionMinutos = 30,
+                Precio = 0
+            };
+        }
+        else
+        {
+            // MODO EDITAR
+            servicioEnEdicionId = servicioEditar.Id;
+            nuevoServicio = new ServicioCreateDto
+            {
+                CategoriaId = categoriaId,
+                Nombre = servicioEditar.Nombre,
+                DuracionMinutos = servicioEditar.DuracionMinutos,
+                Precio = servicioEditar.Precio
+            };
+        }
+
         mensajeErrorModal = null;
         mostrarModalServicio = true;
     }
@@ -288,25 +388,77 @@
             guardando = true;
             mensajeErrorModal = null;
 
-            var servCreado = await _servicioClient.CreateServicio(nuevoServicio);
-
-            if (servCreado != null)
+            if (servicioEnEdicionId == null)
             {
-                // Buscamos la categoría en memoria y le agregamos el servicio nuevo
-                var categoriaPadre = categorias.FirstOrDefault(c => c.Id == servCreado.CategoriaId);
-                categoriaPadre?.Servicios.Add(servCreado);
+                // MODO CREAR
+                var servCreado = await _servicioClient.CreateServicio(nuevoServicio);
+                if (servCreado != null)
+                {
+                    var categoriaPadre = categorias.FirstOrDefault(c => c.Id == servCreado.CategoriaId);
+                    categoriaPadre?.Servicios.Add(servCreado);
+                    CerrarModalServicio();
+                }
+            }
+            else
+            {
+                // MODO ACTUALIZAR
+                var exito = await _servicioClient.UpdateServicio(servicioEnEdicionId.Value, nuevoServicio);
+                if (exito)
+                {
+                    // Actualizamos la UI localmente sin pegarle de nuevo a la base de datos
+                    var categoriaPadre = categorias.FirstOrDefault(c => c.Id == nuevoServicio.CategoriaId);
+                    var servicioLocal = categoriaPadre?.Servicios.FirstOrDefault(s => s.Id == servicioEnEdicionId.Value);
 
-                CerrarModalServicio();
+                    if (servicioLocal != null)
+                    {
+                        servicioLocal.Nombre = nuevoServicio.Nombre;
+                        servicioLocal.DuracionMinutos = nuevoServicio.DuracionMinutos;
+                        servicioLocal.Precio = nuevoServicio.Precio;
+                    }
+                    CerrarModalServicio();
+                }
+                else
+                {
+                    mensajeErrorModal = "No se pudo actualizar el servicio.";
+                }
             }
         }
         catch (Exception ex)
         {
             mensajeErrorModal = "Ocurrió un error al guardar. Intentá nuevamente.";
-            Console.WriteLine($"Error al crear servicio: {ex.Message}");
+            Console.WriteLine($"Error al guardar servicio: {ex.Message}");
         }
         finally
         {
             guardando = false;
         }
     }
+
+    private async Task EliminarServicio(Guid categoriaId, Guid servicioId)
+    {
+        // En una V2 podrías agregar un modal de "Estás seguro?".
+        // Por ahora lo borramos directo al hacer clic en el tacho.
+        try
+        {
+            var exito = await _servicioClient.DeleteServicio(servicioId);
+            if (exito)
+            {
+                // Lo removemos visualmente de la lista al instante
+                var categoria = categorias.FirstOrDefault(c => c.Id == categoriaId);
+                if (categoria != null)
+                {
+                    var servicio = categoria.Servicios.FirstOrDefault(s => s.Id == servicioId);
+                    if (servicio != null)
+                    {
+                        categoria.Servicios.Remove(servicio);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al eliminar servicio: {ex.Message}");
+        }
+    }
+
 }

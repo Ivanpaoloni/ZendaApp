@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 using static System.Net.WebRequestMethods;
 
@@ -37,5 +38,35 @@ public class ServicioClient : BaseClient
     {
         var response = await _http.GetFromJsonAsync<List<ServicioPublicoDto>>($"api/servicios/publico/sede/{sedeId}");
         return response ?? new List<ServicioPublicoDto>();
+    }
+    public async Task<bool> UpdateServicio(Guid id, ServicioCreateDto dto)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/servicios/{id}", dto);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteServicio(Guid id)
+    {
+        var response = await _http.DeleteAsync($"/api/servicios/{id}");
+        return response.IsSuccessStatusCode;
+    }
+    public async Task<bool> UpdateCategoria(Guid id, CategoriaServicioCreateDto dto)
+    {
+        var response = await _http.PutAsJsonAsync($"/api/servicios/categorias/{id}", dto);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteCategoria(Guid id)
+    {
+        var response = await _http.DeleteAsync($"/api/servicios/categorias/{id}");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Si devuelve BadRequest, leemos el mensaje (ej: "No podés eliminar...")
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception(error);
+        }
+
+        return true;
     }
 }

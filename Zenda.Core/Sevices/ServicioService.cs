@@ -106,4 +106,60 @@ public class ServicioService : IServicioService
 
         return servicios;
     }
+
+    public async Task<bool> UpdateServicioAsync(Guid id, ServicioCreateDto dto)
+    {
+        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == id);
+
+        if (servicio == null) return false;
+
+        servicio.Nombre = dto.Nombre;
+        servicio.DuracionMinutos = dto.DuracionMinutos;
+        servicio.Precio = dto.Precio;
+        // Opcional: servicio.CategoriaId = dto.CategoriaId; si querés dejar que lo muevan de categoría
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteServicioAsync(Guid id)
+    {
+        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == id);
+
+        if (servicio == null) return false;
+
+        // MEJOR PRÁCTICA: Soft Delete. El servicio desaparece del catálogo, pero los turnos viejos siguen teniendo su registro.
+        servicio.Activo = false;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    public async Task<bool> UpdateCategoriaAsync(Guid id, CategoriaServicioCreateDto dto)
+    {
+        var categoria = await _context.CategoriasServicio.FirstOrDefaultAsync(c => c.Id == id);
+        if (categoria == null) return false;
+
+        categoria.Nombre = dto.Nombre;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> DeleteCategoriaAsync(Guid id)
+    {
+        var categoria = await _context.CategoriasServicio
+            .Include(c => c.Servicios) // Traemos los servicios para revisar
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (categoria == null) return false;
+
+        // 🛡️ TRAVA DE SEGURIDAD: Prevenimos borrar si hay servicios adentro
+        if (categoria.Servicios.Any(s => s.Activo))
+        {
+            throw new InvalidOperationException("No podés eliminar una categoría que tiene servicios activos.");
+        }
+
+        _context.CategoriasServicio.Remove(categoria);
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }
