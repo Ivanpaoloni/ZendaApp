@@ -9,7 +9,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Agenda del Día</h1>
-            <p class="text-on-surface-variant text-sm">Turnos.</p>
+            <p class="text-on-surface-variant text-sm">Gestionando los turnos de <strong>@nombreNegocio</strong></p>
         </div>
 
         <input type="date" @bind="fechaFiltro" @bind:after="CargarTurnos"
@@ -107,13 +107,15 @@
 </div>
 
 @code {
+    [Inject] private NegocioClient _negocioService { get; set; } = default!;
     private DateTime fechaFiltro = DateTime.Today;
     private bool cargando = true;
     private List<TurnoReadDto> turnosDelDia = new();
-
+    private string nombreNegocio = "nuestro negocio"; // Valor por defecto
     protected override async Task OnInitializedAsync()
     {
         await CargarTurnos();
+        await CargarDatosNegocio();
     }
     // Método para manejar los clics de los botones
     private async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
@@ -123,7 +125,7 @@
             var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
             if (exito)
             {
-                await CargarTurnos(); // Recargamos la lista para ver el cambio
+                await CargarTurnos();
             }
         }
         catch (Exception ex)
@@ -132,7 +134,21 @@
             Console.WriteLine($"Error al cambiar estado: {ex.Message}");
         }
     }
-
+    private async Task CargarDatosNegocio()
+    {
+        try
+        {
+            var negocio = await _negocioService.GetPerfilAsync();
+            if (negocio != null)
+            {
+                nombreNegocio = negocio.Nombre;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"No se pudo cargar el nombre del negocio: {ex.Message}");
+        }
+    }
     private async Task CargarTurnos()
     {
         cargando = true;
@@ -154,7 +170,9 @@
 
     private string GenerarWhatsAppUrl(string telefono, string nombre, DateTime inicioLocal)
     {
-        var mensaje = $"¡Hola {nombre}! Te escribo de Zenda para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
-        return $"https://wa.me/{telefono}?text={Uri.EscapeDataString(mensaje)}";
+        var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
+        var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
+
+        return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
     }
 }
