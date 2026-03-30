@@ -152,13 +152,16 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        // 1. Nos suscribimos a los cambios del AppState
+        // 1. Suscripciones a eventos
+        Nav.LocationChanged += OnLocationChanged;
         State.OnChange += StateHasChanged;
 
         try
         {
             // 2. Cargamos el negocio en el AppState si no está cargado aún
-            if (State.CurrentNegocio == null)
+            // Verificamos si está autenticado primero para no pegarle a la API innecesariamente
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true && State.CurrentNegocio == null)
             {
                 State.CurrentNegocio = await NegocioService.GetPerfilAsync();
                 State.NotifyStateChanged(); // Avisamos que la UI debe actualizarse
@@ -167,6 +170,22 @@
         catch
         {
             // Fallback (ej: usuario no logueado, lo maneja el interceptor)
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // 🎯 EL FIX: Si el usuario ya está yendo a la ruta de login, cortamos la ejecución acá.
+        if (e.Location.Contains("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
         }
     }
 
@@ -186,6 +205,8 @@
 
     public void Dispose()
     {
+        // Limpiamos la memoria al destruir el layout
         State.OnChange -= StateHasChanged;
+        Nav.LocationChanged -= OnLocationChanged;
     }
 }

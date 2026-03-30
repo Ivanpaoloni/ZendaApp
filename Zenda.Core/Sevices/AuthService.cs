@@ -135,7 +135,7 @@ public class AuthService : IAuthService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(8), // El token dura 8 horas
+            Expires = DateTime.UtcNow.AddDays(7),
             SigningCredentials = creds
         };
 

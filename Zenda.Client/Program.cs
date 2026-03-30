@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Zenda.Client;
 using Zenda.Client.Auth;
+using Zenda.Client.Handlers;
 using Zenda.Client.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -15,27 +16,32 @@ var apiUrl = builder.Configuration["BaseApiUrl"] ?? builder.HostEnvironment.Base
 
 // 2. Registramos el Interceptor (MessageHandler)
 builder.Services.AddScoped<AuthMessageHandler>();
+builder.Services.AddTransient<UnauthorizedResponseHandler>();
 
-// 3. Registramos los Clientes Tipados
-// IMPORTANTE: Al usar AddHttpClient, ya se registran automáticamente como Scoped.
-// Todos estos van a usar el AuthMessageHandler para mandar el token.
+// 3. Registramos los Clientes Tipados con la CADENA DE DEFENSA COMPLETA
 builder.Services.AddHttpClient<NegocioClient>(client => client.BaseAddress = new Uri(apiUrl))
-    .AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 builder.Services.AddHttpClient<SedeClient>(client => client.BaseAddress = new Uri(apiUrl))
-.AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 builder.Services.AddHttpClient<PrestadorClient>(client => client.BaseAddress = new Uri(apiUrl))
-    .AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 builder.Services.AddHttpClient<TurnoClient>(client => client.BaseAddress = new Uri(apiUrl))
-    .AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 builder.Services.AddHttpClient<DisponibilidadClient>(client => client.BaseAddress = new Uri(apiUrl))
-    .AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 builder.Services.AddHttpClient<ServicioClient>(client => client.BaseAddress = new Uri(apiUrl))
-    .AddHttpMessageHandler<AuthMessageHandler>();
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
 // 4. Configuración de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();
