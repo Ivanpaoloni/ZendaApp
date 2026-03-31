@@ -14,32 +14,34 @@
     <nav class="fixed top-0 w-full z-50 bg-[#f7faf6]/80 backdrop-blur-xl border-b border-surface-container-high">
         <div class="flex justify-between items-center px-6 md:px-8 py-4 max-w-7xl mx-auto">
 
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-3">
-                    @if (!string.IsNullOrEmpty(State.CurrentNegocio?.LogoUrl))
-                    {
-                        <img src="@State.CurrentNegocio.LogoUrl" alt="Logo"
-                             class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-surface-container-high shadow-sm" />
-                    }
-                    else if (State.CurrentNegocio != null)
-                    {
-                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                            @(State.CurrentNegocio.Nombre.FirstOrDefault())
-                        </div>
-                    }
-
-                    <div class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline hidden sm:block">
-                        @(State.CurrentNegocio?.Nombre ?? "Zenda")
+            <div class="flex items-center gap-2 md:gap-3">
+                @* --- LOGO O INICIAL --- *@
+                @if (!string.IsNullOrEmpty(State.CurrentNegocio?.LogoUrl))
+                {
+                    <img src="@State.CurrentNegocio.LogoUrl" alt="Logo"
+                         class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-surface-container-high shadow-sm shrink-0" />
+                }
+                else if (State.CurrentNegocio != null)
+                {
+                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-base md:text-lg shadow-sm shrink-0">
+                        @(State.CurrentNegocio.Nombre.FirstOrDefault())
                     </div>
+                }
+
+                @* --- NOMBRE DEL NEGOCIO (Ahora visible en todo tamaño) --- *@
+                @* Eliminamos 'hidden sm:block' y ajustamos el tamaño de fuente en mobile *@
+                <div class="text-lg md:text-2xl font-bold text-primary tracking-tighter font-headline truncate max-w-[120px] sm:max-w-none">
+                    @(State.CurrentNegocio?.Nombre ?? "Zenda")
                 </div>
+
+                @* Badge opcional (SaaS) *@
                 @if (State.CurrentNegocio != null)
                 {
-                    @* <span class="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
-                        SaaS
-                    </span> *@
+                    <span class="hidden lg:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
+                        Free
+                    </span>
                 }
             </div>
-
             <div class="hidden md:flex items-center gap-8">
                 <NavLink href="" Match="NavLinkMatch.All" class="nav-desktop">Inicio</NavLink>
 
