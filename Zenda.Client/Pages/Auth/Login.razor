@@ -87,7 +87,7 @@
                 ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(result.Token);
 
                 // 3. Redirigimos al inicio o agenda
-                Nav.NavigateTo("/");
+                Nav.NavigateTo("/", forceLoad: true);
             }
             else
             {
