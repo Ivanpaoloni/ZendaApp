@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
@@ -43,5 +44,29 @@ public class DisponibilidadController : ControllerBase
     {
         var resultado = await _service.UpsertAgendaAsync(prestadorId, agenda);
         return resultado ? NoContent() : BadRequest("No se pudo actualizar la agenda.");
+    }
+   
+    [HttpGet("bloqueos/{prestadorId}")]
+    public async Task<ActionResult<IEnumerable<BloqueoReadDto>>> GetBloqueos(Guid prestadorId)
+    {
+        return Ok(await _service.GetBloqueosFuturosAsync(prestadorId));
+    }
+
+    [HttpPost("bloqueos")]
+    public async Task<ActionResult> CreateBloqueo(BloqueoCreateDto dto)
+    {
+        try
+        {
+            var result = await _service.CrearBloqueoAsync(dto);
+            return result ? Ok() : BadRequest(new { message = "Error al guardar." });
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpDelete("bloqueos/{id}")]
+    public async Task<IActionResult> DeleteBloqueo(Guid id)
+    {
+        var success = await _service.EliminarBloqueoAsync(id);
+        return success ? NoContent() : NotFound();
     }
 }

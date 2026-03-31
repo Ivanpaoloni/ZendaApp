@@ -96,10 +96,16 @@ public class TurnosService : ITurnosService
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
+        // 🎯 NUEVO: Traemos los bloqueos que caigan en este día (Comparando en UTC)
+        var bloqueos = await _context.BloqueosAgenda
+            .IgnoreQueryFilters()
+            .Where(b => b.PrestadorId == prestadorId &&
+                        b.InicioUtc < finDiaUtc &&
+                        b.FinUtc > inicioDiaUtc)
+            .ToListAsync();
+
         var horaActualSede = TimeOnly.FromDateTime(fechaHoraActualSede);
         bool esHoy = fecha.Date == fechaActualSede;
-
-        //  MAGIA 2: El intervalo de la grilla (El paso)
         int intervaloGrillaMinutos = 15;
 
         foreach (var rango in configuracion)
@@ -107,29 +113,33 @@ public class TurnosService : ITurnosService
             var inicioSlot = rango.HoraInicio;
             var limiteFin = rango.HoraFin;
 
-            // Mientras el servicio ENCUADRE dentro del horario laboral...
             while (inicioSlot.AddMinutes(duracionServicio) <= limiteFin)
             {
                 var finSlot = inicioSlot.AddMinutes(duracionServicio);
-
                 bool yaPaso = esHoy && inicioSlot <= horaActualSede;
 
-                // Verificamos el solapamiento usando la duración real del servicio
+                // Chequeo de Turnos (Tu código actual)
                 bool estaOcupado = turnosOcupados.Any(t =>
                 {
                     var hInicioOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede));
                     var hFinOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraFinUtc, zonaSede));
-
                     return hInicioOcupado < finSlot && inicioSlot < hFinOcupado;
                 });
 
-                if (!estaOcupado && !yaPaso)
+                // 🎯 2. NUEVO: Chequeo de Bloqueos (Ausencias/Feriados)
+                bool estaBloqueado = bloqueos.Any(b =>
+                {
+                    var hInicioBloqueo = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede));
+                    var hFinBloqueo = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(b.FinUtc, zonaSede));
+                    return hInicioBloqueo < finSlot && inicioSlot < hFinBloqueo;
+                });
+
+                // 🎯 3. NUEVO: Agregamos !estaBloqueado a la condición
+                if (!estaOcupado && !estaBloqueado && !yaPaso)
                 {
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
-                //  MAGIA 3: Avanzamos 15 minutos, sin importar cuánto dure el servicio. 
-                // Esto permite descubrir los "huecos" entre turnos.
                 inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
             }
         }

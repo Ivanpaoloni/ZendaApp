@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Zenda.Infrastructure;
@@ -11,9 +12,11 @@ using Zenda.Infrastructure;
 namespace Zenda.Infrastructure.Migrations
 {
     [DbContext(typeof(ZendaDbContext))]
-    partial class ZendaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331183250_AddBloqueosAgenda")]
+    partial class AddBloqueosAgenda
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -320,10 +323,10 @@ namespace Zenda.Infrastructure.Migrations
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("FinUtc")
+                    b.Property<DateTime>("Fin")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("InicioUtc")
+                    b.Property<DateTime>("Inicio")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDeleted")

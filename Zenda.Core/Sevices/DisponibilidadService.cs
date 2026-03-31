@@ -87,4 +87,73 @@ public class DisponibilidadService : IDisponibilidadService
 
         return await _context.SaveChangesAsync() > 0;
     }
+    
+    public async Task<bool> CrearBloqueoAsync(BloqueoCreateDto dto)
+    {
+        if (dto.FinLocal <= dto.InicioLocal)
+            throw new ArgumentException("El fin debe ser posterior al inicio.");
+
+        // 1. Buscamos la sede para saber su zona horaria y convertir a UTC
+        var prestador = await _context.Prestadores
+            .Include(p => p.Sede)
+            .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
+
+        if (prestador == null || prestador.Sede == null)
+            throw new ArgumentException("Prestador o Sede inválidos.");
+
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
+
+        // Convertimos la hora local que eligió el barbero a UTC para guardar en DB
+        var inicioCrudo = DateTime.SpecifyKind(dto.InicioLocal, DateTimeKind.Unspecified);
+        var finCrudo = DateTime.SpecifyKind(dto.FinLocal, DateTimeKind.Unspecified);
+
+        var inicioUtc = TimeZoneInfo.ConvertTimeToUtc(inicioCrudo, zonaSede);
+        var finUtc = TimeZoneInfo.ConvertTimeToUtc(finCrudo, zonaSede);
+
+        var bloqueo = new BloqueoAgenda
+        {
+            Id = Guid.CreateVersion7(),
+            PrestadorId = dto.PrestadorId,
+            SedeId = dto.SedeId,
+            InicioUtc = inicioUtc,
+            FinUtc = finUtc,
+            Motivo = dto.Motivo
+        };
+
+        _context.BloqueosAgenda.Add(bloqueo);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<IEnumerable<BloqueoReadDto>> GetBloqueosFuturosAsync(Guid prestadorId)
+    {
+        var prestador = await _context.Prestadores.Include(p => p.Sede).FirstOrDefaultAsync(p => p.Id == prestadorId);
+        if (prestador == null) return new List<BloqueoReadDto>();
+
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
+
+        var bloqueos = await _context.BloqueosAgenda
+            .Where(b => b.PrestadorId == prestadorId && b.FinUtc >= DateTime.UtcNow)
+            .OrderBy(b => b.InicioUtc)
+            .ToListAsync();
+
+        return bloqueos.Select(b => new BloqueoReadDto
+        {
+            Id = b.Id,
+            PrestadorId = b.PrestadorId,
+            SedeId = b.SedeId,
+            Motivo = b.Motivo,
+            // Devolvemos en hora local para que el Frontend lo muestre bien
+            InicioLocal = TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede),
+            FinLocal = TimeZoneInfo.ConvertTimeFromUtc(b.FinUtc, zonaSede)
+        });
+    }
+
+    public async Task<bool> EliminarBloqueoAsync(Guid id)
+    {
+        var bloqueo = await _context.BloqueosAgenda.FindAsync(id);
+        if (bloqueo == null) return false;
+
+        _context.BloqueosAgenda.Remove(bloqueo);
+        return await _context.SaveChangesAsync() > 0;
+    }
 }

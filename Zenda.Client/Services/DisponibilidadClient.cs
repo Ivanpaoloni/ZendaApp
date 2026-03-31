@@ -1,20 +1,54 @@
 ﻿using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 
-public class DisponibilidadClient : BaseClient
+namespace Zenda.Client.Services; // Ajustá al namespace de tu proyecto
+
+public class DisponibilidadClient
 {
     private readonly HttpClient _http;
-    public DisponibilidadClient(HttpClient http) => _http = http;
 
-    public async Task<List<DisponibilidadReadDto>> GetByPrestador(Guid prestadorId)
+    public DisponibilidadClient(HttpClient http)
     {
-        return await _http.GetFromJsonAsync<List<DisponibilidadReadDto>>($"api/disponibilidad/prestador/{prestadorId}")
-               ?? new List<DisponibilidadReadDto>();
+        _http = http;
     }
 
-    public async Task<bool> Upsert(Guid prestadorId, List<DisponibilidadCreateDto> agenda)
+    // --- MÉTODOS DE AGENDA SEMANAL (Los que ya tenías) ---
+    
+    public async Task<IEnumerable<DisponibilidadReadDto>?> GetByPrestador(Guid prestadorId)
     {
-        var response = await _http.PostAsJsonAsync($"api/disponibilidad/upsert/{prestadorId}", agenda);
-        return response.IsSuccessStatusCode;
+        return await _http.GetFromJsonAsync<IEnumerable<DisponibilidadReadDto>>($"api/disponibilidad/prestador/{prestadorId}");
+    }
+
+    public async Task<bool> Upsert(Guid prestadorId, IEnumerable<DisponibilidadCreateDto> agenda)
+    {
+        var res = await _http.PostAsJsonAsync($"api/disponibilidad/upsert/{prestadorId}", agenda);
+        return res.IsSuccessStatusCode;
+    }
+
+    // --- NUEVOS MÉTODOS DE BLOQUEOS (Excepciones) ---
+
+    public async Task<List<BloqueoReadDto>> GetBloqueos(Guid prestadorId)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<BloqueoReadDto>>($"api/disponibilidad/bloqueos/{prestadorId}") 
+                   ?? new List<BloqueoReadDto>();
+        }
+        catch
+        {
+            return new List<BloqueoReadDto>();
+        }
+    }
+
+    public async Task<bool> CrearBloqueo(BloqueoCreateDto dto)
+    {
+        var res = await _http.PostAsJsonAsync("api/disponibilidad/bloqueos", dto);
+        return res.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> EliminarBloqueo(Guid id)
+    {
+        var res = await _http.DeleteAsync($"api/disponibilidad/bloqueos/{id}");
+        return res.IsSuccessStatusCode;
     }
 }

@@ -21,6 +21,7 @@ namespace Zenda.Infrastructure
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
         public DbSet<Servicio> Servicios { get; set; }
+        public DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

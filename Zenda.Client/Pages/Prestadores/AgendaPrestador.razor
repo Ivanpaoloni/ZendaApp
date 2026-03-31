@@ -2,85 +2,197 @@
 @using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
 @attribute [Authorize]
-@inject DisponibilidadClient AgendaService
+@inject Zenda.Client.Services.DisponibilidadClient AgendaService
 @inject Zenda.Client.Services.AppState State
 @inject NavigationManager Nav
 
-<div class="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
+<div class="max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    
     <div class="text-center mb-8">
         <h1 class="text-3xl font-bold text-primary tracking-tighter">Horarios de @(State.PrestadorEnEdicion?.Nombre ?? "Profesional")</h1>
-        <p class="text-on-surface-variant text-sm">Definí los bloques de tiempo para reservas online.</p>
+        <p class="text-on-surface-variant text-sm">Gestioná la disponibilidad semanal y ausencias programadas.</p>
     </div>
 
+    @* ========================================== *@
+    @* SECCIÓN 1: AGENDA SEMANAL FIJA             *@
+    @* ========================================== *@
+    <section>
+        <h2 class="text-xl font-bold text-primary mb-3 pl-2">1. Agenda Semanal Base</h2>
+        <div class="bg-white rounded-[2.5rem] border border-surface-container-high editorial-shadow overflow-hidden">
+            @foreach (var dia in dias)
+            {
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-surface-container last:border-0 hover:bg-secondary-container/10 transition-colors gap-4">
+                    <div class="flex items-center gap-4">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" @bind="dia.Activo" class="sr-only peer">
+                            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                        <span class="font-bold text-primary w-24">@dia.Nombre</span>
+                    </div>
 
-    <div class="bg-white rounded-[2.5rem] border border-surface-container-high editorial-shadow overflow-hidden">
-        @foreach (var dia in dias)
-        {
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-surface-container last:border-0 hover:bg-secondary-container/10 transition-colors gap-4">
-
-                @* Lado Izquierdo: Toggle y Nombre del Día *@
-                <div class="flex items-center gap-4">
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" @bind="dia.Activo" class="sr-only peer">
-                        <div class="w-11 h-6 bg-surface-container-highest rounded-full peer
-                                        peer-focus:ring-2 peer-focus:ring-primary/20
-                                        peer-checked:after:translate-x-full peer-checked:after:border-white
-                                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                                        after:bg-white after:border-gray-300 after:border after:rounded-full
-                                        after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+                    @if (dia.Activo)
+                    {
+                        <div class="flex items-center gap-2 animate-in fade-in zoom-in duration-300 ml-[3.75rem] sm:ml-0">
+                            <input type="time" @bind="dia.Inicio" class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
+                            <span class="text-[10px] font-black opacity-20">-</span>
+                            <input type="time" @bind="dia.Fin" class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
                         </div>
-                    </label>
-                    <span class="font-bold text-primary w-24">@dia.Nombre</span>
+                    }
+                    else
+                    {
+                        <span class="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest italic animate-in fade-in duration-500 ml-[3.75rem] sm:ml-0">
+                            Cerrado
+                        </span>
+                    }
                 </div>
+            }
+        </div>
 
-                @if (dia.Activo)
+        <div class="mt-4">
+            <button @onclick="GuardarAgenda" disabled="@isSaving"
+                    class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
+                @if (isSaving)
                 {
-                    <div class="flex items-center gap-2 animate-in fade-in zoom-in duration-300 ml-[3.75rem] sm:ml-0">
-                        <input type="time" @bind="dia.Inicio"
-                               class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
+                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Guardando...</span>
+                }
+                else
+                {
+                    <span>Actualizar Agenda Semanal</span>
+                }
+            </button>
+        </div>
+    </section>
 
-                        <span class="text-[10px] font-black opacity-20">-</span>
+    <hr class="border-surface-container-high my-8" />
 
-                        <input type="time" @bind="dia.Fin"
-                               class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
+    @* ========================================== *@
+    @* SECCIÓN 2: EXCEPCIONES Y BLOQUEOS          *@
+    @* ========================================== *@
+    <section>
+        <h2 class="text-xl font-bold text-primary mb-1 pl-2">2. Ausencias y Días Libres</h2>
+        <p class="text-on-surface-variant text-sm mb-4 pl-2">Bloqueá fechas específicas para que no te reserven turnos (ej: Feriados, Médico).</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            @* FORMULARIO NUEVO BLOQUEO *@
+            <div class="bg-surface-container-low p-6 rounded-[2rem] border border-surface-container-high md:col-span-1 h-fit">
+                <h3 class="font-bold text-sm text-primary mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">event_busy</span> Agregar
+                </h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Fecha</label>
+                        <input type="date" @bind="nuevoBloqueoFecha" min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                    </div>
+                    
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Desde</label>
+                            <input type="time" @bind="nuevoBloqueoInicio" class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Hasta</label>
+                            <input type="time" @bind="nuevoBloqueoFin" class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Motivo (Opcional)</label>
+                        <input type="text" @bind="nuevoBloqueoMotivo" placeholder="Ej: Trámite personal"
+                               class="w-full p-3 bg-white rounded-xl text-sm outline-none border border-surface-container-high focus:border-primary mt-1" />
+                    </div>
+
+                    <button @onclick="CrearBloqueo" disabled="@guardandoBloqueo"
+                            class="w-full py-3 bg-surface-container-highest text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-colors flex justify-center items-center gap-2 text-sm disabled:opacity-50">
+                        @if (guardandoBloqueo)
+                        {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined text-sm">add</span> <span>Bloquear</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @* LISTA DE BLOQUEOS *@
+            <div class="md:col-span-2 space-y-3">
+                @if (cargandoBloqueos)
+                {
+                    <div class="animate-pulse flex space-x-4 p-4 border rounded-2xl border-surface-container bg-white">
+                        <div class="rounded-full bg-surface-container h-10 w-10"></div>
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-2 bg-surface-container rounded w-3/4"></div>
+                            <div class="h-2 bg-surface-container rounded w-1/2"></div>
+                        </div>
+                    </div>
+                }
+                else if (!bloqueos.Any())
+                {
+                    <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center h-full min-h-[150px] flex flex-col justify-center">
+                        <p class="text-sm text-on-surface-variant italic">No hay ausencias programadas en el futuro.</p>
                     </div>
                 }
                 else
                 {
-                    <span class="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest italic animate-in fade-in duration-500 ml-[3.75rem] sm:ml-0">
-                        Cerrado
-                    </span>
+                    @foreach (var bloqueo in bloqueos)
+                    {
+                        <div class="bg-white p-4 rounded-2xl border border-error/20 flex items-center justify-between group hover:border-error transition-colors editorial-shadow animate-in slide-in-from-right-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center shrink-0">
+                                    <span class="material-symbols-outlined text-xl">block</span>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-primary capitalize">@bloqueo.InicioLocal.ToString("dddd, dd MMM yyyy")</p>
+                                    <p class="text-xs text-on-surface-variant font-medium">
+                                        @bloqueo.InicioLocal.ToString("HH:mm") a @bloqueo.FinLocal.ToString("HH:mm")
+                                        @if (!string.IsNullOrEmpty(bloqueo.Motivo))
+                                        {
+                                            <span class="opacity-50 mx-1">|</span> <i>@bloqueo.Motivo</i>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                            <button @onclick="() => EliminarBloqueo(bloqueo.Id)" title="Eliminar bloqueo"
+                                    class="p-2 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>
+                    }
                 }
             </div>
-        }
-    </div>
+        </div>
+    </section>
 
-    <div class="flex flex-col gap-3">
-        <button @onclick="Guardar" disabled="@isSaving"
-                class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
-            @if (isSaving)
-            {
-                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Guardando...</span>
-            }
-            else
-            {
-                <span>Actualizar Agenda Semanal</span>
-            }
-        </button>
-
-        <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors">
-            Cancelar y volver
+    <div class="pt-8 flex justify-center">
+        <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4">
+            Volver a Prestadores
         </button>
     </div>
 </div>
 
 @code {
+    // --- ESTADO AGENDA SEMANAL ---
     private bool isSaving = false;
     private List<DiaVM> dias = new() {
         new(1, "Lunes"), new(2, "Martes"), new(3, "Miércoles"),
         new(4, "Jueves"), new(5, "Viernes"), new(6, "Sábado"), new(0, "Domingo")
     };
+
+    // --- ESTADO BLOQUEOS ---
+    private List<BloqueoReadDto> bloqueos = new();
+    private bool cargandoBloqueos = true;
+    private bool guardandoBloqueo = false;
+    
+    // Formulario Nuevo Bloqueo
+    private DateTime nuevoBloqueoFecha = DateTime.Today;
+    private DateTime nuevoBloqueoInicio = DateTime.Today.AddHours(9);
+    private DateTime nuevoBloqueoFin = DateTime.Today.AddHours(18);
+    private string? nuevoBloqueoMotivo;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,9 +202,18 @@
             return;
         }
 
+        await CargarAgendaSemanal();
+        await CargarBloqueos();
+    }
+
+    // ==========================================
+    // LÓGICA AGENDA SEMANAL
+    // ==========================================
+    private async Task CargarAgendaSemanal()
+    {
         try
         {
-            var actual = await AgendaService.GetByPrestador(State.PrestadorEnEdicion.Id);
+            var actual = await AgendaService.GetByPrestador(State.PrestadorEnEdicion!.Id);
             if (actual != null)
             {
                 foreach (var disp in actual)
@@ -101,7 +222,6 @@
                     if (d != null)
                     {
                         d.Activo = true;
-                        // Parseamos las horas que vienen del string "HH:mm" de la API
                         if (TimeOnly.TryParse(disp.HoraInicio, out var inicio))
                             d.Inicio = DateTime.Today.Add(inicio.ToTimeSpan());
 
@@ -117,7 +237,7 @@
         }
     }
 
-    private async Task Guardar()
+    private async Task GuardarAgenda()
     {
         if (isSaving) return;
         isSaving = true;
@@ -130,14 +250,57 @@
             HoraFin = TimeOnly.FromDateTime(d.Fin)
         }).ToList();
 
-        var exito = await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda);
-
+        // Guardamos la agenda, pero NO navegamos para afuera, así el usuario puede seguir cargando bloqueos si quiere
+        await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda);
         isSaving = false;
-
-        if (exito) Nav.NavigateTo("prestadores");
     }
 
-    // Clase ViewModel con propiedades para asegurar la reactividad de Blazor
+    // ==========================================
+    // LÓGICA BLOQUEOS
+    // ==========================================
+    private async Task CargarBloqueos()
+    {
+        cargandoBloqueos = true;
+        bloqueos = await AgendaService.GetBloqueos(State.PrestadorEnEdicion!.Id);
+        cargandoBloqueos = false;
+        StateHasChanged();
+    }
+
+    private async Task CrearBloqueo()
+    {
+        guardandoBloqueo = true;
+        
+        var dto = new BloqueoCreateDto
+        {
+            PrestadorId = State.PrestadorEnEdicion!.Id,
+            SedeId = State.PrestadorEnEdicion.SedeId, // Asumo que el PrestadorEnEdicion tiene la SedeId
+            InicioLocal = nuevoBloqueoFecha.Date + nuevoBloqueoInicio.TimeOfDay,
+            FinLocal = nuevoBloqueoFecha.Date + nuevoBloqueoFin.TimeOfDay,
+            Motivo = nuevoBloqueoMotivo
+        };
+
+        var exito = await AgendaService.CrearBloqueo(dto);
+        
+        if (exito)
+        {
+            // Reset form
+            nuevoBloqueoMotivo = string.Empty;
+            await CargarBloqueos(); // Recarga la lista
+        }
+        
+        guardandoBloqueo = false;
+    }
+
+    private async Task EliminarBloqueo(Guid id)
+    {
+        var exito = await AgendaService.EliminarBloqueo(id);
+        if (exito)
+        {
+            bloqueos.RemoveAll(b => b.Id == id); // Lo sacamos de la lista sin recargar todo
+        }
+    }
+
+    // ViewModel
     public class DiaVM
     {
         public int Num { get; set; }

@@ -14,6 +14,7 @@ public interface IZendaDbContext
     DatabaseFacade Database { get; }
     DbSet<CategoriaServicio> CategoriasServicio { get; set; }
     DbSet<Servicio> Servicios { get; set; }
+    DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     // Agregamos FindAsync para que el Service lo use sin depender de la implementación
