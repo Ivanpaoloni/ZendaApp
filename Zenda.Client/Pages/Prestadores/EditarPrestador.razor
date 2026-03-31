@@ -9,14 +9,12 @@
 @inject NavigationManager Nav
 
 <div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-    <div class="flex items-center justify-between">
-        <h2 class="text-3xl font-bold text-primary tracking-tighter">Editar Profesional</h2>
-        <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-on-surface-variant hover:text-primary transition-colors">
-            <span class="material-symbols-outlined">close</span>
-        </button>
-    </div>
+    <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
+        <span class="material-symbols-outlined text-sm">arrow_back</span> Volver al equipo
+    </button>
 
     <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
+        <h2 class="text-3xl font-bold text-primary tracking-tighter mb-8 text-center">Editar Profesional</h2>
         @if (model == null)
         {
             <div class="flex justify-center py-10">

@@ -203,7 +203,7 @@
 
         if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
         {
-            Nav.NavigateTo("/login");
+            Nav.NavigateTo("/", forceLoad: true);
         }
     }
 
@@ -212,13 +212,13 @@
         await LocalStorage.RemoveItemAsync("authToken");
         State.Clear();
 
-        // Ahora AuthStateProvider sí existe
         if (AuthStateProvider is CustomAuthStateProvider customProvider)
         {
             customProvider.NotifyUserLogout();
         }
 
-        Nav.NavigateTo("/login");
+        // 🎯 ACÁ ESTÁ EL FIX: Le decimos a Blazor "Navegá al login y RECARGÁ la pestaña"
+        Nav.NavigateTo("/login", forceLoad: true);
     }
 
     public void Dispose()

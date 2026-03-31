@@ -24,7 +24,8 @@ public partial class Home : ComponentBase
     // --- ESTADOS DEL DASHBOARD ---
     protected int sedesContador = 0;
     protected int serviciosContador = 0;
-    protected int equipoActivo = 0;
+    protected int totalPrestadores = 0; // Sirve para el Onboarding
+    protected int equipoActivoHoy = 0;  // Sirve para el Widget del día
     protected int turnosHoy = 0;
     protected int completadosHoy = 0;
     protected decimal ingresosProyectadosHoy = 0;
@@ -71,18 +72,22 @@ public partial class Home : ComponentBase
         {
             var hoy = DateTime.Today;
 
-            // Llamadas a la API
             var sedes = await _sedeService.GetAll();
             var prestadores = await _prestadorClient.GetAll();
             var categorias = await _servicioClient.GetCatalogo();
             var bloqueos = await _disponibilidadService.GetBloqueosDeHoy() ?? new();
-            // Contadores para el Onboarding
-            sedesContador = sedes?.Count ?? 0;
-            equipoActivo = prestadores?.Count ?? 0;
-            serviciosContador = categorias?.SelectMany(c => c.Servicios).Count() ?? 0;
-            ausenciasHoy = bloqueos;
 
-            if (equipoActivo > 0)
+            ausenciasHoy = bloqueos;
+            sedesContador = sedes?.Count ?? 0;
+            serviciosContador = categorias?.SelectMany(c => c.Servicios).Count() ?? 0;
+
+            totalPrestadores = prestadores?.Count ?? 0;
+
+            var profesionalesAusentes = ausenciasHoy.Select(a => a.PrestadorId).Distinct().Count();
+            equipoActivoHoy = totalPrestadores - profesionalesAusentes;
+            if (equipoActivoHoy < 0) equipoActivoHoy = 0;
+
+            if (totalPrestadores > 0)
             {
                 var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
 

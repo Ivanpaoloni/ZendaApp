@@ -94,71 +94,70 @@
         }
     </div>
 
-    @* Modal de Formulario (Crear/Editar) *@
-    @if (mostrarModalSede)
-    {
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div class="bg-white rounded-[2rem] p-8 max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300">
-                <h3 class="font-headline font-bold text-xl text-primary mb-4">@(sedeEnEdicionId == null ? "Nueva Sede" : "Editar Sede")</h3>
-
-                <EditForm Model="nuevaSede" OnValidSubmit="GuardarSede">
-                    <DataAnnotationsValidator />
-
-                    <div class="space-y-4">
-                        <div class="flex flex-col gap-2">
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Nombre de la Sede</label>
-                            <InputText @bind-Value="nuevaSede.Nombre" placeholder="Ej: Sucursal Centro"
-                                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                            <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
-                        </div>
-
-                        <div class="flex flex-col gap-2">
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Dirección Exacta</label>
-                            <InputText @bind-Value="nuevaSede.Direccion" placeholder="Ej: Av. Corrientes 1234, CABA"
-                                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                            <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
-                        </div>
-
-                        <div class="flex flex-col gap-2">
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Zona Horaria del Local</label>
-                            <InputSelect @bind-Value="nuevaSede.ZonaHorariaId"
-                                         class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary appearance-none cursor-pointer">
-                                @foreach (var tz in zonasHorarias)
-                                {
-                                    <option value="@tz.Id">@tz.DisplayName</option>
-                                }
-                            </InputSelect>
-                            <ValidationMessage For="@(() => nuevaSede.ZonaHorariaId)" class="text-error text-[10px] font-bold px-1" />
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(mensajeErrorModal))
-                    {
-                        <p class="text-error text-xs mt-4 font-bold text-center">@mensajeErrorModal</p>
-                    }
-
-                    <div class="flex gap-3 mt-8">
-                        <button type="button" @onclick="CerrarModalSede" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
-                        <button type="submit" disabled="@isSubmitting"
-                                class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
-                            @if (isSubmitting)
-                            {
-                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            }
-                            else
-                            {
-                                <span>Guardar</span>
-                            }
-                        </button>
-                    </div>
-                </EditForm>
-            </div>
-        </div>
-    }
 
 </div>
+@* Modal de Formulario (Crear/Editar) *@
+@if (mostrarModalSede)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2rem] p-8 max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300">
+            <h3 class="font-headline font-bold text-xl text-primary mb-4">@(sedeEnEdicionId == null ? "Nueva Sede" : "Editar Sede")</h3>
 
-@* Dialogs reutilizables (fuera del contenedor principal animado) *@
+            <EditForm Model="nuevaSede" OnValidSubmit="GuardarSede">
+                <DataAnnotationsValidator />
+
+                <div class="space-y-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Nombre de la Sede</label>
+                        <InputText @bind-Value="nuevaSede.Nombre" placeholder="Ej: Sucursal Centro"
+                                    class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                        <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Dirección Exacta</label>
+                        <InputText @bind-Value="nuevaSede.Direccion" placeholder="Ej: Av. Corrientes 1234, CABA"
+                                    class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                        <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Zona Horaria del Local</label>
+                        <InputSelect @bind-Value="nuevaSede.ZonaHorariaId"
+                                        class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary appearance-none cursor-pointer">
+                            @foreach (var tz in zonasHorarias)
+                            {
+                                <option value="@tz.Id">@tz.DisplayName</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => nuevaSede.ZonaHorariaId)" class="text-error text-[10px] font-bold px-1" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(mensajeErrorModal))
+                {
+                    <p class="text-error text-xs mt-4 font-bold text-center">@mensajeErrorModal</p>
+                }
+
+                <div class="flex gap-3 mt-8">
+                    <button type="button" @onclick="CerrarModalSede" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
+                    <button type="submit" disabled="@isSubmitting"
+                            class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
+                        @if (isSubmitting)
+                        {
+                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        }
+                        else
+                        {
+                            <span>Guardar</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
 <ConfirmDialog Visible="@mostrarConfirmacion"
                Titulo="@tituloConfirmacion"
                Mensaje="@mensajeConfirmacion"
