@@ -22,7 +22,7 @@ public class UnauthorizedResponseHandler : DelegatingHandler
             // Usamos OrdinalIgnoreCase para que ataje "/login" o "/Login"
             if (!_nav.Uri.Contains("/login", StringComparison.OrdinalIgnoreCase))
             {
-                _nav.NavigateTo("/login"); // Le sacamos el forceLoad para evitar el reinicio brusco
+                _nav.NavigateTo("/login");
             }
         }
 

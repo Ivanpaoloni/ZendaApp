@@ -1,443 +1,232 @@
 ﻿@page "/{NegocioSlug}"
 @layout EmptyLayout
+@using Zenda.Client.Components
 @using Zenda.Core.DTOs
-@using Zenda.Client.Services
-
-@inject NavigationManager Nav
 
 <div class="min-h-screen bg-surface-container-low pb-20">
 
-    <div class="bg-white p-8 rounded-b-[3rem] editorial-shadow mb-8 text-center animate-in slide-in-from-top duration-700 relative overflow-hidden">
-        <div class="relative z-10">
-            <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span class="material-symbols-outlined text-4xl text-primary">storefront</span>
-            </div>
-            <h1 class="text-3xl font-headline font-extrabold text-primary">@(negocio?.Nombre ?? "Cargando...")</h1>
-            <p class="text-on-surface-variant font-body text-sm mt-1">
-                @ObtenerTextoPaso()
-            </p>
+    @if (pasoActual == PasoReserva.Cargando)
+    {
+        <div class="min-h-screen flex justify-center items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary"></div>
         </div>
-    </div>
-
-    <div class="max-w-md mx-auto px-6">
-
-        @if (pasoActual == PasoReserva.Cargando)
-        {
-            <div class="flex justify-center py-20">
-                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-            </div>
-        }
-
-        @if (pasoActual == PasoReserva.SeleccionarSede)
-        {
-            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                @foreach (var sede in sedesDisponibles)
-                {
-                    <button @onclick="() => SeleccionarSede(sede)"
-                            class="w-full bg-white p-6 rounded-3xl editorial-shadow flex items-center gap-4 hover:border-primary border-2 border-transparent transition-all text-left group">
-                        <div class="w-12 h-12 rounded-2xl bg-surface-container-low text-primary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                            <span class="material-symbols-outlined">location_on</span>
-                        </div>
-                        <div class="flex-grow">
-                            <h3 class="font-headline font-bold text-lg text-primary">@sede.Nombre</h3>
-                            <p class="text-xs text-on-surface-variant">@sede.Direccion</p>
-                        </div>
-                        <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
-                    </button>
-                }
-            </div>
-        }
-
-        @if (pasoActual == PasoReserva.SeleccionarServicio)
-        {
-            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                @if (sedesDisponibles.Count > 1)
-                {
-                    <button @onclick="VolverASedes" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
-                        <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Sede
-                    </button>
-                }
-
-                @if (!serviciosDeSede.Any())
-                {
-                    <p class="text-center text-on-surface-variant">No hay servicios disponibles en esta sede.</p>
-                }
-                else
-                {
-                    @* Agrupamos los servicios por categoría para mostrarlos ordenados *@
-                    @foreach (var categoria in serviciosDeSede.GroupBy(s => s.CategoriaNombre))
-                    {
-                        <div class="mb-6">
-                            <h4 class="text-[10px] font-black tracking-widest uppercase text-on-surface-variant ml-2 mb-2">@categoria.Key</h4>
-                            <div class="space-y-3">
-                                @foreach (var servicio in categoria)
-                                {
-                                    <button @onclick="() => SeleccionarServicio(servicio)"
-                                            class="w-full bg-white p-4 rounded-[2rem] editorial-shadow flex items-center justify-between hover:border-primary border-2 border-transparent transition-all text-left group">
-                                        <div>
-                                            <h3 class="font-bold text-sm text-primary group-hover:text-primary transition-colors">@servicio.Nombre</h3>
-                                            <p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
-                                                <span class="material-symbols-outlined text-[14px]">schedule</span> @servicio.DuracionMinutos min
-                                            </p>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <span class="font-headline font-black text-primary text-sm">@servicio.Precio.ToString("C0")</span>
-                                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
-                                        </div>
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        }
-
-        @if (pasoActual == PasoReserva.SeleccionarPrestador)
-        {
-            <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <button @onclick="VolverAServicios" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
-                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Servicio
-                </button>
-
-                <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10 mb-6">
-                    <span class="material-symbols-outlined text-primary">cut</span>
-                    <p class="text-xs font-body text-primary">
-                        Elegiste <strong>@servicioSeleccionado?.Nombre</strong>. ¿Con quién te atendés?
-                    </p>
+    }
+    else if (pasoActual == PasoReserva.NoEncontrado || negocio == null)
+    {
+        <NotFoundUI />
+    }
+    else if (negocio == null)
+    {
+        <NotFoundUI />
+    }
+    else
+    {
+        <div class="bg-white p-8 rounded-b-[3rem] editorial-shadow mb-8 text-center animate-in slide-in-from-top duration-700 relative overflow-hidden">
+            <div class="relative z-10">
+                <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span class="material-symbols-outlined text-4xl text-primary">storefront</span>
                 </div>
+                <h1 class="text-3xl font-headline font-extrabold text-primary">@negocio.Nombre</h1>
+                <p class="text-on-surface-variant font-body text-sm mt-1">
+                    @ObtenerTextoPaso()
+                </p>
+            </div>
+        </div>
 
-                @if (!prestadoresFiltrados.Any())
-                {
-                    <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
-                        <p class="text-sm text-on-surface-variant">Ningún profesional realiza este servicio en esta sede.</p>
-                    </div>
-                }
-                else
-                {
-                    <div class="grid grid-cols-2 gap-4">
-                        @* Opción: Cualquiera disponible *@
-                        <button @onclick="() => SeleccionarPrestador(null)"
-                                class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group h-full">
-                            <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                <span class="material-symbols-outlined text-2xl">group</span>
+        <div class="max-w-md mx-auto px-6">
+            @if (pasoActual == PasoReserva.SeleccionarSede)
+            {
+                <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    @foreach (var sede in sedesDisponibles)
+                    {
+                        <button @onclick="() => SeleccionarSede(sede)"
+                                class="w-full bg-white p-6 rounded-3xl editorial-shadow flex items-center gap-4 hover:border-primary border-2 border-transparent transition-all text-left group">
+                            <div class="w-12 h-12 rounded-2xl bg-surface-container-low text-primary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                <span class="material-symbols-outlined">location_on</span>
                             </div>
-                            <h3 class="font-headline font-bold text-sm text-primary">Cualquiera</h3>
-                            <p class="text-[10px] text-on-surface-variant mt-1">El primero libre</p>
+                            <div class="flex-grow">
+                                <h3 class="font-headline font-bold text-lg text-primary">@sede.Nombre</h3>
+                                <p class="text-xs text-on-surface-variant">@sede.Direccion</p>
+                            </div>
+                            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
                         </button>
-
-                        @foreach (var prestador in prestadoresFiltrados)
-                        {
-                            <button @onclick="() => SeleccionarPrestador(prestador)"
-                                    class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group">
-                                <div class="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                    <span class="material-symbols-outlined text-2xl">content_cut</span>
-                                </div>
-                                <h3 class="font-headline font-bold text-sm text-primary">@prestador.Nombre</h3>
-                                <p class="text-[10px] text-on-surface-variant mt-1">Profesional</p>
-                            </button>
-                        }
-                    </div>
-                }
-            </div>
-        }
-
-        @if (pasoActual == PasoReserva.SeleccionarTurno)
-        {
-            <div class="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-                <button @onclick="VolverAPrestadores" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-2 ml-2">
-                    <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Profesional
-                </button>
-
-                <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10">
-                    <span class="material-symbols-outlined text-primary">info</span>
-                    <p class="text-xs font-body text-primary">
-                        <strong>@servicioSeleccionado?.Nombre</strong> con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong>.
-                    </p>
-                </div>
-
-                <section>
-                    <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">1. Selecciona el día</label>
-                    <input type="date" @bind="fechaSeleccionada" @bind:after="CargarDisponibilidad"
-                           min="@DateTime.Today.ToString("yyyy-MM-dd")"
-                           class="w-full p-5 bg-white rounded-3xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none" />
-                </section>
-
-                <section>
-                    <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">2. Selecciona la hora</label>
-                    @if (cargandoHorarios)
-                    {
-                        <div class="flex justify-center py-6">
-                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
                     }
-                    else if (slots.Any())
+                </div>
+            }
+
+            @if (pasoActual == PasoReserva.SeleccionarServicio)
+            {
+                <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    @if (sedesDisponibles.Count > 1)
                     {
-                        <div class="grid grid-cols-3 gap-3">
-                            @foreach (var hora in slots)
-                            {
-                                <button @onclick="() => SeleccionarHora(hora)"
-                                        class="py-4 rounded-2xl font-headline font-bold text-sm transition-all @(horaSeleccionada == hora ? "bg-primary text-on-primary shadow-lg shadow-primary/30 scale-95" : "bg-white text-primary editorial-shadow hover:border-primary border border-transparent")">
-                                    @hora
-                                </button>
-                            }
+                        <button @onclick="VolverASedes" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
+                            <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Sede
+                        </button>
+                    }
+
+                    @if (!serviciosDeSede.Any())
+                    {
+                        <p class="text-center text-on-surface-variant p-6 border-2 border-dashed border-surface-container-high rounded-3xl">
+                            No hay servicios disponibles en esta sede.
+                        </p>
+                    }
+                    else
+                    {
+                        @foreach (var categoria in serviciosDeSede.GroupBy(s => s.CategoriaNombre))
+                        {
+                            <div class="mb-6">
+                                <h4 class="text-[10px] font-black tracking-widest uppercase text-on-surface-variant ml-2 mb-2">@categoria.Key</h4>
+                                <div class="space-y-3">
+                                    @foreach (var servicio in categoria)
+                                    {
+                                        <button @onclick="() => SeleccionarServicio(servicio)"
+                                                class="w-full bg-white p-4 rounded-[2rem] editorial-shadow flex items-center justify-between hover:border-primary border-2 border-transparent transition-all text-left group">
+                                            <div>
+                                                <h3 class="font-bold text-sm text-primary group-hover:text-primary transition-colors">@servicio.Nombre</h3>
+                                                <p class="text-xs text-on-surface-variant flex items-center gap-1 mt-1">
+                                                    <span class="material-symbols-outlined text-[14px]">schedule</span> @servicio.DuracionMinutos min
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-3">
+                                                <span class="font-headline font-black text-primary text-sm">@servicio.Precio.ToString("C0")</span>
+                                                <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">arrow_forward</span>
+                                            </div>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+
+            @if (pasoActual == PasoReserva.SeleccionarPrestador)
+            {
+                <div class="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <button @onclick="VolverAServicios" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4">
+                        <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Servicio
+                    </button>
+
+                    <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10 mb-6">
+                        <span class="material-symbols-outlined text-primary">cut</span>
+                        <p class="text-xs font-body text-primary">
+                            Elegiste <strong>@servicioSeleccionado?.Nombre</strong>. ¿Con quién te atendés?
+                        </p>
+                    </div>
+
+                    @if (!prestadoresFiltrados.Any())
+                    {
+                        <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
+                            <p class="text-sm text-on-surface-variant">Ningún profesional realiza este servicio en esta sede.</p>
                         </div>
                     }
                     else
                     {
-                        <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
-                            <p class="text-sm text-on-surface-variant italic">No hay lugares para este día.</p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button @onclick="() => SeleccionarPrestador(null)"
+                                    class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group h-full">
+                                <div class="w-14 h-14 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <span class="material-symbols-outlined text-2xl">group</span>
+                                </div>
+                                <h3 class="font-headline font-bold text-sm text-primary">Cualquiera</h3>
+                                <p class="text-[10px] text-on-surface-variant mt-1">El primero libre</p>
+                            </button>
+
+                            @foreach (var prestador in prestadoresFiltrados)
+                            {
+                                <button @onclick="() => SeleccionarPrestador(prestador)"
+                                        class="bg-white p-6 rounded-3xl editorial-shadow flex flex-col items-center justify-center text-center hover:border-primary border-2 border-transparent transition-all group">
+                                    <div class="w-14 h-14 rounded-full bg-surface-container-low text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                        <span class="material-symbols-outlined text-2xl">person</span>
+                                    </div>
+                                    <h3 class="font-headline font-bold text-sm text-primary">@prestador.Nombre</h3>
+                                    <p class="text-[10px] text-on-surface-variant mt-1">Profesional</p>
+                                </button>
+                            }
                         </div>
                     }
-                </section>
+                </div>
+            }
 
-                @if (!string.IsNullOrEmpty(horaSeleccionada))
-                {
-                    <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary animate-in zoom-in-95 duration-300 space-y-4">
-                        <h3 class="font-headline font-bold text-xl text-primary mb-2">3. Tus datos</h3>
+            @if (pasoActual == PasoReserva.SeleccionarTurno)
+            {
+                <div class="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                    <button @onclick="VolverAPrestadores" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-2 ml-2">
+                        <span class="material-symbols-outlined text-xs">arrow_back</span> Cambiar Profesional
+                    </button>
 
-                        <input @bind="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamás?"
-                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-
-                        <input @bind="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp" type="tel"
-                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-
-                        <input @bind="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email (opcional)" type="email"
-                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-
-                        <button @onclick="ConfirmarReserva" disabled="@enviandoReserva"
-                                class="w-full py-5 mt-2 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
-                            @if (enviandoReserva)
-                            {
-                                <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                                <span>Reservando...</span>
-                            }
-                            else
-                            {
-                                <span>Confirmar Turno</span>
-                            }
-                        </button>
+                    <div class="bg-primary/5 p-4 rounded-2xl flex items-center gap-3 border border-primary/10">
+                        <span class="material-symbols-outlined text-primary">info</span>
+                        <p class="text-xs font-body text-primary">
+                            <strong>@servicioSeleccionado?.Nombre</strong> con <strong>@(prestadorSeleccionado?.Nombre ?? "cualquier profesional")</strong>.
+                        </p>
                     </div>
-                }
-            </div>
-        }
-    </div>
+
+                    <section>
+                        <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">1. Selecciona el día</label>
+                        <input type="date" @bind="fechaSeleccionada" @bind:after="CargarDisponibilidad"
+                               min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               class="w-full p-5 bg-white rounded-3xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none" />
+                    </section>
+
+                    <section>
+                        <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-3 ml-2">2. Selecciona la hora</label>
+                        @if (cargandoHorarios)
+                        {
+                            <div class="flex justify-center py-6">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                        }
+                        else if (slots.Any())
+                        {
+                            <div class="grid grid-cols-3 gap-3">
+                                @foreach (var hora in slots)
+                                {
+                                    <button @onclick="() => SeleccionarHora(hora)"
+                                            class="py-4 rounded-2xl font-headline font-bold text-sm transition-all @(horaSeleccionada == hora ? "bg-primary text-on-primary shadow-lg shadow-primary/30 scale-95" : "bg-white text-primary editorial-shadow hover:border-primary border border-transparent")">
+                                        @hora
+                                    </button>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="bg-white/50 p-6 rounded-3xl border border-dashed border-outline-variant text-center">
+                                <p class="text-sm text-on-surface-variant italic">No hay lugares para este día.</p>
+                            </div>
+                        }
+                    </section>
+
+                    @if (!string.IsNullOrEmpty(horaSeleccionada))
+                    {
+                        <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary animate-in zoom-in-95 duration-300 space-y-4">
+                            <h3 class="font-headline font-bold text-xl text-primary mb-2">3. Tus datos</h3>
+
+                            <input @bind="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamás?"
+                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                            <input @bind="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp" type="tel"
+                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                            <input @bind="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email (opcional)" type="email"
+                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+
+                            <button @onclick="ConfirmarReserva" disabled="@enviandoReserva"
+                                    class="w-full py-5 mt-2 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                @if (enviandoReserva)
+                                {
+                                    <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                    <span>Reservando...</span>
+                                }
+                                else
+                                {
+                                    <span>Confirmar Turno</span>
+                                }
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
 </div>
-
-@code {
-    [Parameter] public string NegocioSlug { get; set; } = "";
-
-    // 🎯 NUEVO: Agregamos SeleccionarServicio al flujo
-    private enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno }
-    private PasoReserva pasoActual = PasoReserva.Cargando;
-
-    [Inject] private PrestadorClient _prestadorService { get; set; } = default!;
-    [Inject] private SedeClient _sedeService { get; set; } = default!;
-    [Inject] private NegocioClient _negocioClient { get; set; } = default!;
-    [Inject] private ServicioClient _servicioClient { get; set; } = default!; // 🎯 NUEVO Client Inyectado
-    [Inject] private TurnoClient TurnoService { get; set; } = default!;
-
-    private DateTime fechaSeleccionada = DateTime.Today;
-    private List<string> slots = new();
-    private string? horaSeleccionada;
-    private bool cargandoHorarios = false;
-    private bool enviandoReserva = false;
-    private TurnoCreateDto nuevoTurno = new();
-
-    // Modelos de datos
-    private NegocioReadDto? negocio;
-    private List<SedeReadDto> sedesDisponibles = new();
-    private List<PrestadorReadDto> prestadoresDeSede = new();
-
-    // 🎯 NUEVO: Lista de servicios a mostrar
-    private List<ServicioPublicoDto> serviciosDeSede = new();
-    private List<PrestadorReadDto> prestadoresFiltrados = new();
-
-    // Selecciones del usuario
-    private SedeReadDto? sedeSeleccionada;
-    private ServicioPublicoDto? servicioSeleccionado; // 🎯 NUEVO
-    private PrestadorReadDto? prestadorSeleccionado;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarDatosIniciales();
-    }
-
-    private async Task CargarDatosIniciales()
-    {
-        pasoActual = PasoReserva.Cargando;
-
-        negocio = await _negocioClient.GetPublicBySlug(NegocioSlug);
-
-        if (negocio == null)
-        {
-            Nav.NavigateTo("/404");
-            return;
-        }
-
-        sedesDisponibles = await _sedeService.GetPublicByNegocio(negocio.Id);
-
-        if (sedesDisponibles.Count == 1)
-        {
-            SeleccionarSede(sedesDisponibles.First());
-        }
-        else if (sedesDisponibles.Count > 1)
-        {
-            pasoActual = PasoReserva.SeleccionarSede;
-        }
-        else
-        {
-            pasoActual = PasoReserva.SeleccionarSede;
-        }
-
-        StateHasChanged();
-    }
-
-    private async void SeleccionarSede(SedeReadDto sede)
-    {
-        sedeSeleccionada = sede;
-        pasoActual = PasoReserva.Cargando;
-        StateHasChanged();
-
-        // 🎯 NUEVO: Cargamos servicios y prestadores en paralelo para ganar velocidad
-        var taskServicios = _servicioClient.GetServiciosPublicosPorSede(sede.Id);
-        var taskPrestadores = _prestadorService.GetPublicBySede(sede.Id);
-
-        await Task.WhenAll(taskServicios, taskPrestadores);
-
-        serviciosDeSede = taskServicios.Result ?? new();
-        prestadoresDeSede = taskPrestadores.Result ?? new();
-
-        pasoActual = PasoReserva.SeleccionarServicio;
-        StateHasChanged();
-    }
-
-    // 🎯 NUEVO: Método para procesar la selección del servicio
-    private void SeleccionarServicio(ServicioPublicoDto servicio)
-    {
-        servicioSeleccionado = servicio;
-
-        // Filtramos los prestadores que tienen este servicio en sus habilidades
-        prestadoresFiltrados = prestadoresDeSede
-            .Where(p => p.Servicios != null && p.Servicios.Any(s => s.Id == servicio.Id))
-            .ToList();
-
-        pasoActual = PasoReserva.SeleccionarPrestador;
-    }
-
-    private async Task SeleccionarPrestador(PrestadorReadDto? prestador)
-    {
-        prestadorSeleccionado = prestador;
-        pasoActual = PasoReserva.SeleccionarTurno;
-        await CargarDisponibilidad();
-    }
-
-    // Navegación hacia atrás
-    private void VolverASedes() => pasoActual = PasoReserva.SeleccionarSede;
-    private void VolverAServicios() => pasoActual = PasoReserva.SeleccionarServicio; // 🎯 NUEVO
-    private void VolverAPrestadores() => pasoActual = PasoReserva.SeleccionarPrestador;
-
-    private string ObtenerTextoPaso()
-    {
-        return pasoActual switch
-        {
-            PasoReserva.SeleccionarSede => "1. Elegí la sucursal",
-            PasoReserva.SeleccionarServicio => "2. ¿Qué te querés hacer?", // 🎯 NUEVO
-            PasoReserva.SeleccionarPrestador => "3. Elegí tu profesional",
-            PasoReserva.SeleccionarTurno => "4. Seleccioná día y hora",
-            _ => "Preparando agenda..."
-        };
-    }
-
-    private async Task CargarDisponibilidad()
-    {
-        cargandoHorarios = true;
-        slots.Clear();
-        horaSeleccionada = null;
-
-        // Idealmente aquí el endpoint de GetDisponibilidad debería aceptar el `servicioSeleccionado.Id`
-        // para buscar huecos que duren lo que dura el servicio (Ej: 45 min).
-        // Por ahora mantenemos la lógica base.
-
-        if (prestadorSeleccionado != null)
-        {
-            var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada, servicioSeleccionado!.Id); 
-            slots = res?.HorariosLibres ?? new();
-        }
-        else
-        {
-            // Eligió Cualquiera. Evaluamos sobre la lista filtrada de los que saben hacer el servicio
-            var primerPrestador = prestadoresFiltrados.FirstOrDefault();
-            if (primerPrestador != null)
-            {
-                var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado!.Id, fechaSeleccionada, servicioSeleccionado!.Id);
-                slots = res?.HorariosLibres ?? new();
-            }
-        }
-
-        cargandoHorarios = false;
-    }
-
-    private void SeleccionarHora(string hora) => horaSeleccionada = hora;
-
-    private async Task ConfirmarReserva()
-    {
-        if (string.IsNullOrEmpty(nuevoTurno.NombreClienteInvitado) || string.IsNullOrEmpty(nuevoTurno.TelefonoClienteInvitado))
-            return;
-
-        enviandoReserva = true;
-        try
-        {
-            Guid idPrestadorFinal;
-            string nombrePrestadorReserva;
-
-            if (prestadorSeleccionado != null)
-            {
-                idPrestadorFinal = prestadorSeleccionado.Id;
-                nombrePrestadorReserva = prestadorSeleccionado.Nombre;
-            }
-            else
-            {
-                var asignado = prestadoresFiltrados.First();
-                idPrestadorFinal = asignado.Id;
-                nombrePrestadorReserva = asignado.Nombre;
-            }
-
-            var h = TimeOnly.Parse(horaSeleccionada!);
-            var fechaLocal = fechaSeleccionada.Date.Add(h.ToTimeSpan());
-            var fechaCruda = DateTime.SpecifyKind(fechaLocal, DateTimeKind.Unspecified);
-
-            var dtoParaEnviar = new TurnoCreateDto
-            {
-                PrestadorId = idPrestadorFinal,
-                ServicioId = servicioSeleccionado!.Id, 
-                NombreClienteInvitado = nuevoTurno.NombreClienteInvitado,
-                TelefonoClienteInvitado = nuevoTurno.TelefonoClienteInvitado,
-                EmailClienteInvitado = nuevoTurno.EmailClienteInvitado,
-                Inicio = fechaCruda
-            };
-
-            var resultado = await TurnoService.Reservar(dtoParaEnviar);
-
-            if (resultado != null)
-            {
-                var fechaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy"));
-                var horaEnc = Uri.EscapeDataString(resultado.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm"));
-                var nombreEnc = Uri.EscapeDataString(nombrePrestadorReserva);
-                var direccionEnc = Uri.EscapeDataString(sedeSeleccionada?.Direccion ?? "");
-
-                var duracionReal = servicioSeleccionado?.DuracionMinutos ?? 30;
-
-                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error crítico: {ex.Message}");
-        }
-        finally
-        {
-            enviandoReserva = false;
-        }
-    }
-}
