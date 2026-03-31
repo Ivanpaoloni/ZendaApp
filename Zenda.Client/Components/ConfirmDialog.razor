@@ -1,0 +1,43 @@
+﻿@if (Visible)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full editorial-shadow animate-in zoom-in-95 duration-300 text-center">
+
+            @* Icono de Alerta *@
+            <div class="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl">warning</span>
+            </div>
+
+            <h3 class="font-headline font-bold text-xl text-primary mb-2">@Titulo</h3>
+            <p class="text-sm text-on-surface-variant mb-8">@Mensaje</p>
+
+            <div class="flex gap-3">
+                <button @onclick="Cancelar" class="flex-1 py-3.5 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">
+                    Cancelar
+                </button>
+                <button @onclick="Confirmar" class="flex-1 py-3.5 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">
+                    Sí, eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Titulo { get; set; } = "¿Estás seguro?";
+    [Parameter] public string Mensaje { get; set; } = "Esta acción no se puede deshacer.";
+
+    // Este evento le avisa a la página padre qué botón se tocó
+    [Parameter] public EventCallback<bool> OnRespuesta { get; set; }
+
+    private async Task Cancelar()
+    {
+        await OnRespuesta.InvokeAsync(false);
+    }
+
+    private async Task Confirmar()
+    {
+        await OnRespuesta.InvokeAsync(true);
+    }
+}
