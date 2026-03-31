@@ -6,16 +6,28 @@
 
 <div class="space-y-8 animate-in fade-in duration-500 pb-20 relative">
 
+    @* --- HEADER Y FILTROS --- *@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Agenda del Día</h1>
             <p class="text-on-surface-variant text-sm">Gestionando los turnos de <strong>@nombreNegocio</strong></p>
         </div>
 
-        <input type="date" @bind="fechaFiltro" @bind:after="CargarTurnos"
-               class="p-4 bg-white rounded-2xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none max-w-[200px]" />
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            @* Botón rápido para volver a HOY *@
+            @if (fechaFiltro.Date != DateTime.Today)
+            {
+                <button @onclick="IrAHoy" class="px-4 py-3 bg-secondary-container/50 text-on-secondary-container text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-secondary-container transition-colors shrink-0">
+                    Ir a Hoy
+                </button>
+            }
+
+            <input type="date" @bind="fechaFiltro" @bind:after="CargarTurnos"
+                   class="w-full md:w-auto p-4 bg-white rounded-2xl border-none editorial-shadow font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none" />
+        </div>
     </div>
 
+    @* --- ESTADO DE CARGA Y VACÍO --- *@
     @if (cargando)
     {
         <div class="flex flex-col items-center justify-center py-20">
@@ -26,80 +38,119 @@
     {
         <div class="bg-white/50 border-2 border-dashed border-outline-variant rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
             <span class="material-symbols-outlined text-6xl text-on-surface-variant/50 mb-4">coffee</span>
-            <h3 class="font-headline font-bold text-xl text-primary mb-2">Agenda libre</h3>
-            <p class="text-on-surface-variant font-body text-sm">No hay turnos programados para esta fecha.</p>
+            <h3 class="font-headline font-bold text-xl text-primary mb-2">Día libre</h3>
+            <p class="text-on-surface-variant font-body text-sm">No hay turnos programados para la fecha seleccionada.</p>
         </div>
     }
     else
     {
         <div class="space-y-4">
-            @* Ordenamos por la hora de inicio *@
             @foreach (var turno in turnosDelDia.OrderBy(t => t.FechaHoraInicioUtc))
             {
-                <div class="bg-white p-6 md:p-8 rounded-3xl editorial-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 border border-transparent hover:border-primary/10 transition-all group">
+                var horaInicio = turno.FechaHoraInicioUtc.ToLocalTime();
+                var horaFin = turno.FechaHoraFinUtc.ToLocalTime();
 
-                    <div class="flex items-center gap-6">
-                        @* Bloque de Hora *@
-                        <div class="bg-surface-container-low text-primary p-4 rounded-2xl text-center min-w-[100px]">
-                            <p class="font-headline font-black text-2xl">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("HH:mm")</p>
-                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mt-1">hs</p>
+                @* LÓGICA VISUAL: Si el turno ya pasó y está Pendiente, lo marcamos levemente en rojo 
+                   para que el recepcionista no se olvide de marcarlo como Completado o Cancelado.
+                *@
+                var estaAtrasado = turno.Estado == EstadoTurnoEnum.Pendiente && horaFin < DateTime.Now;
+                var borderClass = estaAtrasado ? "border-error/30" : "border-transparent";
+
+                <div class="bg-white p-5 md:p-6 rounded-[2rem] editorial-shadow flex flex-col md:flex-row md:items-center justify-between gap-6 border @borderClass hover:border-primary/20 transition-all group">
+
+                    @* --- LADO IZQUIERDO: HORA Y DURACIÓN --- *@
+                    <div class="flex items-start gap-4 md:w-1/4 shrink-0">
+                        <div class="bg-surface-container-low text-primary p-3 rounded-2xl text-center min-w-[80px] flex flex-col items-center justify-center relative overflow-hidden">
+                            @* Decoración sutil superior *@
+                            <div class="absolute top-0 w-full h-1 bg-primary/20"></div>
+
+                            <p class="font-headline font-black text-2xl leading-none mt-1">@horaInicio.ToString("HH:mm")</p>
+                            <p class="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60 mt-1">Hasta @horaFin.ToString("HH:mm")</p>
                         </div>
 
-                        <div>
-                            <div class="flex items-center gap-2 mb-1">
-                                <h3 class="font-headline font-bold text-xl text-primary">@turno.NombreClienteInvitado</h3>
-
-                                @* Badge de Estado con Color Dinámico *@
-                                <span class="px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg transition-colors">
-                                    @turno.Estado
-                                </span>
-                            </div>
-
-                            <div class="flex items-center gap-3 text-sm text-on-surface-variant font-body">
-                                <span class="flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-xs">content_cut</span>
-                                    @turno.PrestadorNombre
-                                </span>
-                                <span class="opacity-20">|</span>
-                                <span class="flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-xs">phone_iphone</span>
-                                    @turno.TelefonoClienteInvitado
-                                </span>
-                            </div>
+                        <div class="flex flex-col justify-center h-full pt-1">
+                            <span class="px-2 py-1 bg-surface-container-highest/30 text-on-surface-variant text-[10px] font-bold rounded-lg flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[12px]">timer</span> @turno.DuracionMinutos min
+                            </span>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2 border-t border-surface-container-high md:border-t-0 pt-4 md:pt-0">
+                    @* --- CENTRO: DATOS DEL CLIENTE, PROFESIONAL Y SERVICIO --- *@
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 class="font-headline font-bold text-xl text-primary">@turno.NombreClienteInvitado</h3>
+                            <span class="px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg border border-current">
+                                @turno.Estado
+                            </span>
+                        </div>
 
-                        @* Botón de WhatsApp (Siempre visible) *@
-                        <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, turno.FechaHoraInicioUtc.ToLocalTime())"
-                           target="_blank"
-                           class="w-11 h-11 bg-[#25D366]/10 text-[#25D366] rounded-xl flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all shadow-sm" title="WhatsApp">
-                            <i class="fa-brands fa-whatsapp text-2xl"></i>
-                        </a>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm mt-2">
+                            @* El Servicio y su Precio *@
+                            <div class="flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1.5 rounded-xl font-medium">
+                                <span class="material-symbols-outlined text-[16px]">cut</span>
+                                <span class="truncate max-w-[150px] md:max-w-[200px]" title="@turno.ServicioNombre">@turno.ServicioNombre</span>
+                                <span class="font-black font-headline ml-1">@turno.Precio.ToString("C0")</span>
+                            </div>
 
-                        @* Acciones según estado (Usando el Enum que definimos) *@
-                        @if (turno.Estado == EstadoTurnoEnum.Pendiente)
-                        {
-                            <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Confirmado)"
-                                    class="px-4 py-3 bg-primary/10 text-primary rounded-xl font-bold text-[11px] uppercase hover:bg-primary hover:text-white transition-all">
-                                Confirmar
-                            </button>
-                        }
+                            @* El Profesional (Con avatar inicial para diferenciar rápido) *@
+                            <div class="flex items-center gap-2 text-on-surface-variant font-medium">
+                                <div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-black shrink-0">
+                                    @(turno.PrestadorNombre.FirstOrDefault())
+                                </div>
+                                <span class="truncate max-w-[120px]">@turno.PrestadorNombre</span>
+                            </div>
+                        </div>
 
-                        @if (turno.Estado == EstadoTurnoEnum.Confirmado || turno.Estado == EstadoTurnoEnum.Pendiente)
-                        {
+                        @* Contacto *@
+                        <div class="flex items-center gap-2 mt-3 text-xs text-on-surface-variant/70 font-medium">
+                            <span class="material-symbols-outlined text-[14px]">phone_iphone</span>
+                            <span>@turno.TelefonoClienteInvitado</span>
+                        </div>
+                    </div>
+
+                    @* --- LADO DERECHO: ACCIONES (Ocultar si ya está completado/cancelado) --- *@
+                    @if (turno.Estado == EstadoTurnoEnum.Pendiente || turno.Estado == EstadoTurnoEnum.Confirmado)
+                    {
+                        <div class="flex items-center gap-2 border-t border-surface-container-high md:border-t-0 pt-4 md:pt-0 shrink-0">
+
+                            @* Botón de WhatsApp *@
+                            <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, horaInicio)"
+                               target="_blank"
+                               class="w-12 h-12 bg-[#25D366]/10 text-[#25D366] rounded-2xl flex items-center justify-center hover:bg-[#25D366] hover:text-white transition-all shadow-sm" title="Contactar cliente">
+                                <i class="fa-brands fa-whatsapp text-2xl"></i>
+                            </a>
+
+                            @* Si está pendiente, botón para Confirmar *@
+                            @if (turno.Estado == EstadoTurnoEnum.Pendiente)
+                            {
+                                <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Confirmado)"
+                                        class="px-5 h-12 bg-primary/10 text-primary rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-all whitespace-nowrap">
+                                    Confirmar
+                                </button>
+                            }
+
+                            @* Botón Finalizar *@
                             <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Completado)"
-                                    class="px-4 py-3 bg-green-500/10 text-green-700 rounded-xl font-bold text-[11px] uppercase hover:bg-green-500 hover:text-white transition-all">
-                                Finalizar
+                                    class="px-5 h-12 bg-green-500/10 text-green-700 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-green-500 hover:text-white transition-all">
+                                Cobrar
                             </button>
 
+                            @* Cancelar (Menos prominente) *@
                             <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Cancelado)"
-                                    class="w-11 h-11 text-on-surface-variant/70 bg-surface-container-low hover:bg-error/10 hover:text-error rounded-xl transition-all" title="Cancelar Turno">
+                                    class="w-12 h-12 text-on-surface-variant/50 bg-surface-container-low hover:bg-error/10 hover:text-error rounded-2xl transition-all flex justify-center items-center" title="Cancelar Turno">
                                 <span class="material-symbols-outlined">block</span>
                             </button>
-                        }
-                    </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @* Marca de agua si ya se completó o canceló *@
+                        <div class="hidden md:flex flex-col items-end opacity-30">
+                            <span class="material-symbols-outlined text-4xl">
+                                @(turno.Estado == EstadoTurnoEnum.Completado ? "task_alt" : "event_busy")
+                            </span>
+                        </div>
+                    }
                 </div>
             }
         </div>
@@ -111,13 +162,20 @@
     private DateTime fechaFiltro = DateTime.Today;
     private bool cargando = true;
     private List<TurnoReadDto> turnosDelDia = new();
-    private string nombreNegocio = "nuestro negocio"; // Valor por defecto
+    private string nombreNegocio = "ZendaApp";
+
     protected override async Task OnInitializedAsync()
     {
-        await CargarTurnos();
         await CargarDatosNegocio();
+        await CargarTurnos();
     }
-    // Método para manejar los clics de los botones
+
+    private async Task IrAHoy()
+    {
+        fechaFiltro = DateTime.Today;
+        await CargarTurnos();
+    }
+
     private async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
     {
         try
@@ -125,15 +183,21 @@
             var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
             if (exito)
             {
-                await CargarTurnos();
+                // Buscamos el turno en la lista y le cambiamos el estado sin recargar todo de la base de datos (Mejora de performance)
+                var turnoModificado = turnosDelDia.FirstOrDefault(t => t.Id == id);
+                if (turnoModificado != null)
+                {
+                    turnoModificado.Estado = nuevoEstado;
+                    StateHasChanged();
+                }
             }
         }
         catch (Exception ex)
         {
-            // Aquí podrías usar un Toast o notificación de error
             Console.WriteLine($"Error al cambiar estado: {ex.Message}");
         }
     }
+
     private async Task CargarDatosNegocio()
     {
         try
@@ -144,22 +208,20 @@
                 nombreNegocio = negocio.Nombre;
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"No se pudo cargar el nombre del negocio: {ex.Message}");
-        }
+        catch { /* Silencioso */ }
     }
+
     private async Task CargarTurnos()
     {
         cargando = true;
+        StateHasChanged(); // Forzar render del spinner
+
         try
         {
-            // Llamada real al backend!
             turnosDelDia = await TurnoService.GetByFecha(fechaFiltro) ?? new List<TurnoReadDto>();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error cargando agenda: {ex.Message}");
             turnosDelDia = new();
         }
         finally
@@ -172,7 +234,6 @@
     {
         var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
         var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-
         return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
     }
 }
