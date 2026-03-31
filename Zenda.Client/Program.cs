@@ -41,7 +41,11 @@ builder.Services.AddHttpClient<DisponibilidadClient>(client => client.BaseAddres
 
 builder.Services.AddHttpClient<ServicioClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>()
-    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
+
+builder.Services.AddHttpClient<UsuarioClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
 
 // 4. Configuración de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();

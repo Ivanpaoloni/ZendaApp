@@ -45,14 +45,16 @@
             <div class="flex items-center gap-3">
                 <AuthorizeView>
                     <Authorized>
-                        <div class="text-right hidden sm:block">
-                            <p class="text-xs font-bold text-primary leading-none">@context.User.Identity?.Name</p>
-                            <p class="text-[10px] text-on-surface-variant">Admin Panel</p>
-                        </div>
-                        <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container">
-                            <span class="material-symbols-outlined text-xl">account_circle</span>
-                        </div>
-                        <button @onclick="CerrarSesion" class="ml-2 p-2 text-error hover:bg-error/10 rounded-full transition-colors flex items-center justify-center" title="Cerrar Sesión">
+                        <NavLink href="configuracion" class="group flex items-center gap-2 hover:bg-surface-container-low p-1.5 pr-3 rounded-full transition-all cursor-pointer border border-transparent hover:border-surface-container-high">
+                            <div class="text-right hidden sm:block pl-2">
+                                <p class="text-xs font-bold text-primary leading-none group-hover:text-primary transition-colors">@context.User.Identity?.Name</p>
+                                <p class="text-[10px] text-on-surface-variant font-medium">Mi Perfil</p>
+                            </div>
+                            <div class="w-9 h-9 md:w-10 md:h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                                <span class="material-symbols-outlined text-xl">manage_accounts</span>
+                            </div>
+                        </NavLink>
+                        <button @onclick="CerrarSesion" class="text-error hover:bg-error/10 rounded-full transition-colors flex items-center justify-center" title="Cerrar Sesión">
                             <span class="material-symbols-outlined">logout</span>
                         </button>
                     </Authorized>

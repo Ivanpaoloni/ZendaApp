@@ -71,7 +71,7 @@ builder.Services.AddScoped<ISedeService, SedeService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ITurnosService, TurnosService>();
 builder.Services.AddScoped<IServicioService, ServicioService>();
-
+builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 #endregion
 
 #region Health Checks Configuration
