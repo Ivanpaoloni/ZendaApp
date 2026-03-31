@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Zenda.Api.Middlewares;
+using Zenda.Api.Services;
+using Zenda.API.Services;
 using Zenda.Application.Services;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
@@ -72,6 +74,7 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ITurnosService, TurnosService>();
 builder.Services.AddScoped<IServicioService, ServicioService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 #endregion
 
 #region Health Checks Configuration
@@ -104,6 +107,7 @@ app.UseCors("BlazorPolicy");
 
 //middleware de manejo global de excepciones
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseStaticFiles();
 
 app.UseSwagger();
 app.UseSwaggerUI();

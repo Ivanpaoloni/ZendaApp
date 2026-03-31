@@ -15,14 +15,28 @@
         <div class="flex justify-between items-center px-6 md:px-8 py-4 max-w-7xl mx-auto">
 
             <div class="flex items-center gap-3">
-                <div class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline">
-                    @(State.CurrentNegocio?.Nombre ?? "Zenda")
+                <div class="flex items-center gap-3">
+                    @if (!string.IsNullOrEmpty(State.CurrentNegocio?.LogoUrl))
+                    {
+                        <img src="@State.CurrentNegocio.LogoUrl" alt="Logo"
+                             class="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border border-surface-container-high shadow-sm" />
+                    }
+                    else if (State.CurrentNegocio != null)
+                    {
+                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                            @(State.CurrentNegocio.Nombre.FirstOrDefault())
+                        </div>
+                    }
+
+                    <div class="text-xl md:text-2xl font-bold text-primary tracking-tighter font-headline hidden sm:block">
+                        @(State.CurrentNegocio?.Nombre ?? "Zenda")
+                    </div>
                 </div>
                 @if (State.CurrentNegocio != null)
                 {
-                    <span class="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
+                    @* <span class="hidden md:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
                         SaaS
-                    </span>
+                    </span> *@
                 }
             </div>
 

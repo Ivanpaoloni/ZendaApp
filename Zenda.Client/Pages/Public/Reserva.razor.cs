@@ -51,7 +51,7 @@ public partial class Reserva : ComponentBase
         {
             pasoActual = PasoReserva.Cargando;
 
-            negocio = await _negocioClient.GetPublicBySlug(NegocioSlug);
+            negocio = await _negocioClient.GetPublicBySlugAsync(NegocioSlug);
 
             if (negocio == null)
             {

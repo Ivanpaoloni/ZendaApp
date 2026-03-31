@@ -5,7 +5,6 @@
 
 <div class="space-y-8 animate-in fade-in duration-500 pb-20">
 
-    @* Encabezado *@
     <div>
         <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Configuración</h1>
         <p class="text-on-surface-variant text-sm">Gestioná tu cuenta personal y las preferencias de tu negocio.</p>
@@ -13,7 +12,6 @@
 
     <div class="flex flex-col md:flex-row gap-8 items-start">
 
-        @* --- MENÚ LATERAL (SIDEBAR) --- *@
         <div class="w-full md:w-64 flex-shrink-0 space-y-2">
             <button @onclick='() => CambiarPestaña("perfil")'
                     class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold transition-all @(pestañaActiva == "perfil" ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-primary")">
@@ -27,14 +25,12 @@
                 Mi Negocio
             </button>
 
-            @* Placeholder para el futuro (Facturación/Suscripción) *@
             <div class="w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold bg-transparent text-on-surface-variant/40 cursor-not-allowed">
                 <span class="material-symbols-outlined text-[20px]">credit_card</span>
                 Facturación <span class="text-[9px] bg-surface-container-high px-2 py-0.5 rounded-md ml-auto">PRONTO</span>
             </div>
         </div>
 
-        @* --- ÁREA DE CONTENIDO PRINCIPAL --- *@
         <div class="flex-grow w-full bg-white rounded-[2.5rem] editorial-shadow border border-surface-container-high p-8 min-h-[400px]">
 
             @if (cargando)
@@ -61,9 +57,6 @@
                     </div>
                 }
 
-                @* ---------------------------------------------------- *@
-                @* 📌 PESTAÑA: MI PERFIL                                *@
-                @* ---------------------------------------------------- *@
                 @if (pestañaActiva == "perfil")
                 {
                     <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -98,7 +91,6 @@
                                     <InputText @bind-Value="perfilUsuario.Telefono" class="input-zenda" placeholder="Ej: +54 11 1234 5678" />
                                 </div>
 
-                                @* El Email suele ser de solo lectura porque está atado al proveedor de Auth (Supabase/Identity) *@
                                 <div class="flex flex-col gap-2">
                                     <label class="text-[10px] font-bold text-on-surface-variant px-1 uppercase tracking-wider flex items-center gap-1">
                                         Email de acceso <span class="material-symbols-outlined text-[14px]">lock</span>
@@ -126,15 +118,115 @@
                     </div>
                 }
 
-                @* ---------------------------------------------------- *@
-                @* 📌 PESTAÑA: MI NEGOCIO (PREPARADA PARA LA ETAPA 2)   *@
-                @* ---------------------------------------------------- *@
                 @if (pestañaActiva == "negocio")
                 {
-                    <div class="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center py-10">
-                        <span class="material-symbols-outlined text-6xl text-primary/30 mb-4">construction</span>
-                        <h2 class="text-2xl font-headline font-bold text-primary mb-2">Configuración del Negocio</h2>
-                        <p class="text-on-surface-variant">Acá vamos a configurar tu Logo y tu link zenda.app/slug.</p>
+                    <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div class="mb-8 flex items-center gap-4">
+                            <div class="relative group cursor-pointer">
+                                @* Si hay una imagen (preview local o URL de la base de datos), la mostramos *@
+                                @if (!string.IsNullOrEmpty(logoPreviewUrl) || !string.IsNullOrEmpty(perfilNegocio.LogoUrl))
+                                {
+                                    <img src="@(logoPreviewUrl ?? perfilNegocio.LogoUrl)" alt="Logo Negocio"
+                                         class="w-20 h-20 rounded-full object-cover border-2 border-surface-container-high group-hover:brightness-75 transition-all shadow-sm" />
+                                }
+                                else
+                                {
+                                    <div class="w-20 h-20 rounded-full bg-surface-container-low text-on-surface-variant flex items-center justify-center border-2 border-dashed border-surface-container-high group-hover:bg-primary/5 transition-all">
+                                        <span class="material-symbols-outlined text-3xl">add_photo_alternate</span>
+                                    </div>
+                                }
+
+                                @* Overlay al pasar el mouse *@
+                                <div class="absolute inset-0 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                    <span class="material-symbols-outlined text-white">upload</span>
+                                </div>
+
+                                @* Input invisible que cubre toda la zona circular *@
+                                <InputFile OnChange="CargarPreviewLogo" accept=".jpg,.jpeg,.png,.webp"
+                                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            </div>
+
+                            @if (subiendoLogo)
+                            {
+                                <div class="text-[10px] text-primary font-bold flex items-center gap-1 mt-2 animate-pulse">
+                                    <span class="material-symbols-outlined text-[14px]">cloud_upload</span> Subiendo...
+                                </div>
+                            }
+                            <div>
+                                <h2 class="text-2xl font-headline font-bold text-primary">Tu Negocio</h2>
+                                <p class="text-on-surface-variant text-sm">Gestioná tu marca y tu enlace de reservas.</p>
+                            </div>
+                        </div>
+
+                        <EditForm Model="perfilNegocio" OnValidSubmit="GuardarNegocio">
+                            <DataAnnotationsValidator />
+
+                            <div class="space-y-6">
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Nombre del Negocio</label>
+                                    <InputText @bind-Value="perfilNegocio.Nombre" class="input-zenda" placeholder="Ej: Zenda Barber" />
+                                </div>
+
+                                <div class="flex flex-col gap-2">
+                                    <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Tu Enlace (Slug)</label>
+                                    <div class="relative flex items-center">
+                                        <div class=" left-4 text-on-surface-variant/50 font-bold pointer-events-none">
+                                            zenda.app/
+                                        </div>
+
+                                        <input value="@perfilNegocio.Slug" @oninput="OnSlugInput"
+                                               class="input-zenda pl-[100px] font-bold text-primary" placeholder="tu-negocio" />
+
+                                        @* Iconos de validación en tiempo real *@
+                                        <div class="absolute right-4 flex items-center">
+                                            @if (validandoSlug)
+                                            {
+                                                <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+                                            }
+                                            else if (slugDisponible == true)
+                                            {
+                                                <span class="material-symbols-outlined text-green-600 font-bold" title="¡Enlace disponible!">check_circle</span>
+                                            }
+                                            else if (slugDisponible == false)
+                                            {
+                                                <span class="material-symbols-outlined text-error font-bold" title="Enlace no disponible">cancel</span>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @* Mensaje de ayuda debajo del input *@
+                                    @if (slugDisponible == false)
+                                    {
+                                        <p class="text-error text-[10px] font-bold px-1 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">warning</span>
+                                            Este enlace ya está siendo usado por otro negocio. Elegí otro.
+                                        </p>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-on-surface-variant text-[10px] px-1">
+                                            Solo se permiten letras minúsculas, números y guiones.
+                                        </p>
+                                    }
+                                </div>
+
+                                <div class="pt-6 border-t border-surface-container-high flex justify-end">
+                                    @* Deshabilitamos si está guardando, validando o si el slug está ocupado *@
+                                    <button type="submit" disabled="@(guardando || validandoSlug || slugDisponible == false)"
+                                            class="px-8 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        @if (guardando)
+                                        {
+                                            <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                            <span>Guardando...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Guardar Negocio</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        </EditForm>
                     </div>
                 }
 

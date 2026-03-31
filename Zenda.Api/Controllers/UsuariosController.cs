@@ -47,4 +47,5 @@ public class UsuariosController : ControllerBase
 
         return BadRequest(new { message = "Error al actualizar el perfil" });
     }
+
 }
