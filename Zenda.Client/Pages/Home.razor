@@ -1,13 +1,6 @@
 ﻿@page "/"
 @attribute [Authorize]
-
-@inject NavigationManager Nav
-@inject IJSRuntime JS
-@inject NegocioClient _negocioService
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
-@using System.Security.Claims
-@using Zenda.Client.Services
 @using Zenda.Core.DTOs
 @using Zenda.Core.Enums
 
@@ -21,7 +14,7 @@
     <p class="text-on-surface-variant mt-2 font-body">Acá tenés el resumen de tu negocio para el @DateTime.Today.ToString("dd 'de' MMMM").</p>
 </div>
 
-@if (!cargando && (equipoActivo == 0 || sedesContador == 0))
+@if (!cargando && (equipoActivo == 0 || sedesContador == 0 || serviciosContador == 0))
 {
     <div class="mb-10 p-8 bg-primary/5 border-2 border-dashed border-primary/20 rounded-4xl animate-in zoom-in duration-500">
         <div class="flex items-center gap-4 mb-6">
@@ -30,33 +23,47 @@
             </div>
             <div>
                 <h2 class="text-2xl font-headline font-extrabold text-primary">¡Bienvenido a Zenda, @nombreUsuario!</h2>
-                <p class="text-on-surface-variant text-sm">Completá estos pasos para empezar a recibir reservas.</p>
+                <p class="text-on-surface-variant text-sm">Completá estos 3 pasos clave para empezar a recibir reservas.</p>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
             @if (sedesContador == 0)
             {
-                <button @onclick='() => Nav.NavigateTo("/sedes")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group">
-                    <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                <button @onclick='() => Nav.NavigateTo("/sedes")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group border border-transparent hover:border-orange-200">
+                    <div class="w-12 h-12 flex-shrink-0 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors">
                         <span class="material-symbols-outlined">storefront</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-primary">Creá tu primera sede</h4>
-                        <p class="text-xs text-on-surface-variant">Necesitás un lugar físico para tus turnos.</p>
+                        <h4 class="font-bold text-primary leading-tight">1. Creá tu sede</h4>
+                        <p class="text-xs text-on-surface-variant mt-1">El lugar físico de tus turnos.</p>
+                    </div>
+                </button>
+            }
+
+            @if (serviciosContador == 0)
+            {
+                <button @onclick='() => Nav.NavigateTo("/servicios")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group border border-transparent hover:border-purple-200">
+                    <div class="w-12 h-12 flex-shrink-0 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">content_cut</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-primary leading-tight">2. Tus servicios</h4>
+                        <p class="text-xs text-on-surface-variant mt-1">Definí qué hacés y sus precios.</p>
                     </div>
                 </button>
             }
 
             @if (equipoActivo == 0)
             {
-                <button @onclick='() => Nav.NavigateTo("/prestadores")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group">
-                    <div class="w-12 h-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <button @onclick='() => Nav.NavigateTo("/equipo")' class="p-6 bg-white rounded-3xl editorial-shadow hover:scale-[1.02] transition-all text-left flex items-center gap-4 group border border-transparent hover:border-blue-200">
+                    <div class="w-12 h-12 flex-shrink-0 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
                         <span class="material-symbols-outlined">person_add</span>
                     </div>
                     <div>
-                        <h4 class="font-bold text-primary">Agregá a tu equipo</h4>
-                        <p class="text-xs text-on-surface-variant">Configurá quiénes brindan los servicios.</p>
+                        <h4 class="font-bold text-primary leading-tight">3. Tu equipo</h4>
+                        <p class="text-xs text-on-surface-variant mt-1">Asigná quién hace los servicios.</p>
                     </div>
                 </button>
             }
@@ -204,148 +211,3 @@
     </div>
 
 </div>
-
-@code {
-    [CascadingParameter]
-    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
-    [Inject] private TurnoClient _turnoService { get; set; } = default!;
-    [Inject] private PrestadorClient _prestadorClient { get; set; } = default!;
-    [Inject] private SedeClient _sedeService { get; set; } = default!;
-
-    private int sedesContador = 0;
-    private string textoBotonCopiar = "Copiar Enlace";
-    private string iconoBotonCopiar = "content_copy";
-    private string linkReserva = "";
-    private string nombreUsuario = "Admin";
-    private string nombreNegocio = "ZendaApp";
-
-    private decimal ingresosProyectadosHoy = 0;
-
-    private int turnosHoy = 0;
-    private int completadosHoy = 0;
-    private int equipoActivo = 0;
-    private string ocupacion = "0%";
-    private List<TurnoReadDto> proximosTurnos = new();
-
-    private bool cargando = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        // 1. Agarramos la sesión actual
-        var authState = await AuthStateTask;
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            // 2. Buscamos la etiqueta que le pegamos en el AuthService
-            var claimNombre = user.Claims.FirstOrDefault(c =>c.Type == "given_name");
-
-            if (claimNombre != null && !string.IsNullOrWhiteSpace(claimNombre.Value))
-            {
-                nombreUsuario = claimNombre.Value; // Acá sacamos el nombre real
-            }
-            else
-            {
-                // Si por algún motivo no lo encuentra, cortamos el email antes del @
-                var emailClaim = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value;
-                if (!string.IsNullOrEmpty(emailClaim) && emailClaim.Contains("@"))
-                {
-                    nombreUsuario = emailClaim.Split('@')[0];
-                    nombreUsuario = char.ToUpper(nombreUsuario[0]) + nombreUsuario.Substring(1).ToLower();
-                }
-            }
-        }
-        try
-        {
-            var hoy = DateTime.Today;
-            var sedes = await _sedeService.GetAll();
-            var prestadores = await _prestadorClient.GetAll();
-
-            sedesContador = sedes?.Count ?? 0;
-            equipoActivo = prestadores?.Count ?? 0;
-
-            if (equipoActivo > 0)
-            {
-                var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
-
-                turnosHoy = turnos.Count;
-                completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
-
-                // Calculamos la plata proyectada para el día (asumiendo que TurnoReadDto incluye el precio, o si no, lo podemos estimar).
-                if (turnos != null)
-                {
-                    //  solo los turnos válidos (no cancelados)
-                    ingresosProyectadosHoy = turnos
-                        .Where(t => t.Estado != EstadoTurnoEnum.Cancelado)
-                        .Sum(t => t.Precio);
-
-                    var horaActualUtc = DateTime.UtcNow;
-                    proximosTurnos = turnos
-                    .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
-                    .OrderBy(t => t.FechaHoraInicioUtc)
-                    .Take(5)
-                    .ToList();
-                }
-            }
-            var negocio = await _negocioService.GetPerfilAsync();
-            if (negocio != null)
-            {
-                linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
-                nombreNegocio = negocio.Nombre;
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error cargando dashboard: {ex.Message}");
-        }
-        finally
-        {
-            cargando = false;
-        }
-    }
-
-    private string CalcularTiempoFaltante(DateTime fechaUtc)
-    {
-        var diferencia = fechaUtc - DateTime.UtcNow;
-
-        if (diferencia.TotalMinutes <= 0) return "¡Ahora!";
-        if (diferencia.TotalMinutes < 60) return $"En {Math.Ceiling(diferencia.TotalMinutes)} min";
-
-        var horas = Math.Floor(diferencia.TotalHours);
-        var minutos = Math.Ceiling(diferencia.TotalMinutes % 60);
-
-        if (minutos == 0) return $"En {horas} hs";
-        return $"En {horas} hs y {minutos} min";
-    }
-
-    private async Task CopiarLink()
-    {
-        if (string.IsNullOrEmpty(linkReserva)) return;
-
-        // Copiamos al portapapeles usando JS nativo
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", linkReserva);
-        
-        // Efecto visual de éxito
-        textoBotonCopiar = "¡Copiado!";
-        iconoBotonCopiar = "check_circle";
-        StateHasChanged();
-        
-        // Volvemos a la normalidad después de 2 segundos
-        await Task.Delay(2000);
-        textoBotonCopiar = "Copiar Enlace";
-        iconoBotonCopiar = "content_copy";
-        StateHasChanged();
-    }
-
-    // Lógica para abrir WhatsApp Web/App
-    private void AbrirWhatsApp(string telefono, string nombreCliente)
-    {
-        if (string.IsNullOrWhiteSpace(telefono)) return;
-
-        var numLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-        var mensaje = Uri.EscapeDataString($"¡Hola {nombreCliente}! Te escribo de {nombreNegocio ?? "la barbería/estética"}.");
-        var url = $"https://wa.me/{numLimpio}?text={mensaje}";
-
-        Nav.NavigateTo(url, forceLoad: true); 
-    }
-}

@@ -1,0 +1,31 @@
+﻿@if (Visible)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full editorial-shadow animate-in zoom-in-95 duration-300 text-center">
+
+            @* Icono de Información (Azul) *@
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                <span class="material-symbols-outlined text-3xl">info</span>
+            </div>
+
+            <h3 class="font-headline font-bold text-xl text-primary mb-2">@Titulo</h3>
+            <p class="text-sm text-on-surface-variant mb-8">@Mensaje</p>
+
+            <button @onclick="Cerrar" class="w-full py-3.5 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                Entendido
+            </button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Titulo { get; set; } = "Atención";
+    [Parameter] public string Mensaje { get; set; } = "";
+    [Parameter] public EventCallback OnCerrar { get; set; }
+
+    private async Task Cerrar()
+    {
+        await OnCerrar.InvokeAsync();
+    }
+}

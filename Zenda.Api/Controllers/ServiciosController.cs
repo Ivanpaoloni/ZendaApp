@@ -16,7 +16,7 @@ public class ServiciosController : ControllerBase
     [HttpGet("catalogo")]
     public async Task<ActionResult<IEnumerable<CategoriaServicioReadDto>>> GetCatalogo()
     {
-        return Ok(await _service.GetCatalogoAsync());
+        return Ok(await _service.GetCategoriasActivasAsync());
     }
     [Authorize]
     [HttpPost("categorias")]

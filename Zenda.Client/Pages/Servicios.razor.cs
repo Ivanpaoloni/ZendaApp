@@ -25,12 +25,16 @@ public partial class Servicios : ComponentBase
     private string mensajeConfirmacion = string.Empty;
     private Func<Task>? accionPendiente = null;
 
+    // --- ESTADO DEL SNACKBAR DE ALERTA ---
+    private bool mostrarAlerta = false;
+    private string tituloAlerta = string.Empty;
+    private string mensajeAlerta = string.Empty;
+
     // --- MODELOS DE FORMULARIO ---
     private CategoriaServicioCreateDto nuevaCategoria = new();
     private ServicioCreateDto nuevoServicio = new() { DuracionMinutos = 30, Precio = 0 };
     private Guid? categoriaEnEdicionId = null;
     private Guid? servicioEnEdicionId = null;
-
     protected override async Task OnInitializedAsync()
     {
         await CargarCatalogo();
@@ -58,15 +62,7 @@ public partial class Servicios : ComponentBase
     // ==========================================
     // LÓGICA DE CONFIRMACIÓN DE ELIMINACIÓN
     // ==========================================
-    private void PrepararEliminarCategoria(CategoriaServicioReadDto categoria)
-    {
-        tituloConfirmacion = "Eliminar Categoría";
-        mensajeConfirmacion = $"¿Estás seguro de que querés eliminar '{categoria.Nombre}'? Si tiene servicios, no se podrá borrar.";
-
-        accionPendiente = async () => await EliminarCategoria(categoria.Id);
-        mostrarConfirmacion = true;
-    }
-
+    
     private void PrepararEliminarServicio(Guid categoriaId, ServicioReadDto servicio)
     {
         tituloConfirmacion = "Eliminar Servicio";
@@ -274,5 +270,36 @@ public partial class Servicios : ComponentBase
         {
             Console.WriteLine($"Error al eliminar servicio: {ex.Message}");
         }
+    }
+
+    private void PrepararEliminarCategoria(CategoriaServicioReadDto categoria)
+    {
+        // 🎯 FALLO RÁPIDO: Verificamos en el cliente si tiene servicios
+        if (categoria.Servicios != null && categoria.Servicios.Any())
+        {
+            tituloAlerta = "Categoría en uso";
+            mensajeAlerta = $"No podés eliminar '{categoria.Nombre}' porque todavía tiene servicios adentro. Por favor, eliminá o mové los servicios primero.";
+            mostrarAlerta = true;
+            return; // Cortamos la ejecución acá
+        }
+
+        // Si está vacía, procedemos con la confirmación normal
+        tituloConfirmacion = "Eliminar Categoría";
+        mensajeConfirmacion = $"¿Estás seguro de que querés eliminar '{categoria.Nombre}'? Esta acción no se puede deshacer.";
+
+        accionPendiente = async () => await EliminarCategoria(categoria.Id);
+        mostrarConfirmacion = true;
+    }
+
+    // 🎯 NUEVO: Método para cerrar la alerta
+    private void CerrarAlerta()
+    {
+        mostrarAlerta = false;
+    }
+
+    // 🎯 NUEVO: Método para que el usuario pueda limpiar el banner rojo genérico
+    private void LimpiarMensajeError()
+    {
+        mensajeError = null;
     }
 }

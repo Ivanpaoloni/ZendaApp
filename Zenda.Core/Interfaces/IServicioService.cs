@@ -4,7 +4,7 @@ namespace Zenda.Core.Interfaces;
 
 public interface IServicioService
 {
-    Task<IEnumerable<CategoriaServicioReadDto>> GetCatalogoAsync();
+    Task<IEnumerable<CategoriaServicioReadDto>> GetCategoriasActivasAsync();
     Task<CategoriaServicioReadDto> CreateCategoriaAsync(CategoriaServicioCreateDto dto);
     Task<ServicioReadDto> CreateServicioAsync(ServicioCreateDto dto);
     // Agregamos este que nos va a servir para la reserva pública más adelante

@@ -26,18 +26,31 @@
     }
     else if (!string.IsNullOrEmpty(mensajeError))
     {
-        <div class="bg-red-50 text-red-600 p-4 rounded-2xl border border-red-100 flex items-center gap-3">
-            <span class="material-symbols-outlined">error</span>
-            <p class="font-bold text-sm">@mensajeError</p>
+        <div class="bg-red-50 text-red-600 p-4 rounded-2xl border border-red-100 flex items-center justify-between animate-in zoom-in duration-300">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined">error</span>
+                <p class="font-bold text-sm">@mensajeError</p>
+            </div>
+            <button @onclick="LimpiarMensajeError" class="hover:opacity-70 text-red-600 flex items-center justify-center p-1">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
         </div>
     }
     else if (!categorias.Any())
     {
-        <div class="bg-surface-container-low border border-dashed border-outline p-12 rounded-[2rem] text-center">
-            <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-4">inventory_2</span>
-            <h3 class="font-headline font-bold text-lg text-primary">Tu catálogo está vacío</h3>
-            <p class="text-sm text-on-surface-variant mb-6 mt-1">Comenzá creando tu primera categoría (ej: Barbería, Estética).</p>
-            <button @onclick="() => AbrirModalCategoria()" class="text-primary font-bold hover:underline">Crear mi primera categoría</button>
+        <div class="col-span-full py-16 text-center bg-surface-container-low rounded-[3rem] border-2 border-dashed border-surface-container-high animate-in fade-in zoom-in duration-500">
+            <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <span class="material-symbols-outlined text-5xl text-primary/30">inventory_2</span>
+            </div>
+            <h3 class="text-xl font-headline font-bold text-primary mb-2">Tu catálogo está vacío</h3>
+            <p class="text-on-surface-variant font-body text-sm max-w-xs mx-auto mb-8">
+                Comenzá creando tu primera categoría (ej: Barbería, Estética) para luego poder agregarle tus servicios.
+            </p>
+            <button @onclick="() => AbrirModalCategoria()"
+                    class="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all inline-flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">add</span>
+                Crear mi primera categoría
+            </button>
         </div>
     }
     else
@@ -201,3 +214,8 @@
                    Titulo="@tituloConfirmacion"
                    Mensaje="@mensajeConfirmacion"
                    OnRespuesta="ManejarRespuestaConfirmacion" />
+
+<AlertDialog Visible="@mostrarAlerta"
+             Titulo="@tituloAlerta"
+             Mensaje="@mensajeAlerta"
+             OnCerrar="CerrarAlerta" />

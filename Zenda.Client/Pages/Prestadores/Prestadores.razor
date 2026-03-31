@@ -1,11 +1,8 @@
 ﻿@page "/prestadores"
 @using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
+@using Zenda.Client.Components
 @attribute [Authorize]
-@inject PrestadorClient PrestadorService
-@inject NavigationManager Nav
-@inject Zenda.Client.Services.AppState State
-@inject IJSRuntime JS
 
 <div class="space-y-8 animate-in fade-in duration-500 pb-20 relative">
 
@@ -28,18 +25,18 @@
                 <span class="material-symbols-outlined">warning</span>
                 <span>@errorMessage</span>
             </div>
-            <button @onclick="() => errorMessage = null" class="hover:opacity-70">
+            <button @onclick="LimpiarError" class="hover:opacity-70">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
     }
+
     @if (prestadores == null)
     {
         <div class="py-20 text-center animate-pulse text-primary font-bold">Sincronizando equipo...</div>
     }
     else if (!prestadores.Any())
     {
-        @* --- CARD CUANDO NO HAY PROFESIONALES --- *@
         <div class="col-span-full py-16 text-center bg-surface-container-low rounded-[3rem] border-2 border-dashed border-surface-container-high animate-in fade-in zoom-in duration-500">
             <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
                 <span class="material-symbols-outlined text-5xl text-primary/30">person_add</span>
@@ -60,86 +57,38 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach (var p in prestadores)
             {
-                @* ... (Tu código de las tarjetas de prestadores se mantiene igual) ... *@
                 <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all relative overflow-hidden">
-                    @* ... contenido de la card ... *@
-                    <div class="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <button @onclick='() => Nav.NavigateTo($"/prestadores/editar/{p.Id}")'
-                                class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/5 rounded-lg transition-all" title="Editar">
-                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button @onclick="() => ConfirmarEliminar(p)"
-                                class="p-1.5 text-error hover:bg-error/10 rounded-lg transition-all" title="Eliminar">
-                            <span class="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                    </div>
-
+                    
                     <div class="flex justify-between items-start mb-6">
                         <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500">
                             <span class="material-symbols-outlined text-3xl">person</span>
                         </div>
-                        <div class="text-right">
-                            <span class="text-[10px] font-black text-primary/40 tracking-widest uppercase">Servicio</span>
-                            <p class="text-xs font-bold text-on-surface">@p.DuracionTurnoMinutos min</p>
+                        
+                        <div class="flex items-center gap-1">
+                            <button @onclick='() => Nav.NavigateTo($"/prestadores/editar/{p.Id}")'
+                                    class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button @onclick="() => PrepararEliminar(p)"
+                                    class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-all" title="Eliminar">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
                         </div>
                     </div>
 
                     <h3 class="text-xl font-bold text-primary mb-4">@p.Nombre</h3>
 
-                    <div class="space-y-2">
-                        <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
-                        </button>
-                        <button @onclick="() => CopiarLink(p)" class="w-full py-3 text-on-surface-variant font-bold text-[10px] uppercase tracking-widest hover:underline flex items-center justify-center gap-2">
-                            <span class="material-symbols-outlined text-xs">content_copy</span> Copiar Link de Reserva
-                        </button>
-                    </div>
+                    @* 🎯 ELIMINAMOS EL BOTÓN DE COPIAR LINK *@
+                    <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
+                    </button>
                 </div>
             }
         </div>
     }
 </div>
 
-@code {
-    private List<PrestadorReadDto>? prestadores;
-    private string? errorMessage;
-
-    protected override async Task OnInitializedAsync() =>
-        prestadores = await PrestadorService.GetAll();
-
-    private void IrAAgenda(PrestadorReadDto p)
-    {
-        State.PrestadorEnEdicion = p;
-        Nav.NavigateTo("prestadores/agenda");
-    }
-
-    private async Task ConfirmarEliminar(PrestadorReadDto p)
-    {
-        errorMessage = null;
-        var confirmado = await JS.InvokeAsync<bool>("confirm", $"¿Estás seguro de eliminar a {p.Nombre}?");
-
-        if (confirmado)
-        {
-            try
-            {
-                var resultado = await PrestadorService.Delete(p.Id);
-                if (resultado)
-                {
-                    prestadores = await PrestadorService.GetAll(); // Recargar lista
-                }
-            }
-            catch (Exception ex)
-            {
-                // Gracias a tu BaseClient/ParseError, acá vendrá el mensaje limpio
-                errorMessage = ex.Message;
-            }
-        }
-    }
-
-    private async Task CopiarLink(PrestadorReadDto p)
-    {
-        var slug = State.CurrentNegocio?.Slug ?? "negocio";
-        var url = $"{Nav.BaseUri}{slug}";
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
-    }
-}
+<ConfirmDialog Visible="@mostrarConfirmacion" 
+               Titulo="@tituloConfirmacion" 
+               Mensaje="@mensajeConfirmacion" 
+               OnRespuesta="ManejarRespuestaConfirmacion" />

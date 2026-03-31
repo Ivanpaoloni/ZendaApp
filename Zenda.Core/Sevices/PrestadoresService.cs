@@ -26,8 +26,8 @@ public class PrestadoresService : IPrestadoresService
         var prestadores = await _context.Prestadores
             .IgnoreQueryFilters()
             .AsNoTracking()
-            .Include(p => p.Servicios) //  NUEVO: Traemos qué servicios hace cada uno
-            .Where(p => p.SedeId == sedeId)
+            .Include(p => p.Servicios)
+            .Where(p => p.SedeId == sedeId && !p.IsDeleted)
             .ToListAsync();
 
         return _mapper.Map<IEnumerable<PrestadorReadDto>>(prestadores);
@@ -39,9 +39,13 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<IEnumerable<PrestadorReadDto>> GetAllAsync()
     {
+        var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) return Enumerable.Empty<PrestadorReadDto>();
+
         var prestadores = await _context.Prestadores
+            .Where(p => p.NegocioId == negocioId && !p.IsDeleted)
             .Include(p => p.Horarios)
-            .Include(p => p.Servicios) //  NUEVO: Para ver las habilidades en el dashboard
+            .Include(p => p.Servicios)
             .AsNoTracking()
             .ToListAsync();
 
@@ -50,10 +54,13 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<PrestadorReadDto?> GetByIdAsync(Guid id)
     {
+        var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) return null;
+
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
-            .Include(p => p.Servicios) //  NUEVO: Necesario para la vista de edición
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Include(p => p.Servicios)
+            .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == negocioId && !p.IsDeleted);
 
         return prestador == null ? null : _mapper.Map<PrestadorReadDto>(prestador);
     }
@@ -68,10 +75,8 @@ public class PrestadoresService : IPrestadoresService
         prestador.NegocioId = tenantId.Value;
         prestador.Id = Guid.CreateVersion7();
 
-        //  NUEVO: Asignación de Habilidades (Servicios)
         if (dto.ServiciosIds != null && dto.ServiciosIds.Any())
         {
-            // Buscamos los servicios reales en la BD asegurándonos que sean de este negocio
             var serviciosAsignados = await _context.Servicios
                 .Where(s => s.NegocioId == tenantId.Value && dto.ServiciosIds.Contains(s.Id))
                 .ToListAsync();
@@ -94,20 +99,18 @@ public class PrestadoresService : IPrestadoresService
 
         var prestadorDb = await _context.Prestadores
             .Include(p => p.Horarios)
-            .Include(p => p.Servicios) //  NUEVO: Fundamental hacer el Include para actualizar la relación M2M
-            .FirstOrDefaultAsync(p => p.Id == id);
+            .Include(p => p.Servicios)
+            // 🎯 FIX: Seguridad. Aseguramos que solo pueda editar si es su negocio y no está borrado.
+            .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == tenantId && !p.IsDeleted);
 
         if (prestadorDb == null) return false;
 
         _mapper.Map(dto, prestadorDb);
 
-        // NUEVO: Actualización de Habilidades (Servicios)
         if (dto.ServiciosIds != null)
         {
-            // 1. Limpiamos las relaciones actuales (EF Core detecta esto y borra en la tabla intermedia)
             prestadorDb.Servicios.Clear();
 
-            // 2. Si mandó nuevos IDs, los buscamos y los agregamos
             if (dto.ServiciosIds.Any())
             {
                 var nuevosServicios = await _context.Servicios
@@ -129,12 +132,19 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var prestador = await _context.Prestadores.FirstOrDefaultAsync(p => p.Id == id);
+        var tenantId = _tenantService.GetCurrentTenantId();
+        if (tenantId == null) return false;
+
+        // 🎯 FIX: Verificamos pertenencia antes de aplicar la baja lógica
+        var prestador = await _context.Prestadores
+            .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == tenantId);
+
         if (prestador == null) return false;
 
-        _context.Prestadores.Remove(prestador);
-        var result = await _context.SaveChangesAsync();
-        return result > 0;
+        prestador.IsDeleted = true;
+
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     #endregion

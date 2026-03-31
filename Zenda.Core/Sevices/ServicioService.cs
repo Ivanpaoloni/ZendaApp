@@ -18,12 +18,13 @@ public class ServicioService : IServicioService
         _tenantService = tenantService;
     }
 
-    public async Task<IEnumerable<CategoriaServicioReadDto>> GetCatalogoAsync()
+    //get categorias activas
+    public async Task<IEnumerable<CategoriaServicioReadDto>> GetCategoriasActivasAsync()
     {
         var negocioId = _tenantService.GetCurrentTenantId();
 
         var categorias = await _context.CategoriasServicio
-            .Where(c => c.NegocioId == negocioId)
+            .Where(c => c.NegocioId == negocioId && c.Activo)
             .Include(c => c.Servicios.Where(s => s.Activo))
             .ToListAsync();
 
@@ -147,18 +148,19 @@ public class ServicioService : IServicioService
     public async Task<bool> DeleteCategoriaAsync(Guid id)
     {
         var categoria = await _context.CategoriasServicio
-            .Include(c => c.Servicios) // Traemos los servicios para revisar
+            .Include(c => c.Servicios)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (categoria == null) return false;
 
-        // 🛡️ TRAVA DE SEGURIDAD: Prevenimos borrar si hay servicios adentro
+        //  TRAVA DE SEGURIDAD: Prevenimos borrar si hay servicios adentro
         if (categoria.Servicios.Any(s => s.Activo))
         {
             throw new InvalidOperationException("No podés eliminar una categoría que tiene servicios activos.");
         }
 
-        _context.CategoriasServicio.Remove(categoria);
+        categoria.Activo = false;
+
         await _context.SaveChangesAsync();
         return true;
     }
