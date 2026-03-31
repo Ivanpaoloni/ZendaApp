@@ -51,4 +51,17 @@ public class DisponibilidadClient
         var res = await _http.DeleteAsync($"api/disponibilidad/bloqueos/{id}");
         return res.IsSuccessStatusCode;
     }
+
+    public async Task<List<BloqueoReadDto>> GetBloqueosDeHoy()
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<BloqueoReadDto>>("api/disponibilidad/bloqueos/hoy")
+                   ?? new List<BloqueoReadDto>();
+        }
+        catch
+        {
+            return new List<BloqueoReadDto>();
+        }
+    }
 }

@@ -19,6 +19,7 @@ public partial class Home : ComponentBase
     [Inject] protected PrestadorClient _prestadorClient { get; set; } = default!;
     [Inject] protected SedeClient _sedeService { get; set; } = default!;
     [Inject] protected ServicioClient _servicioClient { get; set; } = default!;
+    [Inject] protected DisponibilidadClient _disponibilidadService { get; set; } = default!;
 
     // --- ESTADOS DEL DASHBOARD ---
     protected int sedesContador = 0;
@@ -36,6 +37,7 @@ public partial class Home : ComponentBase
     protected string ocupacion = "0%";
 
     protected List<TurnoReadDto> proximosTurnos = new();
+    protected List<BloqueoReadDto> ausenciasHoy = new();
     protected bool cargando = true;
 
     // --- CICLO DE VIDA ---
@@ -73,11 +75,12 @@ public partial class Home : ComponentBase
             var sedes = await _sedeService.GetAll();
             var prestadores = await _prestadorClient.GetAll();
             var categorias = await _servicioClient.GetCatalogo();
-
+            var bloqueos = await _disponibilidadService.GetBloqueosDeHoy() ?? new();
             // Contadores para el Onboarding
             sedesContador = sedes?.Count ?? 0;
             equipoActivo = prestadores?.Count ?? 0;
             serviciosContador = categorias?.SelectMany(c => c.Servicios).Count() ?? 0;
+            ausenciasHoy = bloqueos;
 
             if (equipoActivo > 0)
             {

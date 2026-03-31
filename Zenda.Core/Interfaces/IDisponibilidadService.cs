@@ -11,4 +11,5 @@ public interface IDisponibilidadService
     Task<bool> EliminarBloqueoAsync(Guid id);
     Task<IEnumerable<BloqueoReadDto>> GetBloqueosFuturosAsync(Guid prestadorId);
     Task<bool> CrearBloqueoAsync(BloqueoCreateDto dto);
+    Task<IEnumerable<BloqueoReadDto>> GetBloqueosDeHoyAsync();
 }

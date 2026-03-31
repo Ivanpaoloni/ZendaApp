@@ -69,4 +69,15 @@ public class DisponibilidadController : ControllerBase
         var success = await _service.EliminarBloqueoAsync(id);
         return success ? NoContent() : NotFound();
     }
+    // En DisponibilidadController.cs
+    [HttpGet("bloqueos/hoy")]
+    public async Task<ActionResult<IEnumerable<BloqueoReadDto>>> GetBloqueosDeHoy()
+    {
+        var success = await _service.GetBloqueosDeHoyAsync();
+
+        if(success == null || !success.Any())
+            return NotFound("No se encontraron bloqueos para hoy.");
+
+        return Ok(success);
+    }
 }

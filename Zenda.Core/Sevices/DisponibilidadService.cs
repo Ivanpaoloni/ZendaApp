@@ -8,11 +8,13 @@ public class DisponibilidadService : IDisponibilidadService
 {
     private readonly IZendaDbContext _context;
     private readonly IMapper _mapper;
-
-    public DisponibilidadService(IZendaDbContext context, IMapper mapper)
+    private readonly ITenantService _tenantService;
+    
+    public DisponibilidadService(IZendaDbContext context, IMapper mapper, ITenantService tenantService)
     {
         _context = context;
         _mapper = mapper;
+        _tenantService = tenantService;
     }
 
     public async Task<IEnumerable<DisponibilidadReadDto>> GetByPrestadorAsync(Guid prestadorId)
@@ -155,5 +157,32 @@ public class DisponibilidadService : IDisponibilidadService
 
         _context.BloqueosAgenda.Remove(bloqueo);
         return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<IEnumerable<BloqueoReadDto>> GetBloqueosDeHoyAsync()
+    {
+        // 1. Obtenemos el NegocioId del usuario logueado
+        var negocioId = _tenantService.GetCurrentTenantId();
+
+        var hoyUtc = DateTime.UtcNow.Date;
+
+        // 2. Buscamos ausencias que se crucen con el día de hoy
+        var ausencias = await _context.BloqueosAgenda
+            .Include(b => b.Prestador)
+            .Where(b => b.Prestador.NegocioId == negocioId
+                     && b.InicioUtc < hoyUtc.AddDays(1) // Empieza antes de que termine hoy
+                     && b.FinUtc > hoyUtc)              // Termina después de que empezó hoy
+            .Select(b => new BloqueoReadDto
+            {
+                Id = b.Id,
+                PrestadorId = b.PrestadorId,
+                // Truquito: Devolvemos el nombre del prestador en el "Motivo" para ahorrar crear otro DTO
+                Motivo = $"{b.Prestador.Nombre}: {b.Motivo}",
+                InicioLocal = b.InicioUtc, // Ojo, acá va UTC, el frontend lo acomodará o podés usar zonaSede como antes
+                FinLocal = b.FinUtc
+            })
+            .ToListAsync();
+
+        return ausencias; 
     }
 }

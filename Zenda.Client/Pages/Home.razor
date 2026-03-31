@@ -13,7 +13,46 @@
     </h1>
     <p class="text-on-surface-variant mt-2 font-body">Acá tenés el resumen de tu negocio para el @DateTime.Today.ToString("dd 'de' MMMM").</p>
 </div>
+@if (ausenciasHoy != null && ausenciasHoy.Any())
+{
+    <div class="mb-10 bg-warning/10 border-2 border-warning/20 p-6 rounded-3xl animate-in zoom-in duration-500">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-warning/20 text-warning-dark flex items-center justify-center">
+                <span class="material-symbols-outlined text-xl">person_off</span>
+            </div>
+            <div>
+                <h3 class="text-warning-dark font-bold font-headline">Avisos del Equipo</h3>
+                <p class="text-warning-dark/80 text-xs">Tenés @(ausenciasHoy.Count) profesional@(ausenciasHoy.Count > 1 ? "es" : "") con licencia hoy.</p>
+            </div>
+        </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            @foreach (var ausencia in ausenciasHoy)
+            {
+                <div class="bg-white/60 p-3 rounded-2xl border border-warning/30 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-warning-dark/50 text-2xl">schedule</span>
+                    <div>
+                        @{
+                            var partes = (ausencia.Motivo ?? "").Split(':');
+                            var nombre = partes.Length > 0 ? partes[0] : "Profesional";
+                            var detalle = partes.Length > 1 ? partes[1].Trim() : "Ausente";
+
+                            // Transformamos a hora local del navegador para que se vea bien
+                            var horaInicio = ausencia.InicioLocal.ToLocalTime().ToString("HH:mm");
+                            var horaFin = ausencia.FinLocal.ToLocalTime().ToString("HH:mm");
+                        }
+                        <p class="text-sm font-bold text-warning-dark">@nombre</p>
+                        <p class="text-xs text-warning-dark/90 font-medium mt-0.5">De @horaInicio a @horaFin</p>
+                        @if (!string.IsNullOrEmpty(detalle) && detalle != "Ausente")
+                        {
+                            <p class="text-[10px] text-warning-dark/60 uppercase tracking-widest font-bold mt-0.5">@detalle</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
 @if (!cargando && (equipoActivo == 0 || sedesContador == 0 || serviciosContador == 0))
 {
     <div class="mb-10 p-8 bg-primary/5 border-2 border-dashed border-primary/20 rounded-4xl animate-in zoom-in duration-500">
