@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
+namespace Zenda.Api.Controllers; // Ajustá tu namespace
+
 [ApiController]
 [Route("api/[controller]")]
 public class SedesController : ControllerBase
@@ -30,6 +32,18 @@ public class SedesController : ControllerBase
     {
         var result = await _service.CreateAsync(dto);
         return Ok(result);
+    }
+
+    // 🎯 NUEVO: Endpoint para Editar
+    [Authorize] // Admin: Actualizar sede
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult> Update(Guid id, SedeCreateDto dto)
+    {
+        var actualizado = await _service.UpdateAsync(id, dto);
+
+        if (!actualizado) return NotFound();
+
+        return NoContent(); // 204 No Content es el estándar para un PUT exitoso
     }
 
     [Authorize] // Admin: Borrar sede

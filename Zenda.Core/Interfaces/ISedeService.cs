@@ -9,5 +9,6 @@ namespace Zenda.Core.Interfaces
         Task<bool> DeleteAsync(Guid id);
         Task<IEnumerable<SedeReadDto>> GetAllAsync();
         Task<IEnumerable<SedeReadDto>> GetPublicByNegocioIdAsync(Guid negocioId);
+        Task<bool> UpdateAsync(Guid id, SedeCreateDto dto);
     }
 }

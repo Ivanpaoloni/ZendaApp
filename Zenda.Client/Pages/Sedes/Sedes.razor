@@ -2,96 +2,37 @@
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Authorization
 @using Zenda.Core.DTOs
-@using Zenda.Client.Services
-@inject SedeClient SedeService
-@inject IJSRuntime JS
+@using Zenda.Client.Components
 
-<div class="space-y-8 animate-in fade-in duration-500">
+<div class="space-y-8 animate-in fade-in duration-500 pb-20 relative">
+
     @* Encabezado *@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Mis Sedes</h1>
             <p class="text-on-surface-variant text-sm">Gestioná las ubicaciones físicas de tu negocio.</p>
         </div>
-        <button @onclick="() => showForm = !showForm"
+        <button @onclick="() => AbrirModalSede()"
                 class="px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
-            <span class="material-symbols-outlined">@(showForm ? "close" : "add_circle")</span>
-            @(showForm ? "Cancelar" : "Nueva Sede")
+            <span class="material-symbols-outlined">add_circle</span>
+            Nueva Sede
         </button>
     </div>
 
-    @* Formulario de Creación *@
-    @if (showForm)
+    @* Mensaje de error general de la pantalla *@
+    @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm animate-in slide-in-from-top-4 duration-300">
-            <EditForm Model="nuevaSede" OnValidSubmit="HandleCreate">
-                <DataAnnotationsValidator />
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <div class="flex flex-col gap-2">
-                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Nombre de la Sede</label>
-                        <InputText @bind-Value="nuevaSede.Nombre" class="input-zenda" placeholder="Ej: Sucursal Centro" />
-                        <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
-                    </div>
-                    
-                    <div class="flex flex-col gap-2">
-                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Dirección Exacta</label>
-                        <InputText @bind-Value="nuevaSede.Direccion" class="input-zenda" placeholder="Ej: Av. Corrientes 1234, CABA" />
-                        <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
-                    </div>
-
-                    @* Recuperamos tu selector de Zona Horaria *@
-                    <div class="flex flex-col gap-2 md:col-span-2">
-                        <label class="text-xs font-bold text-primary px-1 uppercase tracking-wider">Zona Horaria del Local</label>
-                        <InputSelect @bind-Value="nuevaSede.ZonaHorariaId" class="input-zenda appearance-none cursor-pointer">
-                            @foreach (var tz in zonasHorarias)
-                            {
-                                <option value="@tz.Id">@tz.DisplayName</option>
-                            }
-                        </InputSelect>
-                        <ValidationMessage For="@(() => nuevaSede.ZonaHorariaId)" class="text-error text-[10px] font-bold px-1" />
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(errorMessage))
-                    {
-                        <div class="md:col-span-2 p-4 bg-error/10 text-error border border-error/20 rounded-2xl text-sm font-bold flex items-center gap-2">
-                            <span class="material-symbols-outlined">error</span>
-                            @errorMessage
-                        </div>
-                    }
-
-                    <div class="md:col-span-2 mt-2">
-                        @* EL ARREGLO ESTÁ ACÁ: disabled="@isSubmitting" *@
-                        <button type="submit" disabled="@isSubmitting"
-                                class="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:hover:scale-100">
-                            @if (isSubmitting)
-                            {
-                                <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                                <span>Guardando...</span>
-                            }
-                            else
-                            {
-                                <span class="material-symbols-outlined">add_business</span>
-                                <span>Crear Sede</span>
-                            }
-                        </button>
-                    </div>
-                </div>
-            </EditForm>
-        </div>
-    }
-    @if (!string.IsNullOrEmpty(errorMessage) && !showForm)
-    {
-        <div class="p-4 bg-error/10 text-error border border-error/20 rounded-2xl text-sm font-bold flex items-center justify-between animate-in fade-in zoom-in duration-300">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined">warning</span>
-                <span>@errorMessage</span>
+        <div class="bg-red-50 text-red-600 p-4 rounded-2xl border border-red-100 flex items-center justify-between animate-in zoom-in duration-300">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined">error</span>
+                <p class="font-bold text-sm">@errorMessage</p>
             </div>
-            <button @onclick="() => errorMessage = null" class="hover:opacity-70">
+            <button @onclick="LimpiarError" class="hover:opacity-70 text-red-600 flex items-center justify-center p-1">
                 <span class="material-symbols-outlined text-sm">close</span>
             </button>
         </div>
     }
+
     @* Lista de Sedes *@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @if (sedes == null)
@@ -100,17 +41,28 @@
         }
         else if (!sedes.Any())
         {
-            <div class="col-span-full py-16 text-center bg-surface-container-low rounded-[2rem] border-2 border-dashed border-surface-container-high">
-                <span class="material-symbols-outlined text-5xl text-primary/30 mb-3 block">storefront</span>
-                <p class="text-on-surface-variant font-medium">Aún no tenés sedes cargadas.<br/>¡Creá la primera para empezar!</p>
+            <div class="col-span-full py-16 text-center bg-surface-container-low rounded-[3rem] border-2 border-dashed border-surface-container-high animate-in fade-in zoom-in duration-500">
+                <div class="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                    <span class="material-symbols-outlined text-5xl text-primary/30">storefront</span>
+                </div>
+                <h3 class="text-xl font-headline font-bold text-primary mb-2">Aún no tenés sedes</h3>
+                <p class="text-on-surface-variant font-body text-sm max-w-xs mx-auto mb-8">
+                    Comenzá creando tu primera ubicación física para que tus clientes sepan a dónde ir.
+                </p>
+                <button @onclick="() => AbrirModalSede()"
+                        class="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all inline-flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">add</span>
+                    Crear mi primera sede
+                </button>
             </div>
         }
         else
         {
             @foreach (var sede in sedes)
             {
-                <div class="group p-6 bg-white rounded-[2rem] border border-surface-container-high hover:border-primary/30 hover:shadow-lg transition-all duration-300 relative overflow-hidden">
-                    <div class="flex items-start justify-between">
+                <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all relative overflow-hidden flex flex-col h-full">
+
+                    <div class="flex justify-between items-start mb-4">
                         <div class="flex items-center gap-4">
                             <div class="w-14 h-14 rounded-2xl bg-secondary-container/50 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors duration-300">
                                 <span class="material-symbols-outlined text-[28px]">location_on</span>
@@ -120,12 +72,18 @@
                                 <p class="text-on-surface-variant text-xs line-clamp-1">@sede.Direccion</p>
                             </div>
                         </div>
-                        <button @onclick="() => ConfirmDelete(sede.Id)" title="Eliminar Sede"
-                                class="opacity-0 group-hover:opacity-100 p-2 text-error hover:bg-error/10 rounded-xl transition-all duration-300">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
+
+                        <div class="flex items-center gap-1">
+                            <button @onclick="() => AbrirModalSede(sede)" class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button @onclick="() => PrepararEliminarSede(sede)" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-all" title="Eliminar">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                        </div>
                     </div>
-                    <div class="mt-5 flex gap-2">
+
+                    <div class="mt-auto pt-4 flex gap-2">
                         <span class="px-3 py-1.5 bg-surface-container-low text-[10px] font-bold rounded-xl text-on-surface-variant flex items-center gap-1 border border-surface-container-high">
                             <span class="material-symbols-outlined text-[14px]">schedule</span>
                             @sede.ZonaHorariaId
@@ -135,99 +93,78 @@
             }
         }
     </div>
+
+    @* Modal de Formulario (Crear/Editar) *@
+    @if (mostrarModalSede)
+    {
+        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div class="bg-white rounded-[2rem] p-8 max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300">
+                <h3 class="font-headline font-bold text-xl text-primary mb-4">@(sedeEnEdicionId == null ? "Nueva Sede" : "Editar Sede")</h3>
+
+                <EditForm Model="nuevaSede" OnValidSubmit="GuardarSede">
+                    <DataAnnotationsValidator />
+
+                    <div class="space-y-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Nombre de la Sede</label>
+                            <InputText @bind-Value="nuevaSede.Nombre" placeholder="Ej: Sucursal Centro"
+                                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                            <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Dirección Exacta</label>
+                            <InputText @bind-Value="nuevaSede.Direccion" placeholder="Ej: Av. Corrientes 1234, CABA"
+                                       class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                            <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Zona Horaria del Local</label>
+                            <InputSelect @bind-Value="nuevaSede.ZonaHorariaId"
+                                         class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary appearance-none cursor-pointer">
+                                @foreach (var tz in zonasHorarias)
+                                {
+                                    <option value="@tz.Id">@tz.DisplayName</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => nuevaSede.ZonaHorariaId)" class="text-error text-[10px] font-bold px-1" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(mensajeErrorModal))
+                    {
+                        <p class="text-error text-xs mt-4 font-bold text-center">@mensajeErrorModal</p>
+                    }
+
+                    <div class="flex gap-3 mt-8">
+                        <button type="button" @onclick="CerrarModalSede" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
+                        <button type="submit" disabled="@isSubmitting"
+                                class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
+                            @if (isSubmitting)
+                            {
+                                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            }
+                            else
+                            {
+                                <span>Guardar</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
 </div>
 
-<style>
-    .input-zenda {
-        width: 100%;
-        padding: 1rem 1.25rem;
-        border-radius: 1.25rem;
-        background-color: #f1f5f0;
-        border: 2px solid transparent;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-        outline: none;
-    }
-    .input-zenda:focus {
-        border-color: #166534;
-        background-color: white;
-    }
-</style>
+@* Dialogs reutilizables (fuera del contenedor principal animado) *@
+<ConfirmDialog Visible="@mostrarConfirmacion"
+               Titulo="@tituloConfirmacion"
+               Mensaje="@mensajeConfirmacion"
+               OnRespuesta="ManejarRespuestaConfirmacion" />
 
-@code {
-    private List<SedeReadDto>? sedes;
-    private SedeCreateDto nuevaSede = new();
-    private bool showForm = false;
-    private bool isSubmitting = false;
-    private string? errorMessage;
-    
-    // Agregamos la lista de zonas horarias para el dropdown
-    private IReadOnlyCollection<TimeZoneInfo> zonasHorarias = new List<TimeZoneInfo>();
-
-    protected override async Task OnInitializedAsync()
-    {
-        // Cargamos las zonas horarias del sistema
-        zonasHorarias = TimeZoneInfo.GetSystemTimeZones();
-        nuevaSede.ZonaHorariaId = "America/Argentina/Buenos_Aires"; // Valor por defecto
-        
-        await LoadSedes();
-    }
-
-    private async Task LoadSedes()
-    {
-        sedes = await SedeService.GetAll();
-    }
-
-    private async Task HandleCreate()
-    {
-        isSubmitting = true;
-        errorMessage = null;
-
-        try
-        {
-            var result = await SedeService.Create(nuevaSede);
-
-            if (result != null)
-            {
-                // Limpiamos el form y ocultamos
-                nuevaSede = new SedeCreateDto { ZonaHorariaId = "America/Argentina/Buenos_Aires" }; 
-                showForm = false;
-                await LoadSedes();
-            }
-            else
-            {
-                errorMessage = "No se pudo crear la sede. Revisá los datos o tu conexión.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error al procesar: {ex.Message}";
-        }
-        finally
-        {
-            isSubmitting = false;
-        }
-    }
-
-    private async Task ConfirmDelete(Guid id)
-    {
-        errorMessage = null;
-        try
-        {
-            var confirmed = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro?");
-            if (confirmed)
-            {
-                // Ahora si la API manda un BadRequest("No podés borrar..."),
-                // este método lanza una excepción con ese texto.
-                await SedeService.Delete(id);
-
-                await LoadSedes(); // Si llegó acá, es que fue exitoso
-            }
-        }
-        catch (Exception ex)
-        {
-            // 'ex.Message' ahora tendrá el texto: "No se puede eliminar una sede con profesionales asociados."
-            errorMessage = ex.Message;
-        }
-    }
-}
+<AlertDialog Visible="@mostrarAlerta"
+             Titulo="@tituloAlerta"
+             Mensaje="@mensajeAlerta"
+             OnCerrar="CerrarAlerta" />
