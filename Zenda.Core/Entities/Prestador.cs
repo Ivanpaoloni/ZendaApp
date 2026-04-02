@@ -7,6 +7,7 @@ public class Prestador : BaseEntity, ITenantEntity
     public Guid NegocioId { get; set; }
     public Guid SedeId { get; set; }
     public Sede? Sede { get; set; }
+    public Negocio? Negocio { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public int DuracionTurnoMinutos { get; set; } = 30;
 

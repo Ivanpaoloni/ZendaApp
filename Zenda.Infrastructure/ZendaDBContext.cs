@@ -42,7 +42,9 @@ namespace Zenda.Infrastructure
                 entity.Property(n => n.Nombre).IsRequired().HasMaxLength(100);
                 entity.Property(n => n.Slug).IsRequired().HasMaxLength(120);
 
-                // 1 Negocio -> N Sedes
+                entity.Property(n => n.AnticipacionMinimaHoras).HasDefaultValue(2);
+                entity.Property(n => n.VentanaReservaDias).HasDefaultValue(30);
+
                 entity.HasMany(n => n.Sedes)
                       .WithOne(s => s.Negocio)
                       .HasForeignKey(s => s.NegocioId)
@@ -63,6 +65,11 @@ namespace Zenda.Infrastructure
                 entity.HasOne(p => p.Sede)
                       .WithMany(s => s.Prestadores)
                       .HasForeignKey(p => p.SedeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(p => p.Negocio)
+                      .WithMany()
+                      .HasForeignKey(p => p.NegocioId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
 

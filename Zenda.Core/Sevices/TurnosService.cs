@@ -19,6 +19,7 @@ public class TurnosService : ITurnosService
         _mapper = mapper;
         _tenantService = tenantService;
     }
+
     public async Task<TurnoReadDto> GetByIdAsync(Guid id)
     {
         var turno = await _context.Turnos.FindAsync(id);
@@ -33,7 +34,6 @@ public class TurnosService : ITurnosService
     {
         var turnos = await _context.Turnos
             .Where(t => t.PrestadorId == prestadorId)
-            // Actualizado a la propiedad real de la entidad
             .OrderBy(t => t.FechaHoraInicioUtc)
             .ToListAsync();
 
@@ -42,16 +42,22 @@ public class TurnosService : ITurnosService
 
     public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid prestadorId, DateTime fecha, Guid servicioId)
     {
-        // 1. Traemos al prestador
+        // 1. Traemos al prestador con Sede y Negocio
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
-            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede })
+            .Include(p => p.Negocio) // Incluimos Negocio
+            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede, p.Negocio }) // 🎯 FIX: Agregamos p.Negocio al Select
             .FirstOrDefaultAsync(p => p.Id == prestadorId);
 
-        if (prestador == null || prestador.Sede == null) throw new Exception("Prestador o Sede no encontrados");
+        // 🎯 FIX: Faltaba el == null de prestador.Negocio
+        if (prestador == null || prestador.Sede == null || prestador.Negocio == null)
+            throw new Exception("Prestador, Sede o Negocio no encontrados");
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
+
+        // 🎯 FIX: Declaramos la variable que faltaba
+        int anticipacionHoras = prestador.Negocio.AnticipacionMinimaHoras;
 
         // =================================================================
         // 2. ESCUDO: ¿El día consultado ya pasó en la vida real?
@@ -96,7 +102,6 @@ public class TurnosService : ITurnosService
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
-        // 🎯 NUEVO: Traemos los bloqueos que caigan en este día (Comparando en UTC)
         var bloqueos = await _context.BloqueosAgenda
             .IgnoreQueryFilters()
             .Where(b => b.PrestadorId == prestadorId &&
@@ -105,7 +110,17 @@ public class TurnosService : ITurnosService
             .ToListAsync();
 
         var horaActualSede = TimeOnly.FromDateTime(fechaHoraActualSede);
-        bool esHoy = fecha.Date == fechaActualSede;
+
+        // 🎯 Calculamos la barrera de tiempo real
+        var barreraAnticipacion = fechaHoraActualSede.AddHours(anticipacionHoras);
+
+        // Si el día entero que estamos buscando cae ANTES de la barrera, ni nos gastamos en iterar
+        if (fecha.Date < barreraAnticipacion.Date) return respuesta;
+
+        // Convertimos la barrera a TimeOnly para compararla con los slots dentro del día
+        var horaMinimaPermitida = TimeOnly.FromDateTime(barreraAnticipacion);
+        bool aplicaBarreraHoy = fecha.Date == barreraAnticipacion.Date;
+
         int intervaloGrillaMinutos = 15;
 
         foreach (var rango in configuracion)
@@ -116,9 +131,11 @@ public class TurnosService : ITurnosService
             while (inicioSlot.AddMinutes(duracionServicio) <= limiteFin)
             {
                 var finSlot = inicioSlot.AddMinutes(duracionServicio);
-                bool yaPaso = esHoy && inicioSlot <= horaActualSede;
 
-                // Chequeo de Turnos (Tu código actual)
+                // 🎯 FIX: Validamos que no esté muy pronto (reemplaza a yaPaso)
+                bool muyPronto = aplicaBarreraHoy && inicioSlot <= horaMinimaPermitida;
+
+                // Chequeo de Turnos 
                 bool estaOcupado = turnosOcupados.Any(t =>
                 {
                     var hInicioOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede));
@@ -126,7 +143,7 @@ public class TurnosService : ITurnosService
                     return hInicioOcupado < finSlot && inicioSlot < hFinOcupado;
                 });
 
-                // 🎯 2. NUEVO: Chequeo de Bloqueos (Ausencias/Feriados)
+                // Chequeo de Bloqueos
                 bool estaBloqueado = bloqueos.Any(b =>
                 {
                     var hInicioBloqueo = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede));
@@ -134,8 +151,8 @@ public class TurnosService : ITurnosService
                     return hInicioBloqueo < finSlot && inicioSlot < hFinBloqueo;
                 });
 
-                // 🎯 3. NUEVO: Agregamos !estaBloqueado a la condición
-                if (!estaOcupado && !estaBloqueado && !yaPaso)
+                // Si no está ocupado, no está bloqueado, y no es muy pronto:
+                if (!estaOcupado && !estaBloqueado && !muyPronto)
                 {
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
@@ -153,15 +170,17 @@ public class TurnosService : ITurnosService
 
         if (servicio == null)
             throw new Exception("El servicio seleccionado no existe o no está disponible.");
-        // 1. Buscamos el prestador con su Sede y su Disponibilidad
+
+        // 1. Buscamos el prestador con su Sede, Disponibilidad y Negocio
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Include(p => p.Horarios)
+            .Include(p => p.Negocio) // 🎯 FIX: Traemos el negocio para leer la regla
             .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
 
-        if (prestador?.Sede == null)
-            throw new InvalidOperationException("Prestador o Sede no encontrados.");
+        if (prestador?.Sede == null || prestador?.Negocio == null)
+            throw new InvalidOperationException("Prestador, Sede o Negocio no encontrados.");
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
@@ -174,10 +193,12 @@ public class TurnosService : ITurnosService
         // BARRERAS DE VALIDACIÓN DEL NEGOCIO (BACKEND)
         // ==========================================
 
-        // BARRERA 1: ¿El turno es en el pasado?
-        if (fechaUtcDefinitiva < DateTime.UtcNow)
+        int anticipacion = prestador.Negocio.AnticipacionMinimaHoras;
+
+        // 🎯 BARRERA 1 MEJORADA: ¿Cumple con la anticipación?
+        if (fechaUtcDefinitiva < DateTime.UtcNow.AddHours(anticipacion))
         {
-            throw new InvalidOperationException("No se pueden reservar turnos en el pasado.");
+            throw new InvalidOperationException($"Debe reservar con al menos {anticipacion} horas de anticipación.");
         }
 
         // BARRERA 2: ¿Está dentro del horario de trabajo de este barbero?
@@ -230,22 +251,15 @@ public class TurnosService : ITurnosService
 
     public async Task<IEnumerable<TurnoReadDto>> GetTurnosByFechaAsync(DateTime fecha)
     {
-        // 1. Obtenemos el ID del negocio actual (del usuario logueado)
         var negocioId = _tenantService.GetCurrentTenantId();
 
-        // 2. Buscamos la Sede de este negocio para saber su Zona Horaria real.
-        // (Si en el futuro agregás un filtro por sucursal en el Dashboard, buscarías esa Sede específica)
         var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
-
-        // Fallback de seguridad por si la sede se borró o algo falló
         var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
 
-        // 3. Establecemos el inicio y fin del DÍA LOCAL de esa sede específica
         var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
         var finDiaLocal = inicioDiaLocal.AddDays(1);
 
-        // 4. Convertimos a la ventana UTC exacta para la base de datos
         var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
         var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
 
@@ -261,7 +275,6 @@ public class TurnosService : ITurnosService
             TelefonoClienteInvitado = t.TelefonoClienteInvitado,
             EmailClienteInvitado = t.EmailClienteInvitado,
 
-            // Datos del Prestador (Flattening)
             PrestadorId = t.PrestadorId,
             PrestadorNombre = t.Prestador!.Nombre,
 
@@ -281,8 +294,6 @@ public class TurnosService : ITurnosService
 
     public async Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado)
     {
-        // 1. Buscamos el turno asegurándonos que pertenezca al NegocioId del token actual
-        // (Asumo que tenés un _tenantService o similar para obtener el NegocioId actual)
         var negocioId = _tenantService.GetCurrentTenantId();
 
         var turno = await _context.Turnos
@@ -290,14 +301,11 @@ public class TurnosService : ITurnosService
 
         if (turno == null) return false;
 
-        // 2. Lógica de transición (Opcional pero recomendado)
-        // Ejemplo: Si ya está completado, no podés volverlo a pendiente
         if (turno.Estado == EstadoTurnoEnum.Completado && nuevoEstado == EstadoTurnoEnum.Pendiente)
         {
             throw new Exception("No se puede reabrir un turno ya finalizado.");
         }
 
-        // 3. Aplicamos el cambio
         turno.Estado = nuevoEstado;
 
         return await _context.SaveChangesAsync() > 0;
