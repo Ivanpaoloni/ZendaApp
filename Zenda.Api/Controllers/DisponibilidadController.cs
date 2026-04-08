@@ -73,11 +73,10 @@ public class DisponibilidadController : ControllerBase
     [HttpGet("bloqueos/hoy")]
     public async Task<ActionResult<IEnumerable<BloqueoReadDto>>> GetBloqueosDeHoy()
     {
-        var success = await _service.GetBloqueosDeHoyAsync();
+        var bloqueos = await _service.GetBloqueosDeHoyAsync();
 
-        if(success == null || !success.Any())
-            return NotFound("No se encontraron bloqueos para hoy.");
-
-        return Ok(success);
+        // Siempre devolvemos 200 OK. 
+        // Si es null, devolvemos una lista vacía para que el frontend no se asuste.
+        return Ok(bloqueos ?? new List<BloqueoReadDto>());
     }
 }
