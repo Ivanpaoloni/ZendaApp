@@ -14,6 +14,11 @@ public partial class Home : ComponentBase
     [CascadingParameter] protected Task<AuthenticationState> AuthStateTask { get; set; } = default!;
     [Inject] protected NavigationManager Nav { get; set; } = default!;
     [Inject] protected IJSRuntime JS { get; set; } = default!;
+
+    // 🎯 FIX 1: Inyectamos el AppState para leer el perfil desde la memoria RAM
+    [Inject] protected AppState State { get; set; } = default!;
+
+    // (Podrías borrar _negocioService si ya no lo usás en ningún otro lado de esta clase)
     [Inject] protected NegocioClient _negocioService { get; set; } = default!;
     [Inject] protected TurnoClient _turnoService { get; set; } = default!;
     [Inject] protected PrestadorClient _prestadorClient { get; set; } = default!;
@@ -24,8 +29,8 @@ public partial class Home : ComponentBase
     // --- ESTADOS DEL DASHBOARD ---
     protected int sedesContador = 0;
     protected int serviciosContador = 0;
-    protected int totalPrestadores = 0; // Sirve para el Onboarding
-    protected int equipoActivoHoy = 0;  // Sirve para el Widget del día
+    protected int totalPrestadores = 0;
+    protected int equipoActivoHoy = 0;
     protected int turnosHoy = 0;
     protected int completadosHoy = 0;
     protected decimal ingresosProyectadosHoy = 0;
@@ -72,10 +77,22 @@ public partial class Home : ComponentBase
         {
             var hoy = DateTime.Today;
 
-            var sedes = await _sedeService.GetAll();
-            var prestadores = await _prestadorClient.GetAll();
-            var categorias = await _servicioClient.GetCatalogo();
-            var bloqueos = await _disponibilidadService.GetBloqueosDeHoy() ?? new();
+            // 🎯 FIX 2: DISPARAMOS TODAS LAS LLAMADAS AL MISMO TIEMPO (Sin 'await' acá)
+            var sedesTask = _sedeService.GetAll();
+            var prestadoresTask = _prestadorClient.GetAll();
+            var categoriasTask = _servicioClient.GetCatalogo();
+            var bloqueosTask = _disponibilidadService.GetBloqueosDeHoy();
+            var turnosTask = _turnoService.GetByFecha(hoy);
+
+            // 🎯 MAGIA: Esperamos a que todas las tareas se resuelvan en simultáneo
+            await Task.WhenAll(sedesTask, prestadoresTask, categoriasTask, bloqueosTask, turnosTask);
+
+            // 🎯 EXTRAEMOS LOS RESULTADOS (La propiedad .Result extrae el dato final)
+            var sedes = sedesTask.Result;
+            var prestadores = prestadoresTask.Result;
+            var categorias = categoriasTask.Result;
+            var bloqueos = bloqueosTask.Result ?? new();
+            var turnos = turnosTask.Result ?? new List<TurnoReadDto>();
 
             ausenciasHoy = bloqueos;
             sedesContador = sedes?.Count ?? 0;
@@ -89,14 +106,11 @@ public partial class Home : ComponentBase
 
             if (totalPrestadores > 0)
             {
-                var turnos = await _turnoService.GetByFecha(hoy) ?? new List<TurnoReadDto>();
-
                 turnosHoy = turnos.Count;
                 completadosHoy = turnos.Count(t => t.Estado == EstadoTurnoEnum.Completado);
 
                 if (turnos != null)
                 {
-                    // Solo ingresos válidos
                     ingresosProyectadosHoy = turnos
                         .Where(t => t.Estado != EstadoTurnoEnum.Cancelado)
                         .Sum(t => t.Precio);
@@ -110,11 +124,11 @@ public partial class Home : ComponentBase
                 }
             }
 
-            var negocio = await _negocioService.GetPerfilAsync();
-            if (negocio != null)
+            // 🎯 FIX 3: LEEMOS DE LA MEMORIA DEL NAVEGADOR EN VEZ DE LA API
+            if (State.CurrentNegocio != null)
             {
-                linkReserva = $"{Nav.BaseUri}{negocio.Slug}";
-                nombreNegocio = negocio.Nombre;
+                linkReserva = $"{Nav.BaseUri}{State.CurrentNegocio.Slug}";
+                nombreNegocio = State.CurrentNegocio.Nombre;
             }
         }
         catch (Exception ex)
@@ -163,7 +177,7 @@ public partial class Home : ComponentBase
         if (string.IsNullOrWhiteSpace(telefono)) return;
 
         var numLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-        var mensaje = Uri.EscapeDataString($"¡Hola {nombreCliente}! Te escribo de {nombreNegocio ?? "la barbería/estética"}.");
+        var mensaje = Uri.EscapeDataString($"¡Hola {nombreCliente}! Te escribo de {nombreNegocio ?? "la barbería/estética"} para recordarte tu turno.");
         var url = $"https://wa.me/{numLimpio}?text={mensaje}";
 
         Nav.NavigateTo(url, forceLoad: true);
