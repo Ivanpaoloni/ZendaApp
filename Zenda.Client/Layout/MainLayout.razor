@@ -193,8 +193,9 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        // 🎯 EL FIX: Si el usuario ya está yendo a la ruta de login, cortamos la ejecución acá.
-        if (e.Location.Contains("/login", StringComparison.OrdinalIgnoreCase))
+        // 🎯 EL FIX: Si va a login O a register, lo dejamos pasar sin pedirle token.
+        if (e.Location.Contains("/login", StringComparison.OrdinalIgnoreCase) ||
+            e.Location.Contains("/register", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -203,7 +204,8 @@
 
         if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
         {
-            Nav.NavigateTo("/", forceLoad: true);
+            // Corregimos "/" por "/login" para que lo mande a la pantalla correcta
+            Nav.NavigateTo("/login", forceLoad: true);
         }
     }
 
