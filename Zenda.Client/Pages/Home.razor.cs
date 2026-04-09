@@ -77,17 +77,15 @@ public partial class Home : ComponentBase
         {
             var hoy = DateTime.Today;
 
-            // 🎯 FIX 2: DISPARAMOS TODAS LAS LLAMADAS AL MISMO TIEMPO (Sin 'await' acá)
+            // no uso await xq lo uso en whenall, se disparan todas a la ves y se extraen con .result
             var sedesTask = _sedeService.GetAll();
             var prestadoresTask = _prestadorClient.GetAll();
             var categoriasTask = _servicioClient.GetCatalogo();
             var bloqueosTask = _disponibilidadService.GetBloqueosDeHoy();
             var turnosTask = _turnoService.GetByFecha(hoy);
 
-            // 🎯 MAGIA: Esperamos a que todas las tareas se resuelvan en simultáneo
             await Task.WhenAll(sedesTask, prestadoresTask, categoriasTask, bloqueosTask, turnosTask);
 
-            // 🎯 EXTRAEMOS LOS RESULTADOS (La propiedad .Result extrae el dato final)
             var sedes = sedesTask.Result;
             var prestadores = prestadoresTask.Result;
             var categorias = categoriasTask.Result;
