@@ -17,17 +17,20 @@ public class AuthService : IAuthService
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IZendaDbContext _context;
     private readonly IConfiguration _config;
+    private readonly IEmailService _emailService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IZendaDbContext context,
-        IConfiguration config)
+        IConfiguration config,
+        IEmailService emailService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
         _config = config;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponseDto> RegisterOwnerAsync(RegisterOwnerDto dto)
@@ -65,6 +68,21 @@ public class AuthService : IAuthService
             };
 
             var result = await _userManager.CreateAsync(newUser, dto.Password);
+            
+            if (result.Succeeded)
+            {
+                try
+                {
+                    await _emailService.EnviarBienvenidaRegistroAsync(
+                        newUser.Email,
+                        newUser.Nombre,
+                        nuevoNegocio.Nombre);
+                }
+                catch
+                {
+                    Console.WriteLine($"Error enviando email de bienvenida a {newUser.Email}");
+                }
+            }
 
             if (!result.Succeeded)
             {

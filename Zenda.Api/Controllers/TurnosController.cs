@@ -10,17 +10,26 @@ using Zenda.Core.Interfaces;
 public class TurnosController : ControllerBase
 {
     private readonly ITurnosService _turnosService;
+    private readonly IEmailService _emailService;
 
-    public TurnosController(ITurnosService turnosService)
+    public TurnosController(ITurnosService turnosService, IEmailService emailService)
     {
         _turnosService = turnosService;
+        _emailService = emailService;
     }
+
     [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
     {
-        var result = await _turnosService.ReservarTurnoAsync(dto);
-        return Ok(result);
+        // 1. Tu lógica actual de guardar en la DB...
+        var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
+
+        // 2. Mandamos el mail "en segundo plano" (sin bloquear la respuesta)
+        // No usamos 'await' acá si no queremos que el cliente espere a que el mail salga,
+        // pero por ahora para probar, usalo:
+        
+        return nuevoTurno;
     }
 
     [HttpGet("prestador/{prestadorId}")]
