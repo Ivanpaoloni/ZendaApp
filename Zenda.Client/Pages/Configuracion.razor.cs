@@ -32,6 +32,21 @@ public partial class Configuracion : ComponentBase, IDisposable
     protected string? logoPreviewUrl;
     protected IBrowserFile? logoSeleccionado;
     protected bool subiendoLogo = false;
+
+    //Hardcodeo de rubros
+    private List<RubroOption> rubrosDisponibles = new()
+    {
+        new RubroOption { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Barbería" },
+        new RubroOption { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Nombre = "Peluquería" },
+        new RubroOption { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Nombre = "Centro de Estética" },
+        new RubroOption { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Nombre = "Manicura y Pedicura" }
+    };
+
+    private class RubroOption
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = "";
+    }
     protected override async Task OnInitializedAsync()
     {
         // Configuramos el timer una sola vez. Espera 600ms.
@@ -68,6 +83,12 @@ public partial class Configuracion : ComponentBase, IDisposable
                 perfilNegocio.Nombre = negocioDb.Nombre;
                 perfilNegocio.Slug = negocioDb.Slug;
                 perfilNegocio.LogoUrl = negocioDb.LogoUrl;
+
+                // NUEVO: Mapeamos los datos de negocio y reservas
+                perfilNegocio.RubroId = negocioDb.RubroId;
+                perfilNegocio.AnticipacionMinimaHoras = negocioDb.AnticipacionMinimaHoras;
+                perfilNegocio.IntervaloTurnosMinutos = negocioDb.IntervaloTurnosMinutos;
+
                 slugOriginal = negocioDb.Slug;
                 slugDisponible = true;
             }

@@ -50,8 +50,8 @@ public class NegocioService : INegocioService
     public async Task<NegocioReadDto> CreateAsync(NegocioCreateDto dto)
     {
         var negocio = _mapper.Map<Negocio>(dto);
-        negocio.Id = Guid.NewGuid(); // O GuidV7
-        negocio.Slug = dto.Nombre.ToLower().Replace(" ", "-");
+        negocio.Id = Guid.CreateVersion7(); // O GuidV7
+        negocio.Slug = dto.Slug.ToLower().Replace(" ", "-");
         negocio.CreatedAtUtc = DateTime.UtcNow;
 
         _context.Negocios.Add(negocio);
@@ -85,7 +85,9 @@ public class NegocioService : INegocioService
             throw new InvalidOperationException("El link elegido ya está en uso por otra empresa.");
 
         negocio.Nombre = dto.Nombre;
-
+        negocio.IntervaloTurnosMinutos = dto.IntervaloTurnosMinutos;
+        negocio.AnticipacionMinimaHoras = dto.AnticipacionMinimaHoras;
+        negocio.RubroId = dto.RubroId;
         // Limpiamos el slug por si nos mandan mayúsculas o espacios raros
         negocio.Slug = dto.Slug.ToLower().Replace(" ", "-").Trim();
 

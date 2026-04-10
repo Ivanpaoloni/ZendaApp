@@ -210,6 +210,57 @@
                                     }
                                 </div>
 
+                                @* ... (Código anterior de Nombre y Slug) ... *@
+
+                                <hr class="border-surface-container-high my-6" />
+
+                                <div>
+                                    <h3 class="text-lg font-headline font-bold text-primary mb-1">Operativa del Negocio</h3>
+                                    <p class="text-on-surface-variant text-xs mb-4">Configurá cómo funciona tu sistema de reservas.</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                    @* Selector de Rubro *@
+                                    <div class="flex flex-col gap-2">
+                                        <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Rubro Principal</label>
+                                        <select @bind="perfilNegocio.RubroId" class="input-zenda cursor-pointer appearance-none bg-white">
+                                            <option value="" disabled>Seleccioná un rubro...</option>
+                                            @foreach (var rubro in rubrosDisponibles)
+                                            {
+                                                <option value="@rubro.Id">@rubro.Nombre</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    @* Selector de Grilla de Turnos (Intervalo) *@
+                                    <div class="flex flex-col gap-2">
+                                        <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Intervalo de la Agenda</label>
+                                        <select @bind="perfilNegocio.IntervaloTurnosMinutos" class="input-zenda cursor-pointer appearance-none bg-white">
+                                            <option value="15">Cada 15 minutos</option>
+                                            <option value="20">Cada 20 minutos</option>
+                                            <option value="30">Cada 30 minutos (Recomendado)</option>
+                                            <option value="60">Cada 1 hora</option>
+                                        </select>
+                                        <p class="text-on-surface-variant text-[10px] px-1">Define cómo se divide visualmente tu grilla.</p>
+                                    </div>
+
+                                    @* Selector de Anticipación Mínima *@
+                                    <div class="flex flex-col gap-2">
+                                        <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Límite de Reserva Anticipada</label>
+                                        <select @bind="perfilNegocio.AnticipacionMinimaHoras" class="input-zenda cursor-pointer appearance-none bg-white">
+                                            <option value="0">Sin límite (Hasta el último minuto)</option>
+                                            <option value="1">Al menos 1 hora antes</option>
+                                            <option value="2">Al menos 2 horas antes</option>
+                                            <option value="12">Al menos 12 horas antes</option>
+                                            <option value="24">Al menos 1 día antes</option>
+                                        </select>
+                                    </div>
+
+                                </div>
+
+                                @* ... (El botón de Guardar Cambios queda igual abajo) ... *@
+
                                 <div class="pt-6 border-t border-surface-container-high flex justify-end">
                                     @* Deshabilitamos si está guardando, validando o si el slug está ocupado *@
                                     <button type="submit" disabled="@(guardando || validandoSlug || slugDisponible == false)"

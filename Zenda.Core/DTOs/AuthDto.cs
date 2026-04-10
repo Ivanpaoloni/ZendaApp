@@ -10,7 +10,8 @@ public class RegisterOwnerDto
 
     // Datos del negocio que se crea junto con el Owner
     public string NombreNegocio { get; set; } = string.Empty;
-    public string SlugNegocio { get; set; } = string.Empty;
+    public string SlugNegocio { get; set; } = string.Empty; 
+    public Guid RubroId { get; set; }
 }
 
 // Lo que nos manda para iniciar sesión

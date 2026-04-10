@@ -124,92 +124,90 @@
             }
         </div>
     }
-
-    @* Modales de Creación/Edición *@
-    @if (mostrarModalCategoria)
-    {
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full editorial-shadow animate-in zoom-in-95 duration-300">
-                <h3 class="font-headline font-bold text-xl text-primary mb-4">@(categoriaEnEdicionId == null ? "Nueva Categoría" : "Editar Categoría")</h3>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Nombre</label>
-                        <input @bind="nuevaCategoria.Nombre" placeholder="Ej: Barbería Clásica"
-                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                    </div>
-                </div>
-
-                <div class="flex gap-3 mt-8">
-                    <button @onclick="CerrarModalCategoria" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
-                    <button @onclick="GuardarCategoria" disabled="@guardando"
-                            class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
-                        @if (guardando)
-                        {
-                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        }
-                        else
-                        {
-                            <span>Guardar</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        </div>
-    }
-
-    @if (mostrarModalServicio)
-    {
-        <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div class="bg-white rounded-[2rem] p-8 max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300">
-                <h3 class="font-headline font-bold text-xl text-primary mb-4">@(servicioEnEdicionId == null ? "Nuevo Servicio" : "Editar Servicio")</h3>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Nombre del Servicio</label>
-                        <input @bind="nuevoServicio.Nombre" placeholder="Ej: Corte + Barba"
-                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Duración (Min)</label>
-                            <input @bind="nuevoServicio.DuracionMinutos" type="number" min="5" step="5"
-                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Precio ($)</label>
-                            <input @bind="nuevoServicio.Precio" type="number" min="0" step="100"
-                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
-                        </div>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(mensajeErrorModal))
-                {
-                    <p class="text-red-500 text-xs mt-4 text-center">@mensajeErrorModal</p>
-                }
-
-                <div class="flex gap-3 mt-8">
-                    <button @onclick="CerrarModalServicio" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
-                    <button @onclick="GuardarServicio" disabled="@guardando"
-                            class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
-                        @if (guardando)
-                        {
-                            <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        }
-                        else
-                        {
-                            <span>Guardar</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        </div>
-    }
-
-
 </div>
+
+@* Modales de Creación/Edición *@
+@if (mostrarModalCategoria)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full editorial-shadow animate-in zoom-in-95 duration-300">
+            <h3 class="font-headline font-bold text-xl text-primary mb-4">@(categoriaEnEdicionId == null ? "Nueva Categoría" : "Editar Categoría")</h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Nombre</label>
+                    <input @bind="nuevaCategoria.Nombre" placeholder="Ej: Barbería Clásica"
+                           class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                </div>
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button @onclick="CerrarModalCategoria" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
+                <button @onclick="GuardarCategoria" disabled="@guardando"
+                        class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
+                    @if (guardando)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    }
+                    else
+                    {
+                        <span>Guardar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalServicio)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2rem] p-8 max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300">
+            <h3 class="font-headline font-bold text-xl text-primary mb-4">@(servicioEnEdicionId == null ? "Nuevo Servicio" : "Editar Servicio")</h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Nombre del Servicio</label>
+                    <input @bind="nuevoServicio.Nombre" placeholder="Ej: Corte + Barba"
+                           class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Duración (Min)</label>
+                        <input @bind="nuevoServicio.DuracionMinutos" type="number" min="5" step="5"
+                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2 ml-1">Precio ($)</label>
+                        <input @bind="nuevoServicio.Precio" type="number" min="0" step="100"
+                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(mensajeErrorModal))
+            {
+                <p class="text-red-500 text-xs mt-4 text-center">@mensajeErrorModal</p>
+            }
+
+            <div class="flex gap-3 mt-8">
+                <button @onclick="CerrarModalServicio" class="flex-1 py-4 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">Cancelar</button>
+                <button @onclick="GuardarServicio" disabled="@guardando"
+                        class="flex-1 py-4 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all flex justify-center items-center gap-2">
+                    @if (guardando)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    }
+                    else
+                    {
+                        <span>Guardar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
     <ConfirmDialog Visible="@mostrarConfirmacion"
                    Titulo="@tituloConfirmacion"
                    Mensaje="@mensajeConfirmacion"

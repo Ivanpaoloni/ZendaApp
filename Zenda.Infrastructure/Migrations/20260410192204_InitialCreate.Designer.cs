@@ -12,8 +12,8 @@ using Zenda.Infrastructure;
 namespace Zenda.Infrastructure.Migrations
 {
     [DbContext(typeof(ZendaDbContext))]
-    [Migration("20260409214208_migracionDeAjuste")]
-    partial class migracionDeAjuste
+    [Migration("20260410192204_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -398,6 +398,11 @@ namespace Zenda.Infrastructure.Migrations
                     b.Property<string>("CreatedByUserId")
                         .HasColumnType("text");
 
+                    b.Property<int>("IntervaloTurnosMinutos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30);
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -409,6 +414,9 @@ namespace Zenda.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("RubroId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Slug")
                         .IsRequired()
@@ -427,6 +435,8 @@ namespace Zenda.Infrastructure.Migrations
                         .HasDefaultValue(30);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RubroId");
 
                     b.ToTable("Negocios");
                 });
@@ -478,6 +488,83 @@ namespace Zenda.Infrastructure.Migrations
                     b.HasIndex("SedeId");
 
                     b.ToTable("Prestadores");
+                });
+
+            modelBuilder.Entity("Zenda.Core.Entities.Rubro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Rubros");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
+                            Activo = true,
+                            Codigo = "BARBERIA",
+                            CreatedAtUtc = new DateTime(2026, 4, 10, 19, 22, 4, 205, DateTimeKind.Utc).AddTicks(275),
+                            IsDeleted = false,
+                            Nombre = "Barbería"
+                        },
+                        new
+                        {
+                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
+                            Activo = true,
+                            Codigo = "PELUQUERIA",
+                            CreatedAtUtc = new DateTime(2026, 4, 10, 19, 22, 4, 205, DateTimeKind.Utc).AddTicks(1692),
+                            IsDeleted = false,
+                            Nombre = "Peluquería"
+                        },
+                        new
+                        {
+                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
+                            Activo = true,
+                            Codigo = "ESTETICA",
+                            CreatedAtUtc = new DateTime(2026, 4, 10, 19, 22, 4, 205, DateTimeKind.Utc).AddTicks(1700),
+                            IsDeleted = false,
+                            Nombre = "Centro de Estética"
+                        },
+                        new
+                        {
+                            Id = new Guid("44444444-4444-4444-4444-444444444444"),
+                            Activo = true,
+                            Codigo = "UNAS",
+                            CreatedAtUtc = new DateTime(2026, 4, 10, 19, 22, 4, 205, DateTimeKind.Utc).AddTicks(1703),
+                            IsDeleted = false,
+                            Nombre = "Manicura y Pedicura"
+                        });
                 });
 
             modelBuilder.Entity("Zenda.Core.Entities.Sede", b =>
@@ -704,6 +791,17 @@ namespace Zenda.Infrastructure.Migrations
                     b.Navigation("Prestador");
                 });
 
+            modelBuilder.Entity("Zenda.Core.Entities.Negocio", b =>
+                {
+                    b.HasOne("Zenda.Core.Entities.Rubro", "Rubro")
+                        .WithMany("Negocios")
+                        .HasForeignKey("RubroId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Rubro");
+                });
+
             modelBuilder.Entity("Zenda.Core.Entities.Prestador", b =>
                 {
                     b.HasOne("Zenda.Core.Entities.ApplicationUser", null)
@@ -777,6 +875,11 @@ namespace Zenda.Infrastructure.Migrations
                     b.Navigation("Horarios");
 
                     b.Navigation("Turnos");
+                });
+
+            modelBuilder.Entity("Zenda.Core.Entities.Rubro", b =>
+                {
+                    b.Navigation("Negocios");
                 });
 
             modelBuilder.Entity("Zenda.Core.Entities.Sede", b =>

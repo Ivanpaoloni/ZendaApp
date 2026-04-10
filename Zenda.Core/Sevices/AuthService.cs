@@ -18,19 +18,22 @@ public class AuthService : IAuthService
     private readonly IZendaDbContext _context;
     private readonly IConfiguration _config;
     private readonly IEmailService _emailService;
+    private readonly INegocioService _negocioService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole> roleManager,
         IZendaDbContext context,
         IConfiguration config,
-        IEmailService emailService)
+        IEmailService emailService,
+        INegocioService negocioService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
         _config = config;
         _emailService = emailService;
+        _negocioService = negocioService;
     }
 
     public async Task<AuthResponseDto> RegisterOwnerAsync(RegisterOwnerDto dto)
@@ -48,13 +51,14 @@ public class AuthService : IAuthService
         try
         {
             // 3. Crear el Negocio
-            var nuevoNegocio = new Negocio
+            var nuevoNegocio = new Core.DTOs.NegocioCreateDto
             {
                 Nombre = dto.NombreNegocio,
-                Slug = dto.SlugNegocio
+                Slug = dto.SlugNegocio,
+                RubroId = dto.RubroId
             };
-
-            _context.Negocios.Add(nuevoNegocio);
+            var creadoNegocio = await _negocioService.CreateAsync(nuevoNegocio);
+            
             await _context.SaveChangesAsync();
 
             // 4. Crear el Usuario (Owner)
@@ -64,7 +68,7 @@ public class AuthService : IAuthService
                 Email = dto.Email,
                 Nombre = dto.Nombre,
                 Apellido = dto.Apellido,
-                NegocioId = nuevoNegocio.Id // ¡Acá atamos el usuario al tenant!
+                NegocioId = creadoNegocio.Id // ¡Acá atamos el usuario al tenant!
             };
 
             var result = await _userManager.CreateAsync(newUser, dto.Password);
