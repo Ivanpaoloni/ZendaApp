@@ -21,19 +21,30 @@ public class ResendEmailService : IEmailService
         {
             From = $"Zenda App <{_fromEmail}>",
             To = { emailDestino },
-            Subject = $"¡Turno confirmado en {nombreNegocio}!",
+            Subject = $"✅ ¡Turno confirmado en {nombreNegocio}!",
             HtmlBody = $@"
-                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
-                    <h2 style='color: #166534;'>¡Hola {nombreCliente}!</h2>
-                    <p>Tu turno en <strong>{nombreNegocio}</strong> ha sido confirmado exitosamente.</p>
-                    <p>📅 <strong>Fecha y hora:</strong> {fechaTurno:dd/MM/yyyy HH:mm} hs</p>
-                    <hr style='border: 1px solid #eee; margin: 20px 0;' />
-                    <p style='font-size: 12px; color: #888;'>Gestionado con Zenda App</p>
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #4f46e5; margin-top: 0;'>¡Hola {nombreCliente}! 🎉</h2>
+                    <p>Tu turno en <strong>{nombreNegocio}</strong> ha sido confirmado exitosamente. Ya te estamos esperando.</p>
+                    
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; font-size: 16px;'>📅 <strong>Fecha:</strong> {fechaTurno:dd/MM/yyyy}</p>
+                        <p style='margin: 5px 0 0 0; font-size: 16px;'>⏰ <strong>Hora:</strong> {fechaTurno:HH:mm} hs</p>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si necesitás cancelar o modificar tu turno, por favor comunicate directamente con el negocio.</p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        Reservas gestionadas de forma inteligente con <strong>Zenda App</strong>
+                    </p>
                 </div>"
         };
         var response = await _resend.EmailSendAsync(message);
         return response.Success;
     }
+
+    // 2. RECORDATORIO DE TURNO
     public async Task<bool> EnviarRecordatorioProximoTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno)
     {
         var message = new EmailMessage
@@ -64,44 +75,61 @@ public class ResendEmailService : IEmailService
         return response.Success;
     }
 
-    // 2. BIENVENIDA AL SaaS
+    // 3. BIENVENIDA AL SaaS
     public async Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio)
     {
         var message = new EmailMessage
         {
             From = $"Equipo Zenda <{_fromEmail}>",
             To = { emailDestino },
-            Subject = $"¡Bienvenido a Zenda, {nombreUsuario}!",
+            Subject = $"🚀 ¡Bienvenido a Zenda, {nombreUsuario}!",
             HtmlBody = $@"
-                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
-                    <h2 style='color: #166534;'>¡Bienvenido a bordo! 🚀</h2>
-                    <p>Hola {nombreUsuario}, estamos felices de que hayas elegido Zenda para gestionar <strong>{nombreNegocio}</strong>.</p>
-                    <p>Ya podés ingresar a tu panel y configurar a tu equipo de profesionales.</p>
-                    <br/>
-                    <p>Si tenés dudas, respondé este correo y te ayudamos.</p>
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #4f46e5; margin-top: 0;'>¡Bienvenido a bordo! 🚀</h2>
+                    <p>Hola <strong>{nombreUsuario}</strong>, estamos muy felices de que hayas elegido Zenda para llevar la gestión de <strong>{nombreNegocio}</strong> al siguiente nivel.</p>
+                    
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; font-size: 15px;'>💡 <strong>Siguiente paso:</strong> Ya podés ingresar a tu panel, crear tu primera sede y configurar a tu equipo de profesionales para empezar a recibir reservas.</p>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si tenés alguna duda o necesitás ayuda para arrancar, simplemente respondé a este correo y nos pondremos en contacto con vos.</p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        <strong>Zenda App</strong> - Creciendo junto a tu negocio
+                    </p>
                 </div>"
         };
         var response = await _resend.EmailSendAsync(message);
         return response.Success;
     }
 
-    // 3. CONTACTO DESDE LA LANDING PAGE
+    // 4. CONTACTO DESDE LA LANDING PAGE
     public async Task<bool> EnviarConsultaContactoAsync(string nombreRemitente, string emailRemitente, string mensaje)
     {
         var message = new EmailMessage
         {
             From = $"Landing Zenda <{_fromEmail}>",
             To = { _adminEmail }, // ESTE VA HACIA VOS, NO AL CLIENTE
-            Subject = $"Nueva consulta de {nombreRemitente} (Landing Page)",
+            Subject = $"📩 Nueva consulta de {nombreRemitente} (Landing Page)",
             HtmlBody = $@"
-                <div style='font-family: sans-serif; padding: 20px; color: #333;'>
-                    <h2>Tenés un nuevo mensaje desde la web</h2>
-                    <p><strong>Nombre:</strong> {nombreRemitente}</p>
-                    <p><strong>Email:</strong> {emailRemitente}</p>
-                    <hr style='border: 1px solid #eee; margin: 20px 0;' />
-                    <p><strong>Mensaje:</strong></p>
-                    <p style='background-color: #f9f9f9; padding: 15px; border-left: 4px solid #166534;'>
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #4f46e5; margin-top: 0;'>Tenés un nuevo mensaje web 📬</h2>
+                    <p>Alguien completó el formulario de contacto en la Landing Page de Zenda.</p>
+                    
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; font-size: 15px;'>👤 <strong>Nombre:</strong> {nombreRemitente}</p>
+                        <p style='margin: 5px 0 0 0; font-size: 15px;'>✉️ <strong>Email:</strong> {emailRemitente}</p>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'><strong>Mensaje del usuario:</strong></p>
+                    <p style='background-color: #fff; padding: 15px; border-left: 4px solid #4f46e5; border-radius: 0 4px 4px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-size: 15px;'>
                         {mensaje}
+                    </p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        Notificación interna de <strong>Zenda App</strong>
                     </p>
                 </div>"
         };
