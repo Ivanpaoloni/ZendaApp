@@ -10,14 +10,16 @@ namespace Zenda.Application.Services;
 public class TurnosService : ITurnosService
 {
     private readonly IZendaDbContext _context;
+    private readonly IEmailService _emailService;
     private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
 
-    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService)
+    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService)
     {
         _context = context;
         _mapper = mapper;
         _tenantService = tenantService;
+        _emailService = emailService;
     }
 
     public async Task<TurnoReadDto> GetByIdAsync(Guid id)
@@ -245,6 +247,12 @@ public class TurnosService : ITurnosService
 
         _context.Turnos.Add(nuevoTurno);
         await _context.SaveChangesAsync();
+
+        await _emailService.EnviarConfirmacionTurnoAsync(
+            dto.EmailClienteInvitado,
+            dto.NombreClienteInvitado,
+            prestador.Negocio.Nombre,
+            dto.Inicio);
 
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }

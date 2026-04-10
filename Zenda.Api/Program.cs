@@ -4,14 +4,15 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Resend;
 using System.Text;
 using Zenda.Api.Middlewares;
-using Zenda.Api.Services;
 using Zenda.API.Services;
 using Zenda.Application.Services;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 using Zenda.Infrastructure;
+using Zenda.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,20 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 #endregion
 
+#region emailing
+// Configuración de Resend
+builder.Services.AddOptions();
+builder.Services.Configure<ResendClientOptions>(o =>
+{
+    o.ApiToken = builder.Configuration["Resend:ApiKey"]!;
+});
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.AddTransient<IResend, ResendClient>();
+
+// Tu servicio de correos
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
+#endregion
+
 #region Health Checks Configuration
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "Neon-Database");
@@ -90,7 +105,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://localhost:7258",
-            "https://zenda-frontend.onrender.com"
+            "https://zenda-frontend.onrender.com",
+            "https://zendalanding.onrender.com"
         ).AllowAnyMethod().AllowAnyHeader();
     });
 });
