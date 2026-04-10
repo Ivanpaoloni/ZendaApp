@@ -6,19 +6,26 @@ public class NegocioReadDto
     public string Nombre { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string? LogoUrl { get; set; }
+    public Guid RubroId { get; set; }
+    public int IntervaloTurnosMinutos { get; set; }
+    public string NombreRubro { get; set; } = string.Empty; 
+    public int AnticipacionMinimaHoras { get; set; }
+    public int VentanaReservaDias { get; set; }
 }
 
 public class NegocioCreateDto
 {
     public string Nombre { get; set; } = string.Empty;
-    // El Slug se puede generar automáticamente desde el nombre (ej: "Zenda Barber" -> "zenda-barber")
+    public string Slug { get; set; } = string.Empty;
+    public Guid RubroId { get; set; }
 }
+
 public class NegocioUpdateDto
 {
     public string Nombre { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string? LogoUrl { get; set; }
-
-    // TODO: A futuro agregaremos esto
-    // public string? CategoriaId { get; set; } 
+    public Guid RubroId { get; set; }
+    public int IntervaloTurnosMinutos { get; set; }
+    public int AnticipacionMinimaHoras { get; set; }
 }

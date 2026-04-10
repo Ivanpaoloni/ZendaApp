@@ -111,7 +111,6 @@ public class TurnosService : ITurnosService
                         b.FinUtc > inicioDiaUtc)
             .ToListAsync();
 
-        // 🎯 Calculamos la barrera de tiempo real
         var barreraAnticipacion = fechaHoraActualSede.AddHours(anticipacionHoras);
 
         if (fecha.Date < barreraAnticipacion.Date) return respuesta;
@@ -119,7 +118,9 @@ public class TurnosService : ITurnosService
         var horaMinimaPermitida = TimeOnly.FromDateTime(barreraAnticipacion);
         bool aplicaBarreraHoy = fecha.Date == barreraAnticipacion.Date;
 
-        int intervaloGrillaMinutos = 15;
+        // 🔥 CAMBIO CLAVE ACÁ: Leemos la configuración del negocio
+        // Usamos el intervalo que eligió el dueño. Si por alguna razón el dato está en 0 (base corrupta), le damos 30 de fallback.
+        int intervaloGrillaMinutos = prestador.Negocio.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
 
         foreach (var rango in configuracion)
         {
@@ -155,6 +156,7 @@ public class TurnosService : ITurnosService
                     respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
                 }
 
+                // 🔥 USAMOS EL INTERVALO DINÁMICO ACÁ PARA AVANZAR EL SLOT
                 inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
             }
         }

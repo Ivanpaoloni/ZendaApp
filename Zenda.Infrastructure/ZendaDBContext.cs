@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
+using Zenda.Core.Models;
 
 namespace Zenda.Infrastructure
 {
@@ -13,15 +14,16 @@ namespace Zenda.Infrastructure
         {
             _tenantService = tenantService;
         }
+        public DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
+        public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
         public Guid? CurrentTenantId => _tenantService.GetCurrentTenantId();
         public DbSet<Disponibilidad> Disponibilidad { get; set; }
         public DbSet<Negocio> Negocios { get; set; }
         public DbSet<Prestador> Prestadores { get; set; }
+        public DbSet<Rubro> Rubros { get; set; }
         public DbSet<Sede> Sedes { get; set; }
-        public DbSet<Turno> Turnos { get; set; }
-        public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
         public DbSet<Servicio> Servicios { get; set; }
-        public DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
+        public DbSet<Turno> Turnos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,6 +34,22 @@ namespace Zenda.Infrastructure
             modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<BloqueoAgenda>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
+
+            modelBuilder.Entity<Rubro>(entity =>
+            {
+                entity.HasKey(r => r.Id);
+                entity.Property(r => r.Nombre).IsRequired().HasMaxLength(50);
+                entity.Property(r => r.Codigo).IsRequired().HasMaxLength(20);
+
+                // Dejamos los rubros fundacionales ya creados en la base de datos
+                entity.HasData(
+                    new Rubro { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Barbería", Codigo = "BARBERIA", Activo = true },
+                    new Rubro { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Nombre = "Peluquería", Codigo = "PELUQUERIA", Activo = true },
+                    new Rubro { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Nombre = "Centro de Estética", Codigo = "ESTETICA", Activo = true },
+                    new Rubro { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Nombre = "Manicura y Pedicura", Codigo = "UNAS", Activo = true }
+                );
+            });
 
             // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
             modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
@@ -44,6 +62,15 @@ namespace Zenda.Infrastructure
 
                 entity.Property(n => n.AnticipacionMinimaHoras).HasDefaultValue(2);
                 entity.Property(n => n.VentanaReservaDias).HasDefaultValue(30);
+
+                // NUEVO: Valor por defecto para la grilla
+                entity.Property(n => n.IntervaloTurnosMinutos).HasDefaultValue(30);
+
+                // NUEVO: Relación 1 a N con Rubro
+                entity.HasOne(n => n.Rubro)
+                      .WithMany(r => r.Negocios)
+                      .HasForeignKey(n => n.RubroId)
+                      .OnDelete(DeleteBehavior.Restrict); // Restrict evita borrar un rubro si hay negocios que lo están usando
 
                 entity.HasMany(n => n.Sedes)
                       .WithOne(s => s.Negocio)
@@ -117,6 +144,27 @@ namespace Zenda.Infrastructure
 
                 entity.Property(e => e.DuracionMinutos).IsRequired();
             });
+        }
+        // Dentro de tu ZendaDbContext.cs
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        if (entry.Entity.Id == Guid.Empty)
+                            entry.Entity.Id = Guid.NewGuid();
+
+                        entry.Entity.CreatedAtUtc = DateTime.UtcNow;
+                        break;
+
+                    case EntityState.Modified:
+                        entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
+                        break;
+                }
+            }
+            return base.SaveChangesAsync(cancellationToken);
         }
     }
 }

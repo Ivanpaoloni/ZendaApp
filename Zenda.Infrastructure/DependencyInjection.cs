@@ -15,8 +15,13 @@ public static class DependencyInjection
     {
         // 1. Base de Datos
         services.AddDbContext<ZendaDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+        {
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
 
+            // Apagamos el validador dinámico para poder migrar tranquilos 🔥
+            options.ConfigureWarnings(warnings =>
+                warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        });
         // Mapeo de la Interfaz al Contexto real (Para que el resto de tu app pueda usar IZendaDbContext)
         services.AddScoped<IZendaDbContext>(provider => provider.GetRequiredService<ZendaDbContext>());
 

@@ -36,12 +36,25 @@
             <div class="md:col-span-2 p-4 bg-secondary-container/20 rounded-3xl border border-primary/5 mt-2">
                 <p class="text-xs font-bold text-primary mb-4 text-center">INFORMACIÓN DEL NEGOCIO</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    @* NUEVO: Selector de Rubro *@
+                    <div class="md:col-span-2 flex flex-col gap-2">
+                        <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">¿A qué se dedica tu negocio?</label>
+                        <select @bind="regModel.RubroId" class="input-zenda bg-white cursor-pointer" required>
+                            <option value="" disabled selected>Seleccioná un rubro...</option>
+                            @foreach (var rubro in rubrosDisponibles)
+                            {
+                                <option value="@rubro.Id">@rubro.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
                     <div class="flex flex-col gap-2">
                         <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">Nombre del Local</label>
-                        @* CAMBIO: Usamos value + @oninput para disparar el auto-slug *@
                         <input value="@regModel.NombreNegocio" @oninput="OnNombreNegocioInput"
                                class="input-zenda bg-white" placeholder="Ej: Barbería Zenda" required />
                     </div>
+
                     <div class="flex flex-col gap-2">
                         <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">URL (Slug)</label>
                         <div class="relative flex items-center">
@@ -135,12 +148,29 @@
     private bool? slugDisponible = null;
     private bool slugEditadoManualmente = false;
 
+    // NUEVO: Lista hardcodeada para el MVP
+    private List<RubroOption> rubrosDisponibles = new()
+    {
+        new RubroOption { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Barbería" },
+        new RubroOption { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Nombre = "Peluquería" },
+        new RubroOption { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Nombre = "Centro de Estética" },
+        new RubroOption { Id = Guid.Parse("44444444-4444-4444-4444-444444444444"), Nombre = "Manicura y Pedicura" }
+    };
+
+    // Clase auxiliar simple para no crear un archivo DTO extra en el frontend por ahora
+    private class RubroOption
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = "";
+    }
+
     protected override void OnInitialized()
     {
         debounceTimer = new System.Timers.Timer(600);
         debounceTimer.Elapsed += ValidarSlugEnApi;
         debounceTimer.AutoReset = false;
     }
+
     private void OnNombreNegocioInput(ChangeEventArgs e)
     {
         var nombre = e.Value?.ToString() ?? "";
@@ -180,7 +210,6 @@
     {
         try
         {
-            // Usamos el servicio de negocio que ya tenés inyectado
             var isFree = await NegocioService.ValidarSlugDisponible(regModel.SlugNegocio);
             slugDisponible = isFree;
         }
@@ -197,7 +226,13 @@
 
     private async Task HandleRegister()
     {
-        // No dejamos registrar si el slug está ocupado o validándose
+        // Validación del Rubro
+        if (regModel.RubroId == Guid.Empty)
+        {
+            errorMessage = "Por favor, seleccioná a qué se dedica tu negocio.";
+            return;
+        }
+
         if (slugDisponible == false || validandoSlug) return;
 
         isSubmitting = true;
@@ -210,7 +245,6 @@
 
             if (result!.Success)
             {
-                // Registro exitoso -> Mandamos al Login
                 Nav.NavigateTo("login");
             }
             else
@@ -221,6 +255,7 @@
         catch { errorMessage = "Error de conexión con la API."; }
         finally { isSubmitting = false; }
     }
+
     public void Dispose()
     {
         debounceTimer?.Dispose();
