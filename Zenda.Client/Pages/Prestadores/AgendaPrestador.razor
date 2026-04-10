@@ -84,39 +84,53 @@
     @* ========================================== *@
     <section>
         <h2 class="text-xl font-bold text-primary mb-1 pl-2">2. Ausencias y Días Libres</h2>
-        <p class="text-on-surface-variant text-sm mb-4 pl-2">Bloqueá fechas específicas para que no te reserven turnos (ej: Feriados, Médico).</p>
+        <p class="text-on-surface-variant text-sm mb-4 pl-2">Bloqueá fechas específicas para vacaciones, feriados o imprevistos.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             @* FORMULARIO NUEVO BLOQUEO *@
             <div class="bg-surface-container-low p-6 rounded-[2rem] border border-surface-container-high md:col-span-1 h-fit">
                 <h3 class="font-bold text-sm text-primary mb-4 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-lg">event_busy</span> Agregar
+                    <span class="material-symbols-outlined text-lg">event_busy</span> Agregar Bloqueo
                 </h3>
                 
                 <div class="space-y-4">
-                    <div>
-                        <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Fecha</label>
-                        <input type="date" @bind="nuevoBloqueoFecha" min="@DateTime.Today.ToString("yyyy-MM-dd")"
-                               class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
-                    </div>
-                    
-                    <div class="flex flex-col gap-3">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Desde</label>
-                            <input type="time" @bind="nuevoBloqueoInicio" class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Del día</label>
+                            <input type="date" @bind="nuevoBloqueoFechaInicio" min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                   class="w-full p-2 bg-white rounded-xl text-xs font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Hasta</label>
-                            <input type="time" @bind="nuevoBloqueoFin" class="w-full p-3 bg-white rounded-xl text-sm font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Al día</label>
+                            <input type="date" @bind="nuevoBloqueoFechaFin" min="@nuevoBloqueoFechaInicio.ToString("yyyy-MM-dd")"
+                                   class="w-full p-2 bg-white rounded-xl text-xs font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Inicio</label>
+                            <input type="time" @bind="nuevoBloqueoInicio" class="w-full p-2 bg-white rounded-xl text-xs font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Hora Fin</label>
+                            <input type="time" @bind="nuevoBloqueoFin" class="w-full p-2 bg-white rounded-xl text-xs font-bold outline-none border border-surface-container-high focus:border-primary mt-1" />
                         </div>
                     </div>
 
                     <div>
                         <label class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Motivo (Opcional)</label>
-                        <input type="text" @bind="nuevoBloqueoMotivo" placeholder="Ej: Trámite personal"
+                        <input type="text" @bind="nuevoBloqueoMotivo" placeholder="Ej: Vacaciones"
                                class="w-full p-3 bg-white rounded-xl text-sm outline-none border border-surface-container-high focus:border-primary mt-1" />
                     </div>
+
+                    @if (!string.IsNullOrEmpty(errorBloqueo))
+                    {
+                        <div class="text-[11px] font-bold text-error bg-error/10 p-2 rounded-lg">
+                            @errorBloqueo
+                        </div>
+                    }
 
                     <button @onclick="CrearBloqueo" disabled="@guardandoBloqueo"
                             class="w-full py-3 bg-surface-container-highest text-primary font-bold rounded-xl hover:bg-primary hover:text-white transition-colors flex justify-center items-center gap-2 text-sm disabled:opacity-50">
@@ -126,7 +140,7 @@
                         }
                         else
                         {
-                            <span class="material-symbols-outlined text-sm">add</span> <span>Bloquear</span>
+                            <span class="material-symbols-outlined text-sm">add</span> <span>Bloquear Agenda</span>
                         }
                     </button>
                 </div>
@@ -152,7 +166,7 @@
                 }
                 else
                 {
-                    @foreach (var bloqueo in bloqueos)
+                    @foreach (var bloqueo in bloqueos.OrderBy(b => b.InicioLocal))
                     {
                         <div class="bg-white p-4 rounded-2xl border border-error/20 flex items-center justify-between group hover:border-error transition-colors editorial-shadow animate-in slide-in-from-right-4">
                             <div class="flex items-center gap-4">
@@ -160,7 +174,17 @@
                                     <span class="material-symbols-outlined text-xl">block</span>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-sm text-primary capitalize">@bloqueo.InicioLocal.ToString("dddd, dd MMM yyyy")</p>
+                                    @if(bloqueo.InicioLocal.Date == bloqueo.FinLocal.Date)
+                                    {
+                                        <p class="font-bold text-sm text-primary capitalize">@bloqueo.InicioLocal.ToString("dddd, dd MMM yyyy")</p>
+                                    }
+                                    else
+                                    {
+                                        <p class="font-bold text-sm text-primary capitalize">
+                                            Del @bloqueo.InicioLocal.ToString("dd MMM") al @bloqueo.FinLocal.ToString("dd MMM yyyy")
+                                        </p>
+                                    }
+                                    
                                     <p class="text-xs text-on-surface-variant font-medium">
                                         @bloqueo.InicioLocal.ToString("HH:mm") a @bloqueo.FinLocal.ToString("HH:mm")
                                         @if (!string.IsNullOrEmpty(bloqueo.Motivo))
@@ -201,9 +225,11 @@
     private List<BloqueoReadDto> bloqueos = new();
     private bool cargandoBloqueos = true;
     private bool guardandoBloqueo = false;
+    private string errorBloqueo = ""; // Para mostrar mensajes de validación
     
-    // Formulario Nuevo Bloqueo
-    private DateTime nuevoBloqueoFecha = DateTime.Today;
+    // Formulario Nuevo Bloqueo Multidía
+    private DateTime nuevoBloqueoFechaInicio = DateTime.Today;
+    private DateTime nuevoBloqueoFechaFin = DateTime.Today;
     private DateTime nuevoBloqueoInicio = DateTime.Today.AddHours(9);
     private DateTime nuevoBloqueoFin = DateTime.Today.AddHours(18);
     private string? nuevoBloqueoMotivo;
@@ -256,7 +282,7 @@
         if (isSaving) return;
         
         isSaving = true;
-        guardadoExitoso = false; // Reseteamos por si había quedado verde
+        guardadoExitoso = false; 
         StateHasChanged();
 
         var agenda = dias.Where(d => d.Activo).Select(d => new DisponibilidadCreateDto
@@ -267,18 +293,15 @@
             HoraFin = TimeOnly.FromDateTime(d.Fin)
         }).ToList();
 
-        // Guardamos
         var exito = await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda);
         
         isSaving = false;
 
-        // Feedback Visual
         if (exito)
         {
             guardadoExitoso = true;
             StateHasChanged();
             
-            // Esperamos 2.5 segundos y volvemos el botón a la normalidad
             await Task.Delay(2500);
             
             guardadoExitoso = false;
@@ -286,7 +309,6 @@
         }
         else
         {
-            // Opcional: Podrías poner otra variable para mostrar que hubo un error y pintarlo de rojo.
             Console.WriteLine("Error al guardar la agenda.");
         }
     }
@@ -304,14 +326,27 @@
 
     private async Task CrearBloqueo()
     {
+        errorBloqueo = ""; // Limpiamos el error previo
+
+        // 1. Ensamblamos la fecha con la hora
+        var inicioCompleto = nuevoBloqueoFechaInicio.Date + nuevoBloqueoInicio.TimeOfDay;
+        var finCompleto = nuevoBloqueoFechaFin.Date + nuevoBloqueoFin.TimeOfDay;
+
+        // 2. CANDADO LÓGICO: Validamos que el rango tenga sentido
+        if (finCompleto <= inicioCompleto)
+        {
+            errorBloqueo = "La fecha y hora de fin debe ser posterior al inicio.";
+            return;
+        }
+
         guardandoBloqueo = true;
         
         var dto = new BloqueoCreateDto
         {
             PrestadorId = State.PrestadorEnEdicion!.Id,
-            SedeId = State.PrestadorEnEdicion.SedeId, // Asumo que el PrestadorEnEdicion tiene la SedeId
-            InicioLocal = nuevoBloqueoFecha.Date + nuevoBloqueoInicio.TimeOfDay,
-            FinLocal = nuevoBloqueoFecha.Date + nuevoBloqueoFin.TimeOfDay,
+            SedeId = State.PrestadorEnEdicion.SedeId, 
+            InicioLocal = inicioCompleto,
+            FinLocal = finCompleto,
             Motivo = nuevoBloqueoMotivo
         };
 
@@ -321,7 +356,13 @@
         {
             // Reset form
             nuevoBloqueoMotivo = string.Empty;
+            nuevoBloqueoFechaInicio = DateTime.Today;
+            nuevoBloqueoFechaFin = DateTime.Today;
             await CargarBloqueos(); // Recarga la lista
+        }
+        else
+        {
+            errorBloqueo = "Hubo un error de conexión al guardar el bloqueo.";
         }
         
         guardandoBloqueo = false;
@@ -332,7 +373,7 @@
         var exito = await AgendaService.EliminarBloqueo(id);
         if (exito)
         {
-            bloqueos.RemoveAll(b => b.Id == id); // Lo sacamos de la lista sin recargar todo
+            bloqueos.RemoveAll(b => b.Id == id);
         }
     }
 

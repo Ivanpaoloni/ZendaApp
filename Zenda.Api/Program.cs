@@ -1,10 +1,9 @@
+Ôªøusing Hangfire;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Resend;
 using System.Text;
 using Zenda.Api.Middlewares;
 using Zenda.API.Services;
@@ -12,7 +11,6 @@ using Zenda.Application.Services;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 using Zenda.Infrastructure;
-using Zenda.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,14 +20,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-#region Inyecciones
-// Registro del Contexto con su Interfaz
-builder.Services.AddDbContext<ZendaDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+#region Infraestructura (Base de datos, Correos, Hangfire)
+// Una sola l√≠nea que carga toda la maquinaria pesada
+builder.Services.AddInfrastructureServices(builder.Configuration);
+#endregion
 
-// 3. Configurar Identity
+#region Identity y Seguridad
+// Configurar Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    // Ac· podÈs relajar o endurecer las reglas de las contraseÒas
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
     options.Password.RequireNonAlphanumeric = false;
@@ -58,14 +57,13 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true
     };
 });
+#endregion
 
-// Mapeo de la Interfaz al Contexto real
-builder.Services.AddScoped<IZendaDbContext>(provider => provider.GetRequiredService<ZendaDbContext>());
-
-// 1. Habilitar el acceso al HttpContext para leer tokens/sesiones
+#region Servicios de Aplicaci√≥n
+// Habilitar el acceso al HttpContext para leer tokens/sesiones
 builder.Services.AddHttpContextAccessor();
 
-// Registro del Servicio
+// Registro de los Servicios Core
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
 builder.Services.AddScoped<INegocioService, NegocioService>();
@@ -78,27 +76,14 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 #endregion
 
-#region emailing
-// ConfiguraciÛn de Resend
-builder.Services.AddOptions();
-builder.Services.Configure<ResendClientOptions>(o =>
-{
-    o.ApiToken = builder.Configuration["Resend:ApiKey"]!;
-});
-builder.Services.AddHttpClient<ResendClient>();
-builder.Services.AddTransient<IResend, ResendClient>();
-
-// Tu servicio de correos
-builder.Services.AddScoped<IEmailService, ResendEmailService>();
-#endregion
-
-#region Health Checks Configuration
+#region Health Checks
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "Neon-Database");
 
 builder.Services.AddHealthChecksUI().AddInMemoryStorage();
 #endregion
 
+#region CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("BlazorPolicy", policy =>
@@ -110,37 +95,42 @@ builder.Services.AddCors(options =>
         ).AllowAnyMethod().AllowAnyHeader();
     });
 });
+#endregion
 
 var app = builder.Build();
 
-app.UseCors("BlazorPolicy");
-// swagger se ve siempre OJO prod
-//if (app.Environment.IsDevelopment())
-//{dotnet add Zenda.Client/Zenda.Client.csproj reference Zenda.Core/Zenda.Core.csproj
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
+// ==========================================
+// PIPELINE DE MIDDLEWARES (El orden importa)
+// ==========================================
 
-//middleware de manejo global de excepciones
+// 1. Manejo global de excepciones
 app.UseMiddleware<ExceptionMiddleware>();
+
+// 2. Archivos est√°ticos
 app.UseStaticFiles();
 
+// 3. Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// 4. Redirecci√≥n HTTPS
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // Primero verifica QUI…N es el usuario (lee el token)
-app.UseAuthorization();  // DespuÈs verifica QU… puede hacer (roles)
+// 5. CORS (Siempre antes de la autenticaci√≥n)
+app.UseCors("BlazorPolicy");
 
+// 6. Autenticaci√≥n y Autorizaci√≥n
+app.UseAuthentication();
+app.UseAuthorization();
+
+// 7. Hangfire Dashboard (Panel visual de tareas)
+app.UseHangfireDashboard();
+
+// 8. Controladores (Tus endpoints)
 app.MapControllers();
 
-#region Health Checks Endpoints
-
-//HealthCheck Middleware
+// 9. Endpoints de Health Checks
 app.UseHealthChecks("/health", new HealthCheckOptions { ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 app.UseHealthChecksUI(config => config.UIPath = "/health-dash");
-
-#endregion
 
 app.Run();

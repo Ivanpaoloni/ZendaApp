@@ -13,13 +13,15 @@ public class TurnosService : ITurnosService
     private readonly IEmailService _emailService;
     private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
+    private readonly IJobService _jobService;
 
-    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService)
+    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService, IJobService jobService)
     {
         _context = context;
         _mapper = mapper;
         _tenantService = tenantService;
         _emailService = emailService;
+        _jobService = jobService;
     }
 
     public async Task<TurnoReadDto> GetByIdAsync(Guid id)
@@ -48,17 +50,14 @@ public class TurnosService : ITurnosService
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
-            .Include(p => p.Negocio) // Incluimos Negocio
-            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede, p.Negocio }) // 🎯 FIX: Agregamos p.Negocio al Select
+            .Include(p => p.Negocio)
+            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede, p.Negocio })
             .FirstOrDefaultAsync(p => p.Id == prestadorId);
 
-        // 🎯 FIX: Faltaba el == null de prestador.Negocio
         if (prestador == null || prestador.Sede == null || prestador.Negocio == null)
             throw new Exception("Prestador, Sede o Negocio no encontrados");
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
-
-        // 🎯 FIX: Declaramos la variable que faltaba
         int anticipacionHoras = prestador.Negocio.AnticipacionMinimaHoras;
 
         // =================================================================
@@ -104,6 +103,7 @@ public class TurnosService : ITurnosService
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
 
+        // Esta query está perfecta, trae los multi-días correctamente
         var bloqueos = await _context.BloqueosAgenda
             .IgnoreQueryFilters()
             .Where(b => b.PrestadorId == prestadorId &&
@@ -111,15 +111,11 @@ public class TurnosService : ITurnosService
                         b.FinUtc > inicioDiaUtc)
             .ToListAsync();
 
-        var horaActualSede = TimeOnly.FromDateTime(fechaHoraActualSede);
-
         // 🎯 Calculamos la barrera de tiempo real
         var barreraAnticipacion = fechaHoraActualSede.AddHours(anticipacionHoras);
 
-        // Si el día entero que estamos buscando cae ANTES de la barrera, ni nos gastamos en iterar
         if (fecha.Date < barreraAnticipacion.Date) return respuesta;
 
-        // Convertimos la barrera a TimeOnly para compararla con los slots dentro del día
         var horaMinimaPermitida = TimeOnly.FromDateTime(barreraAnticipacion);
         bool aplicaBarreraHoy = fecha.Date == barreraAnticipacion.Date;
 
@@ -134,24 +130,24 @@ public class TurnosService : ITurnosService
             {
                 var finSlot = inicioSlot.AddMinutes(duracionServicio);
 
-                // 🎯 FIX: Validamos que no esté muy pronto (reemplaza a yaPaso)
+                // 🎯 REFACTOR CLAVE: Armamos la fecha+hora exacta del Slot y la pasamos a UTC
+                var slotInicioLocal = inicioDiaLocal.Add(inicioSlot.ToTimeSpan());
+                var slotFinLocal = inicioDiaLocal.Add(finSlot.ToTimeSpan());
+
+                var slotInicioUtc = TimeZoneInfo.ConvertTimeToUtc(slotInicioLocal, zonaSede);
+                var slotFinUtc = TimeZoneInfo.ConvertTimeToUtc(slotFinLocal, zonaSede);
+
                 bool muyPronto = aplicaBarreraHoy && inicioSlot <= horaMinimaPermitida;
 
-                // Chequeo de Turnos 
+                // Chequeo de Turnos (Superposición exacta UTC)
                 bool estaOcupado = turnosOcupados.Any(t =>
-                {
-                    var hInicioOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede));
-                    var hFinOcupado = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraFinUtc, zonaSede));
-                    return hInicioOcupado < finSlot && inicioSlot < hFinOcupado;
-                });
+                    t.FechaHoraInicioUtc < slotFinUtc && slotInicioUtc < t.FechaHoraFinUtc
+                );
 
-                // Chequeo de Bloqueos
+                // Chequeo de Bloqueos (Superposición exacta UTC, soporta multi-día perfecto)
                 bool estaBloqueado = bloqueos.Any(b =>
-                {
-                    var hInicioBloqueo = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede));
-                    var hFinBloqueo = TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(b.FinUtc, zonaSede));
-                    return hInicioBloqueo < finSlot && inicioSlot < hFinBloqueo;
-                });
+                    b.InicioUtc < slotFinUtc && slotInicioUtc < b.FinUtc
+                );
 
                 // Si no está ocupado, no está bloqueado, y no es muy pronto:
                 if (!estaOcupado && !estaBloqueado && !muyPronto)
@@ -173,12 +169,11 @@ public class TurnosService : ITurnosService
         if (servicio == null)
             throw new Exception("El servicio seleccionado no existe o no está disponible.");
 
-        // 1. Buscamos el prestador con su Sede, Disponibilidad y Negocio
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Include(p => p.Horarios)
-            .Include(p => p.Negocio) // 🎯 FIX: Traemos el negocio para leer la regla
+            .Include(p => p.Negocio)
             .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
 
         if (prestador?.Sede == null || prestador?.Negocio == null)
@@ -186,7 +181,6 @@ public class TurnosService : ITurnosService
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
-        // Tratamos la fecha de entrada como "Hora del Local" y la pasamos a UTC
         var fechaCruda = DateTime.SpecifyKind(dto.Inicio, DateTimeKind.Unspecified);
         var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaCruda, zonaSede);
         var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(servicio.DuracionMinutos);
@@ -197,13 +191,13 @@ public class TurnosService : ITurnosService
 
         int anticipacion = prestador.Negocio.AnticipacionMinimaHoras;
 
-        // 🎯 BARRERA 1 MEJORADA: ¿Cumple con la anticipación?
+        // BARRERA 1: Anticipación
         if (fechaUtcDefinitiva < DateTime.UtcNow.AddHours(anticipacion))
         {
             throw new InvalidOperationException($"Debe reservar con al menos {anticipacion} horas de anticipación.");
         }
 
-        // BARRERA 2: ¿Está dentro del horario de trabajo de este barbero?
+        // BARRERA 2: Horario de trabajo
         int diaSemana = (int)fechaCruda.DayOfWeek;
         var horaSolicitada = TimeOnly.FromDateTime(fechaCruda);
 
@@ -216,7 +210,7 @@ public class TurnosService : ITurnosService
             throw new InvalidOperationException("El horario solicitado está fuera de la jornada laboral del profesional.");
         }
 
-        // BARRERA 3: ¿El horario ya fue reservado por otra persona hace un milisegundo?
+        // BARRERA 3: Choque de Turnos
         bool turnoOcupado = await _context.Turnos.IgnoreQueryFilters().AnyAsync(t =>
             t.PrestadorId == dto.PrestadorId &&
             t.Estado != EstadoTurnoEnum.Cancelado &&
@@ -226,6 +220,18 @@ public class TurnosService : ITurnosService
         if (turnoOcupado)
         {
             throw new InvalidOperationException("Lo sentimos, este horario acaba de ser reservado.");
+        }
+
+        // 🎯 NUEVA BARRERA 4: Choque de Vacaciones/Bloqueos (Seguridad extra)
+        bool chocaConBloqueo = await _context.BloqueosAgenda.IgnoreQueryFilters().AnyAsync(b =>
+            b.PrestadorId == dto.PrestadorId &&
+            b.InicioUtc < fechaFinUtcDefinitiva &&
+            fechaUtcDefinitiva < b.FinUtc
+        );
+
+        if (chocaConBloqueo)
+        {
+            throw new InvalidOperationException("El horario solicitado se encuentra bloqueado por vacaciones o ausencia del profesional.");
         }
 
         // ==========================================
@@ -253,6 +259,21 @@ public class TurnosService : ITurnosService
             dto.NombreClienteInvitado,
             prestador.Negocio.Nombre,
             dto.Inicio);
+
+        // FIX: Usamos la fecha UTC del turno para restar 1 hora
+        var fechaRecordatorioUtc = fechaUtcDefinitiva.AddHours(-1);
+
+        // Si la hora de mandar el recordatorio todavía está en el futuro...
+        if (fechaRecordatorioUtc > DateTime.UtcNow)
+        {
+            var jobId = _jobService.ProgramarRecordatorioEmail(
+                dto.EmailClienteInvitado,
+                dto.NombreClienteInvitado,
+                prestador.Negocio.Nombre,
+                dto.Inicio,
+                fechaRecordatorioUtc // Pasamos la fecha UTC correcta
+            );
+        }
 
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
