@@ -4,6 +4,7 @@
 @using Zenda.Application.DTOs.Auth
 @inject HttpClient Http
 @inject NavigationManager Nav
+@implements IDisposable
 
 <div class="max-w-xl mx-auto mt-8 mb-12 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
     <div class="text-center mb-8">
@@ -219,5 +220,9 @@
         }
         catch { errorMessage = "Error de conexión con la API."; }
         finally { isSubmitting = false; }
+    }
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
     }
 }
