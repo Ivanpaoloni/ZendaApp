@@ -6,7 +6,7 @@ namespace Zenda.Infrastructure.Services;
 public class ResendEmailService : IEmailService
 {
     private readonly IResend _resend;
-    private readonly string _fromEmail = "onboarding@resend.dev"; // Tu mail de salida
+    private readonly string _fromEmail = "turnos@zenda-app.com.ar"; // Tu mail de salida
     private readonly string _adminEmail = "ivanpaoloni@gmail.com"; // 👈 PONÉ TU MAIL ACÁ
 
     public ResendEmailService(IResend resend)
