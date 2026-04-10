@@ -7,4 +7,5 @@ public interface IEmailService
     Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio);
 
     Task<bool> EnviarConsultaContactoAsync(string nombreRemitente, string emailRemitente, string mensaje);
+    Task<bool> EnviarRecordatorioProximoTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno);
 }

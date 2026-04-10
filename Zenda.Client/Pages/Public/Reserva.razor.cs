@@ -1,8 +1,12 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Zenda.Client.Services;
 using Zenda.Core.DTOs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-namespace Zenda.Client.Pages.Public;
+namespace Zenda.Client.Pages.Public; // 👈 Confirmá que sea este tu namespace
 
 public partial class Reserva : ComponentBase
 {
@@ -17,8 +21,9 @@ public partial class Reserva : ComponentBase
     [Inject] protected TurnoClient TurnoService { get; set; } = default!;
 
     // --- ENUM Y ESTADO ---
-    protected enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno, NoEncontrado }
+    protected enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno, CompletarDatos, NoEncontrado }
     protected PasoReserva pasoActual = PasoReserva.Cargando;
+    protected string errorReserva = string.Empty;
 
     protected DateTime fechaSeleccionada = DateTime.Today;
     protected List<string> slots = new();
@@ -41,7 +46,6 @@ public partial class Reserva : ComponentBase
 
     protected override async Task OnParametersSetAsync()
     {
-        // Usamos OnParametersSetAsync por si cambia el Slug en la misma ventana
         await CargarDatosIniciales();
     }
 
@@ -71,7 +75,6 @@ public partial class Reserva : ComponentBase
             }
             else
             {
-                // No tiene sedes
                 pasoActual = PasoReserva.SeleccionarSede;
             }
         }
@@ -118,10 +121,17 @@ public partial class Reserva : ComponentBase
         await CargarDisponibilidad();
     }
 
+    protected void SeleccionarHora(string hora)
+    {
+        horaSeleccionada = hora;
+        pasoActual = PasoReserva.CompletarDatos;
+    }
+
     // --- NAVEGACIÓN HACIA ATRÁS ---
     protected void VolverASedes() => pasoActual = PasoReserva.SeleccionarSede;
     protected void VolverAServicios() => pasoActual = PasoReserva.SeleccionarServicio;
     protected void VolverAPrestadores() => pasoActual = PasoReserva.SeleccionarPrestador;
+    protected void VolverAHorarios() => pasoActual = PasoReserva.SeleccionarTurno;
 
     protected string ObtenerTextoPaso()
     {
@@ -131,6 +141,7 @@ public partial class Reserva : ComponentBase
             PasoReserva.SeleccionarServicio => "2. ¿Qué te querés hacer?",
             PasoReserva.SeleccionarPrestador => "3. Elegí tu profesional",
             PasoReserva.SeleccionarTurno => "4. Seleccioná día y hora",
+            PasoReserva.CompletarDatos => "5. Completá tus datos",
             _ => "Preparando agenda..."
         };
     }
@@ -153,7 +164,6 @@ public partial class Reserva : ComponentBase
                 var primerPrestador = prestadoresFiltrados.FirstOrDefault();
                 if (primerPrestador != null)
                 {
-                    // 🎯 BUG FIX: Usar primerPrestador.Id en lugar de prestadorSeleccionado!.Id
                     var res = await TurnoService.GetDisponibilidad(primerPrestador.Id, fechaSeleccionada, servicioSeleccionado!.Id);
                     slots = res?.HorariosLibres ?? new();
                 }
@@ -169,14 +179,11 @@ public partial class Reserva : ComponentBase
         }
     }
 
-    protected void SeleccionarHora(string hora) => horaSeleccionada = hora;
-
     protected async Task ConfirmarReserva()
     {
-        if (string.IsNullOrEmpty(nuevoTurno.NombreClienteInvitado) || string.IsNullOrEmpty(nuevoTurno.TelefonoClienteInvitado))
-            return;
-
+        errorReserva = string.Empty;
         enviandoReserva = true;
+
         try
         {
             Guid idPrestadorFinal;
@@ -220,10 +227,14 @@ public partial class Reserva : ComponentBase
 
                 Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}");
             }
+            else
+            {
+                errorReserva = "No pudimos confirmar la reserva. El turno pudo haber sido ocupado recientemente.";
+            }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"Error crítico reservando: {ex.Message}");
+            errorReserva = "El horario seleccionado ya no está disponible. Por favor, elegí otro.";
         }
         finally
         {

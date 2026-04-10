@@ -11,7 +11,7 @@ public class HangfireJobService : IJobService
         // No hace falta instanciarlo acá. Solo le decimos qué método ejecutar.
 
         var jobId = BackgroundJob.Schedule<IEmailService>(
-            emailService => emailService.EnviarConfirmacionTurnoAsync(emailDestino, nombreCliente, nombreNegocio, fechaTurno), // Acá a futuro podés hacer un EnviarRecordatorioAsync específico
+            emailService => emailService.EnviarRecordatorioProximoTurnoAsync(emailDestino, nombreCliente, nombreNegocio, fechaTurno), // Acá a futuro podés hacer un EnviarRecordatorioAsync específico
             fechaEjecucion
         );
 

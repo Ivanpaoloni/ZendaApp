@@ -15,10 +15,6 @@
     {
         <NotFoundUI />
     }
-    else if (negocio == null)
-    {
-        <NotFoundUI />
-    }
     else
     {
         <div class="bg-white p-8 rounded-b-[3rem] editorial-shadow mb-8 text-center animate-in slide-in-from-top duration-700 relative overflow-hidden">
@@ -26,7 +22,7 @@
                 @if (!string.IsNullOrEmpty(negocio.LogoUrl))
                 {
                     <div class="w-24 h-24 md:w-28 md:h-28 mx-auto mb-4 relative">
-                        <img src="@negocio.LogoUrl" alt="Logo de @negocio.Nombre" 
+                        <img src="@negocio.LogoUrl" alt="Logo de @negocio.Nombre"
                              class="w-full h-full rounded-full object-cover border-4 border-white shadow-lg" />
                     </div>
                 }
@@ -196,7 +192,7 @@
                                 @foreach (var hora in slots)
                                 {
                                     <button @onclick="() => SeleccionarHora(hora)"
-                                            class="py-4 rounded-2xl font-headline font-bold text-sm transition-all @(horaSeleccionada == hora ? "bg-primary text-on-primary shadow-lg shadow-primary/30 scale-95" : "bg-white text-primary editorial-shadow hover:border-primary border border-transparent")">
+                                            class="py-4 rounded-2xl font-headline font-bold text-sm transition-all bg-white text-primary editorial-shadow hover:bg-primary hover:text-white border border-transparent">
                                         @hora
                                     </button>
                                 }
@@ -209,35 +205,65 @@
                             </div>
                         }
                     </section>
+                </div>
+            }
 
-                    @if (!string.IsNullOrEmpty(horaSeleccionada))
-                    {
-                        <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary animate-in zoom-in-95 duration-300 space-y-4">
-                            <h3 class="font-headline font-bold text-xl text-primary mb-2">3. Tus datos</h3>
+            @if (pasoActual == PasoReserva.CompletarDatos)
+            {
+                <div class="animate-in fade-in slide-in-from-right-8 duration-500">
+                    <button @onclick="VolverAHorarios" class="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1 mb-4 ml-2">
+                        <span class="material-symbols-outlined text-xs">arrow_back</span> Elegir otro horario
+                    </button>
 
-                            <input @bind="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamás?"
-                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                    <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary">
+                        <h3 class="font-headline font-bold text-xl text-primary mb-1">Último paso</h3>
+                        <p class="text-sm text-on-surface-variant mb-6">Reservando turno a las <strong>@horaSeleccionada hs</strong>.</p>
 
-                            <input @bind="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp" type="tel"
-                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                        @if (!string.IsNullOrEmpty(errorReserva))
+                        {
+                            <div class="mb-4 p-3 bg-error/10 text-error rounded-xl text-sm font-bold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-lg">error</span>
+                                @errorReserva
+                            </div>
+                        }
 
-                            <input @bind="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email (opcional)" type="email"
-                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                        <EditForm Model="@nuevoTurno" OnValidSubmit="ConfirmarReserva">
+                            <DataAnnotationsValidator />
 
-                            <button @onclick="ConfirmarReserva" disabled="@enviandoReserva"
-                                    class="w-full py-5 mt-2 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
-                                @if (enviandoReserva)
-                                {
-                                    <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                                    <span>Reservando...</span>
-                                }
-                                else
-                                {
-                                    <span>Confirmar Turno</span>
-                                }
-                            </button>
-                        </div>
-                    }
+                            <div class="space-y-4">
+                                <div>
+                                    <InputText @bind-Value="nuevoTurno.NombreClienteInvitado" placeholder="¿Cómo te llamás?"
+                                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                                    <ValidationMessage For="@(() => nuevoTurno.NombreClienteInvitado)" class="text-error text-xs font-bold mt-1 ml-2" />
+                                </div>
+
+                                <div>
+                                    <InputText @bind-Value="nuevoTurno.TelefonoClienteInvitado" placeholder="Tu WhatsApp"
+                                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                                    <ValidationMessage For="@(() => nuevoTurno.TelefonoClienteInvitado)" class="text-error text-xs font-bold mt-1 ml-2" />
+                                </div>
+
+                                <div>
+                                    <InputText @bind-Value="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email"
+                                               class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                                    <ValidationMessage For="@(() => nuevoTurno.EmailClienteInvitado)" class="text-error text-xs font-bold mt-1 ml-2" />
+                                </div>
+
+                                <button type="submit" disabled="@enviandoReserva"
+                                        class="w-full py-5 mt-2 bg-primary text-on-primary rounded-2xl font-headline font-bold text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
+                                    @if (enviandoReserva)
+                                    {
+                                        <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                                        <span>Confirmando...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Confirmar Turno</span>
+                                    }
+                                </button>
+                            </div>
+                        </EditForm>
+                    </div>
                 </div>
             }
         </div>
