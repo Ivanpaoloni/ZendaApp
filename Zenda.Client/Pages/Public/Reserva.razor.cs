@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Components;
-using Zenda.Client.Services;
-using Zenda.Core.DTOs;
+using Microsoft.JSInterop;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Zenda.Client.Services;
+using Zenda.Core.DTOs;
 
 namespace Zenda.Client.Pages.Public; // 👈 Confirmá que sea este tu namespace
 
@@ -19,7 +20,7 @@ public partial class Reserva : ComponentBase
     [Inject] protected NegocioClient _negocioClient { get; set; } = default!;
     [Inject] protected ServicioClient _servicioClient { get; set; } = default!;
     [Inject] protected TurnoClient TurnoService { get; set; } = default!;
-
+    [Inject] protected IJSRuntime JS { get; set; } = default!;
     // --- ENUM Y ESTADO ---
     protected enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno, CompletarDatos, NoEncontrado }
     protected PasoReserva pasoActual = PasoReserva.Cargando;
@@ -60,9 +61,13 @@ public partial class Reserva : ComponentBase
             if (negocio == null)
             {
                 pasoActual = PasoReserva.NoEncontrado;
+                await JS.InvokeVoidAsync("cambiarFavicon", "");
                 return;
             }
-
+            if (!string.IsNullOrEmpty(negocio.LogoUrl))
+            {
+                await JS.InvokeVoidAsync("cambiarFavicon", negocio.LogoUrl);
+            }
             sedesDisponibles = await _sedeService.GetPublicByNegocio(negocio.Id);
 
             if (sedesDisponibles.Count == 1)

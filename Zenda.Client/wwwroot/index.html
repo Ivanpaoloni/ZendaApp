@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zenda | Reservas online</title>
     <base href="/" />
-    <link rel="icon" type="image/png" href="favicon.png" />
+    <link id="favicon" rel="icon" type="image/png" href="favicon.png" />
     <link href="Zenda.Client.styles.css" rel="stylesheet" />
     <link href="css/app.css" rel="stylesheet" />
 
@@ -88,6 +88,21 @@
                 }
             }
         }
+        window.cambiarFavicon = (url) => {
+            // Buscamos el elemento
+            let link = document.getElementById('favicon');
+
+            // Si por algún motivo NO existe en el HTML, lo creamos al vuelo
+            if (!link) {
+                link = document.createElement('link');
+                link.id = 'favicon';
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+
+            // Le asignamos la URL (o el tuyo por defecto si viene vacío)
+            link.href = url ? url : 'favicon.png';
+        };
     </script>
     <style>
         /* La sombra editorial que le da el toque premium */
