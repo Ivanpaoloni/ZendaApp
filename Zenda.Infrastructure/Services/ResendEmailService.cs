@@ -15,7 +15,7 @@ public class ResendEmailService : IEmailService
     }
 
     // 1. CONFIRMACIÓN DE TURNO
-    public async Task<bool> EnviarConfirmacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno)
+    public async Task<bool> EnviarConfirmacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId)
     {
         var message = new EmailMessage
         {
@@ -32,7 +32,13 @@ public class ResendEmailService : IEmailService
                         <p style='margin: 5px 0 0 0; font-size: 16px;'>⏰ <strong>Hora:</strong> {fechaTurno:HH:mm} hs</p>
                     </div>
 
-                    <p style='font-size: 14px; color: #555;'>Si necesitás cancelar o modificar tu turno, por favor comunicate directamente con el negocio.</p>
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='https://app.zenda-app.com.ar/gestionar-turno?id={turnoId}' style='background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>
+                            Gestionar o Cancelar Turno
+                        </a>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si necesitás cancelar o modificar tu turno, por favor hacelo lo antes posible usando el botón de arriba.</p>
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
@@ -45,7 +51,7 @@ public class ResendEmailService : IEmailService
     }
 
     // 2. RECORDATORIO DE TURNO
-    public async Task<bool> EnviarRecordatorioProximoTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno)
+    public async Task<bool> EnviarRecordatorioProximoTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId)
     {
         var message = new EmailMessage
         {
@@ -57,13 +63,18 @@ public class ResendEmailService : IEmailService
                     <h2 style='color: #4f46e5; margin-top: 0;'>¡Hola {nombreCliente}! 👋</h2>
                     <p>Te escribimos para recordarte que tenés un turno reservado en <strong>{nombreNegocio}</strong> muy pronto.</p>
                     
-                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                    <<div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
                         <p style='margin: 0; font-size: 16px;'>📅 <strong>Fecha:</strong> {fechaTurno:dd/MM/yyyy}</p>
                         <p style='margin: 5px 0 0 0; font-size: 16px;'>⏰ <strong>Hora:</strong> {fechaTurno:HH:mm} hs</p>
                     </div>
 
-                    <p style='font-size: 14px; color: #555;'>Te pedimos por favor puntualidad. Si por algún motivo no podés asistir, te agradecemos que te comuniques con el negocio lo antes posible para liberar el espacio.</p>
-                    
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='https://app.zenda-app.com.ar/gestionar-turno?id={turnoId}' style='background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>
+                            Gestionar o Cancelar Turno
+                        </a>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si necesitás cancelar o modificar tu turno, por favor hacelo lo antes posible usando el botón de arriba.</p>
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
                         Reservas gestionadas de forma inteligente con <strong>Zenda App</strong>
@@ -130,6 +141,43 @@ public class ResendEmailService : IEmailService
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
                         Notificación interna de <strong>Zenda App</strong>
+                    </p>
+                </div>"
+        };
+        var response = await _resend.EmailSendAsync(message);
+        return response.Success;
+    }
+    // 5. CONFIRMACIÓN DE CANCELACIÓN
+    public async Task<bool> EnviarCancelacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurnoLocal, string negocioSlug)
+    {
+        var baseUrl = "https://app.zenda-app.com.ar"; // Cambiar por localhost en dev
+
+        var message = new EmailMessage
+        {
+            From = $"Zenda App <{_fromEmail}>",
+            To = { emailDestino },
+            Subject = $"🚫 Turno cancelado en {nombreNegocio}",
+            HtmlBody = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #ef4444; margin-top: 0;'>Turno Cancelado</h2>
+                    <p>Hola <strong>{nombreCliente}</strong>, te confirmamos que tu turno en <strong>{nombreNegocio}</strong> ha sido cancelado correctamente.</p>
+                    
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                        <p style='margin: 0; font-size: 15px; color: #666;'><del>📅 Fecha original: {fechaTurnoLocal:dd/MM/yyyy}</del></p>
+                        <p style='margin: 5px 0 0 0; font-size: 15px; color: #666;'><del>⏰ Hora original: {fechaTurnoLocal:HH:mm} hs</del></p>
+                    </div>
+
+                    <p>Entendemos que los planes cambian. Cuando estés listo para volver, podés agendar un nuevo horario haciendo clic acá:</p>
+
+                    <div style='text-align: center; margin: 30px 0;'>
+                        <a href='{baseUrl}/{negocioSlug}' style='background-color: #f3f4f6; color: #374151; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #d1d5db;'>
+                            Agendar un nuevo turno
+                        </a>
+                    </div>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        Notificación automática de <strong>Zenda App</strong>
                     </p>
                 </div>"
         };

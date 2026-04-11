@@ -67,4 +67,31 @@ public class TurnosController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+    [AllowAnonymous]
+    [HttpPatch("{id}/cancelar-cliente")]
+    public async Task<IActionResult> CancelarTurnoCliente(Guid id)
+    {
+        try
+        {
+            // Usamos un nuevo método en el servicio que no chequee el TenantId
+            var exito = await _turnosService.CancelarPorClienteAsync(id);
+            if (!exito) return NotFound("Turno no encontrado.");
+
+            return Ok(new { success = true, message = "Turno cancelado exitosamente." });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id}/resumen")]
+    public async Task<ActionResult<TurnoReadDto>> GetResumenTurnoPublico(Guid id)
+    {
+        // Necesitamos un método que traiga los datos para mostrar en la pantalla de gestión
+        var turno = await _turnosService.GetResumenPublicoAsync(id);
+        if (turno == null) return NotFound();
+        return Ok(turno);
+    }
 }

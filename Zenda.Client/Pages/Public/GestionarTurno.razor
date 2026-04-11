@@ -1,0 +1,163 @@
+﻿@page "/gestionar-turno"
+@layout EmptyLayout
+@using Zenda.Core.DTOs
+@using Zenda.Core.Enums
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<div class="min-h-screen bg-surface-container-low flex flex-col items-center justify-center p-6">
+    <div class="max-w-md w-full bg-white rounded-[3rem] editorial-shadow p-8 md:p-10 animate-in zoom-in-95 duration-500">
+
+        <div class="flex justify-center mb-6">
+            <span class="material-symbols-outlined text-4xl text-primary bg-primary/10 p-4 rounded-full">
+                event_note
+            </span>
+        </div>
+
+        <h1 class="text-2xl font-headline font-bold text-center text-primary mb-6">Gestión de Reserva</h1>
+
+        @if (cargando)
+        {
+            <div class="flex justify-center py-10">
+                <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(mensajeError))
+        {
+            <div class="bg-error/10 text-error p-4 rounded-2xl text-center font-bold text-sm">
+                @mensajeError
+            </div>
+            <button @onclick='() => Nav.NavigateTo("/")' class="mt-6 w-full py-4 bg-surface-container-low text-on-surface-variant rounded-2xl font-bold">Volver al inicio</button>
+        }
+        else if (turno != null)
+        {
+            <div class="bg-surface-container-low rounded-3xl p-6 mb-8 space-y-4 text-left border border-surface-container-high">
+                <div class="flex justify-between items-start border-b border-surface-container-high pb-4">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Estado</p>
+                        <p class="font-bold @(turno.Estado == EstadoTurnoEnum.Cancelado ? "text-error" : "text-green-600")">@turno.Estado.ToString().ToUpper()</p>
+                    </div>
+                </div>
+
+                <div class="pt-2 space-y-3">
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Fecha y Hora</p>
+                        <p class="font-headline font-bold text-primary">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("dd/MM/yyyy - HH:mm") hs</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Profesional</p>
+                        <p class="font-headline font-bold text-primary">@turno.PrestadorNombre</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Servicio</p>
+                        <p class="font-headline font-bold text-primary">@turno.ServicioNombre</p>
+                    </div>
+                </div>
+
+            </div>
+
+            @* --- ZONA DE BOTONES DINÁMICA --- *@
+            @if (turno.Estado != EstadoTurnoEnum.Cancelado && turno.Estado != EstadoTurnoEnum.Completado)
+            {
+                <div class="space-y-3 mt-6">
+                    @* Botón de Cancelar (Peligro) *@
+                    <button @onclick="ConfirmarCancelacion" disabled="@cancelando"
+                            class="w-full py-4 bg-error/10 text-error hover:bg-error hover:text-white rounded-2xl font-headline font-bold transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                        @if (cancelando)
+                        {
+                            <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current"></div>
+                            <span>Cancelando...</span>
+                        }
+                        else
+                        {
+                            <span class="material-symbols-outlined text-[18px]">cancel</span>
+                            <span>Cancelar este turno</span>
+                        }
+                    </button>
+
+                    @* Botón Secundario: Reservar otro *@
+                    <button @onclick='() => Nav.NavigateTo($"/{turno.NegocioSlug}")'
+                            class="w-full py-4 bg-surface-container-lowest border border-surface-container-high text-on-surface-variant hover:bg-surface-container-low rounded-2xl font-headline font-bold transition-all flex justify-center items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                        <span>Reservar otro turno</span>
+                    </button>
+                </div>
+            }
+            else
+            {
+                @* Botón Principal si ya está cancelado *@
+                <div class="mt-6">
+                    <button @onclick='() => Nav.NavigateTo($"/{turno.NegocioSlug}")'
+                            class="w-full py-4 bg-primary text-on-primary rounded-2xl font-headline font-bold hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2 shadow-md">
+                        <span class="material-symbols-outlined text-[18px]">calendar_add_on</span>
+                        <span>Agendar nuevo turno</span>
+                    </button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, SupplyParameterFromQuery] public Guid Id { get; set; }
+
+    private TurnoReadDto? turno;
+    private bool cargando = true;
+    private bool cancelando = false;
+    private string mensajeError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id == Guid.Empty)
+        {
+            mensajeError = "Enlace inválido.";
+            cargando = false;
+            return;
+        }
+
+        try
+        {
+            turno = await Http.GetFromJsonAsync<TurnoReadDto>($"api/turnos/{Id}/resumen");
+            if (turno == null) mensajeError = "No se encontró el turno.";
+        }
+        catch
+        {
+            mensajeError = "Error al cargar la información del turno.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task ConfirmarCancelacion()
+    {
+        cancelando = true;
+        try
+        {
+            // Pega al nuevo endpoint anónimo
+            var response = await Http.PatchAsync($"api/turnos/{Id}/cancelar-cliente", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                if (turno != null) turno.Estado = EstadoTurnoEnum.Cancelado;
+            }
+            else
+            {
+                // Leer el error que devuelve la API (Ej: "No es posible cancelar con tan poca anticipación")
+                var errorObj = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                mensajeError = errorObj?.message ?? "Error al cancelar el turno.";
+            }
+        }
+        catch
+        {
+            mensajeError = "Ocurrió un error inesperado.";
+        }
+        finally
+        {
+            cancelando = false;
+        }
+    }
+
+    public class ErrorResponse { public string message { get; set; } = ""; }
+}

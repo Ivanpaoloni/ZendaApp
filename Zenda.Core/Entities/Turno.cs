@@ -26,5 +26,6 @@ public class Turno : BaseEntity, ITenantEntity
     public string EmailClienteInvitado { get; set; } = string.Empty;
     public EstadoTurnoEnum Estado { get; set; } = EstadoTurnoEnum.Pendiente;
     public Guid ServicioId { get; set; }
+    public string? RecordatorioJobId { get; set; }
     public Servicio Servicio { get; set; } = null!;
 }

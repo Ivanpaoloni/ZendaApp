@@ -1,8 +1,5 @@
 ﻿@page "/turnos"
-@using Zenda.Core.DTOs
-@using Zenda.Client.Services
 @using Zenda.Core.Enums
-@inject TurnoClient TurnoService
 
 <div class="space-y-6 animate-in fade-in duration-500 pb-20 relative">
 
@@ -39,7 +36,7 @@
 
             @* Modificamos el binding para que al cambiar la fecha limpie los filtros *@
             <input type="date" @bind="fechaFiltro" @bind:after="CambiarFecha"
-                   class="w-full md:w-auto p-4 bg-white rounded-2xl border-none shadow-sm font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none cursor-pointer" />
+                   class="w-full md:w-auto p-4 bg-white rounded-2xl border border-surface-container-high shadow-sm font-headline font-bold text-primary focus:ring-2 focus:ring-primary outline-none cursor-pointer" />
         </div>
     </div>
 
@@ -48,10 +45,10 @@
     @* ========================================== *@
     @if (turnosDelDia.Any())
     {
-        <div class="bg-surface-container-low rounded-2xl border border-surface-container-high overflow-hidden shadow-sm">
+        <div class="bg-white rounded-2xl border border-surface-container-high overflow-hidden shadow-sm">
 
             @* CABECERA DEL ACORDEÓN *@
-            <button @onclick="ToggleFiltros" class="w-full flex items-center justify-between p-3 md:px-4 hover:bg-surface-container-highest/20 transition-colors">
+            <button @onclick="ToggleFiltros" class="w-full flex items-center justify-between p-3 md:px-4 hover:bg-surface-container-lowest/50 transition-colors">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-on-surface-variant text-[20px]">filter_list</span>
                     <span class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Filtros Visuales</span>
@@ -81,7 +78,7 @@
             @* CUERPO DEL ACORDEÓN *@
             @if (mostrarFiltros)
             {
-                <div class="p-3 md:px-4 pb-4 flex flex-wrap gap-3 items-end border-t border-surface-container-high/50 bg-surface-container-lowest/50 animate-in slide-in-from-top-2 fade-in">
+                <div class="p-3 md:px-4 pb-4 flex flex-wrap gap-3 items-end border-t border-surface-container-high/50 bg-white animate-in slide-in-from-top-2 fade-in">
 
                     @* 1. Búsqueda por Cliente *@
                     <div class="flex flex-col gap-1 w-full md:w-auto md:flex-grow max-w-sm">
@@ -98,10 +95,10 @@
                         <label class="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest ml-1">Estado</label>
                         <select @bind="estadoFiltro" class="bg-white border border-surface-container-high rounded-xl pl-3 pr-8 py-2 text-sm font-bold text-primary outline-none focus:border-primary cursor-pointer shadow-sm min-w-[140px]">
                             <option value="">Todos</option>
-                            <option value="@EstadoTurnoEnum.Pendiente.ToString()">Pendientes</option>
-                            <option value="@EstadoTurnoEnum.Confirmado.ToString()">Confirmados</option>
-                            <option value="@EstadoTurnoEnum.Completado.ToString()">Completados</option>
-                            <option value="@EstadoTurnoEnum.Cancelado.ToString()">Cancelados</option>
+                            <option value="Pendiente">Pendientes</option>
+                            <option value="Confirmado">Confirmados</option>
+                            <option value="Completado">Completados</option>
+                            <option value="Cancelado">Cancelados</option>
                         </select>
                     </div>
 
@@ -163,7 +160,7 @@
     }
     else if (!turnosDelDia.Any())
     {
-        <div class="bg-white/50 border-2 border-dashed border-outline-variant rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
+        <div class="bg-white border border-surface-container-high rounded-4xl p-12 text-center flex flex-col items-center justify-center min-h-[300px] shadow-sm">
             <span class="material-symbols-outlined text-6xl text-on-surface-variant/50 mb-4">coffee</span>
             <h3 class="font-headline font-bold text-xl text-primary mb-2">Día libre</h3>
             <p class="text-on-surface-variant font-body text-sm">No hay turnos programados para la fecha seleccionada.</p>
@@ -171,7 +168,7 @@
     }
     else
     {
-    @* --- CONTENEDOR GRID RESPONSIVO --- *@
+        @* --- CONTENEDOR GRID RESPONSIVO --- *@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 items-start">
 
             @* ITERAMOS SOBRE LA PROPIEDAD FILTRADA *@
@@ -187,7 +184,7 @@
                             </div>
                             <span class="font-bold text-primary">@grupo.Key</span>
                         </div>
-                        <span class="text-[10px] font-bold bg-surface-container-low text-on-surface-variant px-2 py-1 rounded-lg">
+                        <span class="text-[10px] font-bold bg-surface-container-low text-on-surface-variant border border-surface-container-high px-2 py-1 rounded-lg">
                             @grupo.Value.Count turnos
                         </span>
                     </div>
@@ -198,6 +195,7 @@
                         {
                             var horaInicio = turno.FechaHoraInicioUtc.ToLocalTime();
 
+                            // Mantenemos el borde izquierdo suave para el estado general de la tarjeta
                             var colorBorde = turno.Estado == EstadoTurnoEnum.Pendiente ? "border-l-warning" :
                             turno.Estado == EstadoTurnoEnum.Confirmado ? "border-l-success" :
                             turno.Estado == EstadoTurnoEnum.Cancelado ? "border-l-error" : "border-l-surface-container-highest";
@@ -208,15 +206,20 @@
                                     <div class="flex flex-col">
                                         <div class="flex gap-1.5 items-center">
                                             <span class="font-black text-primary text-lg leading-none">@horaInicio.ToString("HH:mm")</span>
-                                            <span class="text-[9px] bg-surface-container-low px-1 py-0.5 rounded text-on-surface-variant font-bold leading-none">@turno.DuracionMinutos min</span>
+
+                                            @* Restaurado: Fondo suave para la duración, sin borde *@
+                                            <span class="text-[9px] bg-surface-container-low px-1 py-0.5 rounded text-on-surface-variant font-bold leading-none">
+                                                @turno.DuracionMinutos min
+                                            </span>
                                         </div>
-                                        @* Badge de Estado *@
+
+                                        @* Restaurado: Vuelve a usar tu extensión para los colores pastel de fondo *@
                                         <span class="text-[9px] font-black uppercase tracking-tighter @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) mt-1 px-1 py-0.5 rounded-sm inline-block w-fit">
                                             @turno.Estado
                                         </span>
                                     </div>
 
-                                    @* Botones rápidos *@
+                                    @* Botones rápidos: Restaurados a fondos /10 sin bordes *@
                                     <div class="flex gap-1">
                                         @if (turno.Estado != EstadoTurnoEnum.Completado && turno.Estado != EstadoTurnoEnum.Cancelado)
                                         {
@@ -230,7 +233,8 @@
                                                 <span class="material-symbols-outlined text-[16px]">task_alt</span>
                                             </button>
 
-                                            <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Cancelado)"
+                                            @* ACÁ MANTENEMOS EL LLAMADO AL MODAL (Pero con el estilo suave original) *@
+                                            <button @onclick="() => MostrarModalCancelacion(turno)"
                                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600 hover:text-white transition-colors" title="Cancelar Turno">
                                                 <span class="material-symbols-outlined text-[16px]">block</span>
                                             </button>
@@ -255,181 +259,38 @@
     }
 </div>
 
-@code {
-    [Inject] private NegocioClient _negocioService { get; set; } = default!;
-    [Inject] private AppState State { get; set; } = default!;
+@* ========================================== *@
+@* 3. MODAL DE CONFIRMACIÓN DE CANCELACIÓN *@
+@* ========================================== *@
+@if (mostrarModal)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-surface-container-high shadow-xl animate-in zoom-in-95 duration-200">
+            <div class="flex items-center gap-3 mb-4 text-red-600">
+                <span class="material-symbols-outlined text-3xl">warning</span>
+                <h3 class="font-headline font-bold text-xl text-primary">¿Cancelar Turno?</h3>
+            </div>
 
-    private DateTime fechaFiltro = DateTime.Today;
-    private bool cargando = true;
-    private List<TurnoReadDto> turnosDelDia = new();
-    private Dictionary<string, List<TurnoReadDto>> turnosPorProfesional = new();
-    private DateTime ultimaActualizacion = DateTime.Now;
+            <p class="text-sm text-on-surface-variant mb-6">
+                Estás por cancelar el turno de <strong class="text-primary">@turnoAEliminar?.NombreClienteInvitado</strong>. Esta acción le enviará un correo de notificación y liberará el horario en la agenda.
+            </p>
 
-    // Variables de UI para los Filtros
-    private bool mostrarFiltros = false;
-    private string busquedaCliente = "";
-    private string estadoFiltro = "";
-    private string profesionalFiltro = "";
-    private string sedeFiltro = "";
-    private string servicioFiltro = "";
-
-    // Listas para poblar los selects
-    private List<string> listaProfesionalesDropdown = new();
-    private List<string> listaSedesDropdown = new();
-    private List<string> listaServiciosDropdown = new();
-
-    // Propiedad calculada que cuenta cuántos filtros están en uso
-    private int CantidadFiltrosActivos =>
-        (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
-        (!string.IsNullOrEmpty(estadoFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(profesionalFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(sedeFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(servicioFiltro) ? 1 : 0);
-
-    protected override async Task OnInitializedAsync()
-    {
-        await CargarTurnos(mantenerFiltros: false);
-    }
-
-    //metodos de filtrado y actualizacion
-
-    private void ToggleFiltros() => mostrarFiltros = !mostrarFiltros;
-
-    private void LimpiarFiltros()
-    {
-        busquedaCliente = "";
-        estadoFiltro = "";
-        profesionalFiltro = "";
-        sedeFiltro = "";
-        servicioFiltro = "";
-    }
-
-    private Dictionary<string, List<TurnoReadDto>> GruposFiltrados
-    {
-        get
-        {
-            var filtrados = turnosPorProfesional.AsEnumerable();
-
-            // Filtro de Profesional (oculta columnas enteras)
-            if (!string.IsNullOrEmpty(profesionalFiltro))
-            {
-                filtrados = filtrados.Where(g => g.Key == profesionalFiltro);
-            }
-
-            // Filtros internos de las tarjetas
-            if (!string.IsNullOrWhiteSpace(busquedaCliente) ||
-                !string.IsNullOrEmpty(estadoFiltro) ||
-                !string.IsNullOrEmpty(sedeFiltro) ||
-                !string.IsNullOrEmpty(servicioFiltro))
-            {
-                filtrados = filtrados.Select(g => new KeyValuePair<string, List<TurnoReadDto>>(
-                    g.Key,
-                    g.Value.Where(t =>
-                        (string.IsNullOrWhiteSpace(busquedaCliente) || t.NombreClienteInvitado.Contains(busquedaCliente, StringComparison.OrdinalIgnoreCase)) &&
-                        (string.IsNullOrEmpty(estadoFiltro) || t.Estado.ToString() == estadoFiltro) &&
-                        (string.IsNullOrEmpty(sedeFiltro) || t.SedeNombre == sedeFiltro) &&
-                        (string.IsNullOrEmpty(servicioFiltro) || t.ServicioNombre == servicioFiltro)
-                    ).ToList()
-                ))
-                .Where(g => g.Value.Any());
-            }
-
-            return filtrados.ToDictionary(g => g.Key, g => g.Value);
-        }
-    }
-
-
-
-    private async Task IrAHoy()
-    {
-        fechaFiltro = DateTime.Today;
-        await CargarTurnos(mantenerFiltros: false); // Al cambiar de día, limpiamos filtros
-    }
-
-    private async Task CambiarFecha()
-    {
-        await CargarTurnos(mantenerFiltros: false); // Al cambiar de día, limpiamos filtros
-    }
-
-    // NUEVO MÉTODO: Refresca pero le dice a CargarTurnos que NO borre los filtros
-    private async Task RefrescarManual()
-    {
-        await CargarTurnos(mantenerFiltros: true);
-    }
-
-    private async Task CargarTurnos(bool mantenerFiltros)
-    {
-        cargando = true;
-        StateHasChanged();
-
-        try
-        {
-            turnosDelDia = await TurnoService.GetByFecha(fechaFiltro) ?? new List<TurnoReadDto>();
-
-            listaProfesionalesDropdown = turnosDelDia.Select(t => t.PrestadorNombre).Distinct().OrderBy(n => n).ToList();
-            listaSedesDropdown = turnosDelDia.Select(t => t.SedeNombre).Where(s => !string.IsNullOrEmpty(s)).Distinct().OrderBy(n => n).ToList();
-            listaServiciosDropdown = turnosDelDia.Select(t => t.ServicioNombre).Distinct().OrderBy(n => n).ToList();
-
-            turnosPorProfesional = turnosDelDia
-                .GroupBy(t => t.PrestadorNombre)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            ultimaActualizacion = DateTime.Now; // Actualizamos la hora visual
-
-            if (!mantenerFiltros)
-            {
-                LimpiarFiltros();
-            }
-            else
-            {
-                // SÚPER DETALLE UX: Si refrescamos y mantenemos los filtros, validamos que los filtros actuales sigan existiendo.
-                // Ej: Tenías filtrado a "Martín", pero justo cancelaron el único turno de Martín.
-                // Para que la pantalla no quede vacía por un filtro roto, lo limpiamos inteligentemente.
-                if (!string.IsNullOrEmpty(profesionalFiltro) && !listaProfesionalesDropdown.Contains(profesionalFiltro)) profesionalFiltro = "";
-                if (!string.IsNullOrEmpty(sedeFiltro) && !listaSedesDropdown.Contains(sedeFiltro)) sedeFiltro = "";
-                if (!string.IsNullOrEmpty(servicioFiltro) && !listaServiciosDropdown.Contains(servicioFiltro)) servicioFiltro = "";
-            }
-        }
-        catch
-        {
-            turnosDelDia = new();
-            turnosPorProfesional = new();
-            listaProfesionalesDropdown = new();
-            listaSedesDropdown = new();
-            listaServiciosDropdown = new();
-        }
-        finally
-        {
-            cargando = false;
-        }
-    }
-
-    private async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
-    {
-        try
-        {
-            var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
-            if (exito)
-            {
-                var turnoModificado = turnosDelDia.FirstOrDefault(t => t.Id == id);
-                if (turnoModificado != null)
-                {
-                    turnoModificado.Estado = nuevoEstado;
-                    StateHasChanged();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al cambiar estado: {ex.Message}");
-        }
-    }
-
-    private string GenerarWhatsAppUrl(string telefono, string nombre, DateTime inicioLocal)
-    {
-        var nombreNegocio = State.CurrentNegocio?.Nombre ?? "nuestro local";
-        var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
-        var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-        return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
-    }
+            <div class="flex gap-3">
+                <button @onclick="CerrarModal" class="flex-1 py-3 bg-white border border-surface-container-high text-on-surface-variant rounded-xl font-bold hover:bg-surface-container-lowest transition-colors">
+                    Volver
+                </button>
+                <button @onclick="ConfirmarCancelacion" disabled="@procesandoCancelacion" class="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex justify-center items-center gap-2">
+                    @if (procesandoCancelacion)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        <span>Cancelando...</span>
+                    }
+                    else
+                    {
+                        <span>Sí, cancelar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
 }

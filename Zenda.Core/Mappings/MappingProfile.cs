@@ -29,7 +29,7 @@ public class MappingProfile : Profile
 
         // De Entidad a Lectura: Como nombramos las propiedades igual en ambos lados 
         // (FechaHoraInicioUtc, EmailClienteInvitado, etc.), AutoMapper hace la magia solo.
-        CreateMap<Turno, TurnoReadDto>();
+        CreateMap<Turno, TurnoReadDto>().ForMember(t => t.NegocioSlug, opt => opt.MapFrom( src => src.Prestador.Sede.Negocio.Slug));
 
         // De Creación a Entidad: Ajustado a las nuevas propiedades
         CreateMap<TurnoCreateDto, Turno>()

@@ -256,16 +256,17 @@ public class TurnosService : ITurnosService
         _context.Turnos.Add(nuevoTurno);
         await _context.SaveChangesAsync();
 
+        // 2. Mandamos el mail de confirmación inmediato
         await _emailService.EnviarConfirmacionTurnoAsync(
             dto.EmailClienteInvitado,
             dto.NombreClienteInvitado,
             prestador.Negocio.Nombre,
-            dto.Inicio);
+            dto.Inicio,
+            nuevoTurno.Id);
 
-        // FIX: Usamos la fecha UTC del turno para restar 1 hora
         var fechaRecordatorioUtc = fechaUtcDefinitiva.AddHours(-1);
 
-        // Si la hora de mandar el recordatorio todavía está en el futuro...
+        // 3. Programamos el recordatorio y atajamos el JobId
         if (fechaRecordatorioUtc > DateTime.UtcNow)
         {
             var jobId = _jobService.ProgramarRecordatorioEmail(
@@ -273,9 +274,15 @@ public class TurnosService : ITurnosService
                 dto.NombreClienteInvitado,
                 prestador.Negocio.Nombre,
                 dto.Inicio,
-                fechaRecordatorioUtc // Pasamos la fecha UTC correcta
+                fechaRecordatorioUtc,
+                nuevoTurno.Id
             );
+
+            // 4. Segundo guardado: Le metemos el JobId al turno que ya existe
+            nuevoTurno.RecordatorioJobId = jobId;
+            await _context.SaveChangesAsync();
         }
+
 
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
@@ -319,7 +326,8 @@ public class TurnosService : ITurnosService
             FechaHoraFinUtc = t.FechaHoraFinUtc,
             Estado = t.Estado,
 
-            SedeNombre = t.Prestador!.Sede!.Nombre
+            SedeNombre = t.Prestador!.Sede!.Nombre,
+            NegocioSlug = t.Prestador!.Negocio!.Slug
         })
         .ToListAsync();
 
@@ -330,7 +338,12 @@ public class TurnosService : ITurnosService
     {
         var negocioId = _tenantService.GetCurrentTenantId();
 
+        // 🎯 MEJORA: Traemos Prestador, Sede y Negocio para poder armar el email de cancelación
         var turno = await _context.Turnos
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Sede)
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Negocio)
             .FirstOrDefaultAsync(t => t.Id == turnoId && t.Prestador.NegocioId == negocioId);
 
         if (turno == null) return false;
@@ -340,8 +353,126 @@ public class TurnosService : ITurnosService
             throw new Exception("No se puede reabrir un turno ya finalizado.");
         }
 
+        // 🎯 SI EL RECEPCIONISTA/DUEÑO CANCELA EL TURNO
+        if (nuevoEstado == EstadoTurnoEnum.Cancelado && turno.Estado != EstadoTurnoEnum.Cancelado)
+        {
+            // 1. Matamos el recordatorio de Hangfire
+            if (!string.IsNullOrEmpty(turno.RecordatorioJobId))
+            {
+                _jobService.CancelarTrabajo(turno.RecordatorioJobId);
+                turno.RecordatorioJobId = null; // Lo limpiamos por prolijidad
+            }
+
+            // 2. Le avisamos al cliente por correo que el negocio le canceló la reserva
+            if (!string.IsNullOrEmpty(turno.EmailClienteInvitado) && turno.Prestador?.Sede != null && turno.Prestador?.Negocio != null)
+            {
+                // Calculamos la hora local de la sede para el texto del correo
+                var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador.Sede.ZonaHorariaId);
+                var inicioSedeLocal = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, zonaSede);
+
+                await _emailService.EnviarCancelacionTurnoAsync(
+                    turno.EmailClienteInvitado,
+                    turno.NombreClienteInvitado,
+                    turno.Prestador.Negocio.Nombre,
+                    inicioSedeLocal,
+                    turno.Prestador.Negocio.Slug
+                );
+            }
+        }
+
         turno.Estado = nuevoEstado;
 
         return await _context.SaveChangesAsync() > 0;
+    }
+
+    // Para la vista pública de gestión
+    public async Task<TurnoReadDto> GetResumenPublicoAsync(Guid turnoId)
+    {
+        var turno = await _context.Turnos
+            .IgnoreQueryFilters()
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Sede)
+            // NUEVO: Traemos el negocio para sacar el Slug
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Negocio)
+            .Include(t => t.Servicio)
+            .FirstOrDefaultAsync(t => t.Id == turnoId);
+
+        if (turno == null) return null;
+
+        return new TurnoReadDto
+        {
+            Id = turno.Id,
+            FechaHoraInicioUtc = turno.FechaHoraInicioUtc,
+            Estado = turno.Estado,
+            NombreClienteInvitado = turno.NombreClienteInvitado,
+            PrestadorNombre = turno.Prestador.Nombre,
+            ServicioNombre = turno.Servicio.Nombre,
+            SedeNombre = turno.Prestador.Sede?.Nombre ?? "",
+            NegocioSlug = turno.Prestador.Negocio?.Slug ?? ""
+        };
+    }
+
+    // Para la acción de cancelar desde el mail
+    public async Task<bool> CancelarPorClienteAsync(Guid turnoId)
+    {
+        // Juntamos la búsqueda del turno y los datos del negocio en una sola query
+        var turno = await _context.Turnos
+            .IgnoreQueryFilters()
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Sede)
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Negocio)
+            .FirstOrDefaultAsync(t => t.Id == turnoId);
+
+        if (turno == null) return false;
+
+        if (turno.Prestador?.Sede == null || turno.Prestador?.Negocio == null)
+            throw new InvalidOperationException("Prestador, Sede o Negocio no encontrados.");
+
+        // Validaciones de tiempo
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador.Sede.ZonaHorariaId);
+        var ahoraSede = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
+        var inicioSedeLocal = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, zonaSede);
+
+        // TODO: PARAMETRIZAR
+        int horasMinimas = 2;
+        if (inicioSedeLocal <= ahoraSede.AddHours(horasMinimas))
+        {
+            throw new Exception($"No es posible cancelar el turno, la anticipación minima es de {horasMinimas} horas. Por favor comuníquese por teléfono.");
+        }
+
+        if (turno.Estado == EstadoTurnoEnum.Completado)
+        {
+            throw new Exception("El turno ya figura como completado.");
+        }
+
+        // Si pasa todo, cancelamos
+        turno.Estado = EstadoTurnoEnum.Cancelado;
+        var exito = await _context.SaveChangesAsync() > 0;
+
+        // 🎯 SI SE GUARDÓ LA CANCELACIÓN, ENVIAMOS EL EMAIL
+        if (exito && !string.IsNullOrEmpty(turno.EmailClienteInvitado))
+        {
+            await _emailService.EnviarCancelacionTurnoAsync(
+                turno.EmailClienteInvitado,
+                turno.NombreClienteInvitado,
+                turno.Prestador.Negocio.Nombre,
+                inicioSedeLocal, // Le pasamos la hora local para que el email no lo confunda
+                turno.Prestador.Negocio.Slug
+            );
+
+            // 🎯 MAGIA: ELIMINAMOS EL RECORDATORIO DE HANGFIRE
+            if (!string.IsNullOrEmpty(turno.RecordatorioJobId))
+            {
+                // Llamamos a tu método existente
+                _jobService.CancelarTrabajo(turno.RecordatorioJobId);
+
+                turno.RecordatorioJobId = null;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return exito;
     }
 }

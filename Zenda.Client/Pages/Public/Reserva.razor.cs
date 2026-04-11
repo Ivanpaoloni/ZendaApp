@@ -229,8 +229,9 @@ public partial class Reserva : ComponentBase
                 var nombreEnc = Uri.EscapeDataString(nombrePrestadorReserva);
                 var direccionEnc = Uri.EscapeDataString(sedeSeleccionada?.Direccion ?? "");
                 var duracionReal = servicioSeleccionado?.DuracionMinutos ?? 30;
+                var turnoId = resultado.Id;
 
-                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}");
+                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}&TurnoId={turnoId}");
             }
             else
             {
