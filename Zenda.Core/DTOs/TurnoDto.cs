@@ -43,5 +43,6 @@ namespace Zenda.Core.DTOs
         public string ServicioNombre { get; set; } = string.Empty;
         public int DuracionMinutos { get; set; }
         public decimal Precio { get; set; }
+        public string SedeNombre { get; set; } = string.Empty; // para filtrado
     }
 }

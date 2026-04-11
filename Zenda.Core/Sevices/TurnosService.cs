@@ -297,6 +297,7 @@ public class TurnosService : ITurnosService
         var turnos = await _context.Turnos
         .AsNoTracking()
         .Include(t => t.Servicio)
+        .Include(t => t.Prestador!.Sede)
         .Where(t => t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc)
         .OrderBy(t => t.FechaHoraInicioUtc)
         .Select(t => new TurnoReadDto
@@ -316,7 +317,9 @@ public class TurnosService : ITurnosService
 
             FechaHoraInicioUtc = t.FechaHoraInicioUtc,
             FechaHoraFinUtc = t.FechaHoraFinUtc,
-            Estado = t.Estado
+            Estado = t.Estado,
+
+            SedeNombre = t.Prestador!.Sede!.Nombre
         })
         .ToListAsync();
 
