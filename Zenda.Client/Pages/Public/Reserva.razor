@@ -216,9 +216,59 @@
                         <span class="material-symbols-outlined text-xs">arrow_back</span> Elegir otro horario
                     </button>
 
-                    <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary">
-                        <h3 class="font-headline font-bold text-xl text-primary mb-1">Último paso</h3>
-                        <p class="text-sm text-on-surface-variant mb-6">Reservando turno a las <strong>@horaSeleccionada hs</strong>.</p>
+                    <div class="bg-white p-8 rounded-[2.5rem] editorial-shadow border-2 border-primary overflow-hidden">
+
+                        <h3 class="font-headline font-bold text-xl text-primary mb-4">Último paso</h3>
+
+                        @* 🎯 TARJETA DE RESUMEN DEL TURNO *@
+                        <div class="bg-surface-container-lowest border border-surface-container-high rounded-2xl p-5 mb-6 relative">
+                            <div class="absolute -right-4 -top-4 w-12 h-12 bg-primary/10 rounded-full flex justify-center items-center">
+                                <span class="material-symbols-outlined text-primary text-2xl">check_circle</span>
+                            </div>
+
+                            <h4 class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Resumen de tu reserva</h4>
+
+                            <div class="space-y-3">
+                                @* Fecha y Hora *@
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-surface-container-low flex justify-center items-center text-primary shrink-0 mt-0.5">
+                                        <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm text-primary">@fechaSeleccionada.ToString("dddd, dd 'de' MMMM")</p>
+                                        <p class="text-xs text-on-surface-variant">a las <strong class="text-primary">@horaSeleccionada hs</strong></p>
+                                    </div>
+                                </div>
+
+                                @* Servicio *@
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-surface-container-low flex justify-center items-center text-primary shrink-0 mt-0.5">
+                                        <span class="material-symbols-outlined text-[16px]">cut</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm text-primary">@servicioSeleccionado?.Nombre</p>
+                                        <div class="flex gap-2 items-center text-xs text-on-surface-variant">
+                                            <span>@servicioSeleccionado?.DuracionMinutos min</span>
+                                            <span>•</span>
+                                            <span class="font-bold">@servicioSeleccionado?.Precio.ToString("C0")</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @* Profesional e Info Adicional (Opcional) *@
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-surface-container-low flex justify-center items-center text-primary shrink-0 mt-0.5">
+                                        <span class="material-symbols-outlined text-[16px]">person</span>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm text-primary">
+                                            @(prestadorSeleccionado != null ? prestadorSeleccionado.Nombre : "Cualquier profesional")
+                                        </p>
+                                        <p class="text-xs text-on-surface-variant">en @sedeSeleccionada?.Nombre</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         @if (!string.IsNullOrEmpty(errorReserva))
                         {
@@ -248,6 +298,7 @@
                                     <InputText @bind-Value="nuevoTurno.EmailClienteInvitado" placeholder="Tu Email"
                                                class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
                                     <ValidationMessage For="@(() => nuevoTurno.EmailClienteInvitado)" class="text-error text-xs font-bold mt-1 ml-2" />
+                                    <p class="text-[10px] text-on-surface-variant mt-1 ml-2">Te enviaremos los detalles y el link para cancelar si lo necesitás.</p>
                                 </div>
 
                                 <button type="submit" disabled="@enviandoReserva"

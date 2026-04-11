@@ -257,12 +257,18 @@ public class TurnosService : ITurnosService
         await _context.SaveChangesAsync();
 
         // 2. Mandamos el mail de confirmación inmediato
+
         await _emailService.EnviarConfirmacionTurnoAsync(
             dto.EmailClienteInvitado,
             dto.NombreClienteInvitado,
             prestador.Negocio.Nombre,
             dto.Inicio,
-            nuevoTurno.Id);
+            nuevoTurno.Id,
+            servicio.Nombre,
+            prestador.Nombre,
+            prestador.Sede.Nombre,
+            prestador.Sede.Direccion
+        );
 
         var fechaRecordatorioUtc = fechaUtcDefinitiva.AddHours(-1);
 
