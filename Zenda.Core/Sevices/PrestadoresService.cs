@@ -11,12 +11,14 @@ public class PrestadoresService : IPrestadoresService
     private readonly IZendaDbContext _context;
     private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
+    private readonly IPlanService _planService;
 
-    public PrestadoresService(IZendaDbContext context, ITenantService tenantService, IMapper mapper)
+    public PrestadoresService(IZendaDbContext context, ITenantService tenantService, IMapper mapper, IPlanService planService)
     {
         _context = context;
         _tenantService = tenantService;
         _mapper = mapper;
+        _planService = planService;
     }
 
     #region MÉTODOS PÚBLICOS (Para la página de reserva - Sin Token)
@@ -67,6 +69,11 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto)
     {
+        // Validamos el límite del plan antes de hacer nada
+        if (!await _planService.PuedeAgregarProfesionalAsync())
+        {
+            throw new Exception("Has alcanzado el límite de profesionales de tu plan actual.");
+        }
         var prestador = _mapper.Map<Prestador>(dto);
 
         var tenantId = _tenantService.GetCurrentTenantId();

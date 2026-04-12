@@ -11,10 +11,12 @@
             <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Mi Equipo</h1>
             <p class="text-on-surface-variant text-sm">Gestioná quiénes atienden en tu negocio.</p>
         </div>
-        <button @onclick='() => Nav.NavigateTo("nuevo-prestador")'
-                class="px-6 py-3 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2">
-            <span class="material-symbols-outlined">add_circle</span>
-            Nuevo Profesional
+
+        @* --- UN SOLO BOTÓN DINÁMICO --- *@
+        <button @onclick="ManejarClickNuevo"
+                class="px-6 py-3 @(puedeAgregarMas ? "bg-primary text-white shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]" : "bg-surface-container-high text-on-surface-variant/80 border border-surface-container-highest hover:bg-surface-container-highest hover:text-primary") font-bold rounded-2xl shadow-lg transition-all flex items-center gap-2 cursor-pointer">
+            <span class="material-symbols-outlined">@(puedeAgregarMas ? "add_circle" : "lock")</span>
+            @(puedeAgregarMas ? "Nuevo Profesional" : "Límite alcanzado")
         </button>
     </div>
 
@@ -45,10 +47,11 @@
             <p class="text-on-surface-variant font-body text-sm max-w-xs mx-auto mb-8">
                 Agregá a los profesionales que brindan servicios para empezar a gestionar la agenda.
             </p>
-            <button @onclick='() => Nav.NavigateTo("nuevo-prestador")'
-                    class="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all inline-flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm">add</span>
-                Sumar mi primer profesional
+
+            <button @onclick="ManejarClickNuevo"
+                    class="px-8 py-4 @(puedeAgregarMas ? "bg-primary text-white shadow-primary/20 hover:scale-105" : "bg-surface-container-high text-on-surface-variant/80 hover:bg-surface-container-highest hover:text-primary") font-bold rounded-2xl shadow-xl transition-all inline-flex items-center gap-2 cursor-pointer">
+                <span class="material-symbols-outlined text-sm">@(puedeAgregarMas ? "add" : "lock")</span>
+                @(puedeAgregarMas ? "Sumar mi primer profesional" : "Límite de plan alcanzado")
             </button>
         </div>
     }
@@ -58,12 +61,12 @@
             @foreach (var p in prestadores)
             {
                 <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all relative overflow-hidden">
-                    
+
                     <div class="flex justify-between items-start mb-6">
                         <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500">
                             <span class="material-symbols-outlined text-3xl">person</span>
                         </div>
-                        
+
                         <div class="flex items-center gap-1">
                             <button @onclick='() => Nav.NavigateTo($"/prestadores/editar/{p.Id}")'
                                     class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
@@ -78,7 +81,6 @@
 
                     <h3 class="text-xl font-bold text-primary mb-4">@p.Nombre</h3>
 
-                    @* 🎯 ELIMINAMOS EL BOTÓN DE COPIAR LINK *@
                     <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
                         <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
                     </button>
@@ -88,7 +90,31 @@
     }
 </div>
 
-<ConfirmDialog Visible="@mostrarConfirmacion" 
-               Titulo="@tituloConfirmacion" 
-               Mensaje="@mensajeConfirmacion" 
+@* 🎯 MODAL DE UPGRADE AQUÍ AL FINAL *@
+@if (mostrarModalUpgrade)
+{
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm border border-surface-container-high shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div class="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <span class="material-symbols-outlined text-4xl font-bold">rocket_launch</span>
+            </div>
+            <h3 class="font-headline font-bold text-2xl text-primary mb-2">¡Hacé crecer tu equipo!</h3>
+            <p class="text-on-surface-variant text-sm mb-8">
+                Llegaste al límite de profesionales de tu plan <strong>Single</strong>. Pasate a <strong>Business</strong> para sumar más profesionales y potenciar tus reservas.
+            </p>
+            <div class="flex flex-col gap-3">
+                <button @onclick='() => Nav.NavigateTo("configuracion/plan")' class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20">
+                    Ver planes y precios
+                </button>
+                <button @onclick="() => mostrarModalUpgrade = false" class="w-full py-4 text-on-surface-variant font-bold hover:bg-surface-container-low active:bg-surface-container rounded-2xl transition-all">
+                    Tal vez más tarde
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmDialog Visible="@mostrarConfirmacion"
+               Titulo="@tituloConfirmacion"
+               Mensaje="@mensajeConfirmacion"
                OnRespuesta="ManejarRespuestaConfirmacion" />

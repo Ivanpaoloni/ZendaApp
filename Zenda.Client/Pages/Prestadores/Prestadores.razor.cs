@@ -9,6 +9,7 @@ public partial class Prestadores : ComponentBase
     [Inject] private PrestadorClient PrestadorService { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private AppState State { get; set; } = default!;
+    [Inject] private PlanClient PlanService { get; set; } = default!;
 
     protected List<PrestadorReadDto>? prestadores;
     protected string? errorMessage;
@@ -17,12 +18,25 @@ public partial class Prestadores : ComponentBase
     protected string tituloConfirmacion = string.Empty;
     protected string mensajeConfirmacion = string.Empty;
     private Func<Task>? accionPendiente = null;
+    protected bool puedeAgregarMas = true;
+    protected bool mostrarModalUpgrade = false;
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarPrestadores();
+        await CargarPrestadores(); 
+        puedeAgregarMas = await PlanService.PuedeAgregarProfesional();
     }
-
+    protected void ManejarClickNuevo()
+    {
+        if (puedeAgregarMas)
+        {
+            Nav.NavigateTo("nuevo-prestador");
+        }
+        else
+        {
+            mostrarModalUpgrade = true;
+        }
+    }
     private async Task CargarPrestadores()
     {
         prestadores = await PrestadorService.GetAll();

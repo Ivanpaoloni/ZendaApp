@@ -51,6 +51,37 @@ namespace Zenda.Infrastructure
                 );
             });
 
+            var planFreeId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+            modelBuilder.Entity<PlanSuscripcion>().HasData(
+                new PlanSuscripcion
+                {
+                    Id = planFreeId,
+                    Nombre = "Single",
+                    Slug = "single",
+                    MaxSedes = 1,
+                    MaxProfesionales = 1,
+                    HabilitaRecordatoriosHangfire = false
+                },
+                new PlanSuscripcion
+                {
+                    Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                    Nombre = "Business",
+                    Slug = "business",
+                    MaxSedes = 2,
+                    MaxProfesionales = 5,
+                    HabilitaRecordatoriosHangfire = true
+                },
+                new PlanSuscripcion
+                {
+                    Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+                    Nombre = "Pro",
+                    Slug = "pro",
+                    MaxSedes = 10,
+                    MaxProfesionales = 50,
+                    HabilitaRecordatoriosHangfire = true
+                }
+            );
+
             // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
             modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
 

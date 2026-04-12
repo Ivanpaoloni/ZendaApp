@@ -14,5 +14,8 @@ public class Negocio : BaseEntity
     public Guid RubroId { get; set; }
     public Rubro Rubro { get; set; } = null!;
 
-    public List<Sede> Sedes { get; set; } = new();
+    public List<Sede> Sedes { get; set; } = new(); 
+
+    public Guid PlanSuscripcionId { get; set; }
+    public PlanSuscripcion PlanSuscripcion { get; set; } = null!;
 }

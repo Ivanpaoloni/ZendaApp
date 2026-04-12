@@ -2,6 +2,7 @@ using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Zenda.Application.Services;
 using Zenda.Client;
 using Zenda.Client.Auth;
 using Zenda.Client.Handlers;
@@ -44,6 +45,10 @@ builder.Services.AddHttpClient<ServicioClient>(client => client.BaseAddress = ne
     .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
 
 builder.Services.AddHttpClient<UsuarioClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
+
+builder.Services.AddHttpClient<PlanClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>()
     .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
 
