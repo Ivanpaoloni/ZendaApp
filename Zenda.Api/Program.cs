@@ -68,6 +68,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
 builder.Services.AddScoped<INegocioService, NegocioService>();
 builder.Services.AddScoped<IPrestadoresService, PrestadoresService>();
+builder.Services.AddScoped<IPlanService, PlanService>();
 builder.Services.AddScoped<ISedeService, SedeService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ITurnosService, TurnosService>();
