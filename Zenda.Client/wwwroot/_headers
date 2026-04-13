@@ -1,0 +1,11 @@
+# Reglas específicas para el Service Worker y el arranque de Blazor
+/service-worker.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/service-worker.published.js
+  Cache-Control: no-cache, no-store, must-revalidate
+/blazor.boot.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Regla general para el resto (CSS, imágenes, DLLs)
+/*
+  Cache-Control: public, max-age=31536000
