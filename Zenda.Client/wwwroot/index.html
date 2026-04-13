@@ -128,16 +128,19 @@
         }
 
         if ('serviceWorker' in navigator) {
-            // 1. PRIMERO: REGISTRAMOS EL SERVICE WORKER
-            // Blazor lo llama 'service-worker.js' (en desarrollo) o 'service-worker.js' compilado
             navigator.serviceWorker.register('service-worker.js?v=' + Date.now()).then(reg => {
 
-                // 2. Revisamos si ya hay uno en espera al entrar
+                // --- 🚀 ESTA ES LA CLAVE PARA PESTAÑAS ABIERTAS ---
+                // Chequeamos cada 15 minutos si hay algo nuevo en el servidor
+                setInterval(() => {
+                    reg.update();
+                    console.log("Zenda Check: Buscando actualizaciones de fondo...");
+                }, 1000 * 60 * 15);
+
                 if (reg.waiting) {
                     mostrarCartelActualizacion();
                 }
 
-                // 3. Escuchamos si llega una actualización mientras usamos la app
                 reg.addEventListener('updatefound', () => {
                     const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -146,8 +149,6 @@
                         }
                     });
                 });
-            }).catch(error => {
-                console.log('Error al registrar el Service Worker:', error);
             });
         }
     </script>
