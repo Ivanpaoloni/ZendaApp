@@ -36,14 +36,15 @@
                 transform: translateX(100%);
             }
         }
+
         #blazor-error-ui {
             display: none; /* Escondido por defecto */
         }
 
-        /* Blazor le pone esta clase cuando hay un error real */
-        #blazor-error-ui.show {
-            display: flex;
-        }
+            /* Blazor le pone esta clase cuando hay un error real */
+            #blazor-error-ui.show {
+                display: flex;
+            }
     </style>
 
 
@@ -57,58 +58,63 @@
             </button>
         </div>
     </div>
-    <script src="_framework/blazor.webassembly.js"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#055043",
-                        "on-primary": "#ffffff",
-                        "background": "#f7faf6",
-                        "surface-container-low": "#f1f5f1",
-                        "surface-container-high": "#e5e9e5",
-                        "on-surface": "#181d1b",
-                        "on-surface-variant": "#3e4944",
-                        "secondary-container": "#a4f0e9",
-                        "on-secondary-container": "#1d706a",
-                        "outline-variant": "#bec9c3"
-                    },
-                    fontFamily: {
-                        "headline": ["Manrope", "sans-serif"],
-                        "body": ["Inter", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "xl": "0.75rem",
-                        "2xl": "1rem",
-                        "3xl": "1.5rem",
-                        "4xl": "2rem"
-                    }
+
+</body>
+
+
+<script src="_framework/blazor.webassembly.js"></script>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    "primary": "#055043",
+                    "on-primary": "#ffffff",
+                    "background": "#f7faf6",
+                    "surface-container-low": "#f1f5f1",
+                    "surface-container-high": "#e5e9e5",
+                    "on-surface": "#181d1b",
+                    "on-surface-variant": "#3e4944",
+                    "secondary-container": "#a4f0e9",
+                    "on-secondary-container": "#1d706a",
+                    "outline-variant": "#bec9c3"
+                },
+                fontFamily: {
+                    "headline": ["Manrope", "sans-serif"],
+                    "body": ["Inter", "sans-serif"]
+                },
+                borderRadius: {
+                    "xl": "0.75rem",
+                    "2xl": "1rem",
+                    "3xl": "1.5rem",
+                    "4xl": "2rem"
                 }
             }
         }
-        window.cambiarFavicon = (url) => {
-            // Buscamos el elemento
-            let link = document.getElementById('favicon');
+    }
+    window.cambiarFavicon = (url) => {
+        // Buscamos el elemento
+        let link = document.getElementById('favicon');
 
-            // Si por algún motivo NO existe en el HTML, lo creamos al vuelo
-            if (!link) {
-                link = document.createElement('link');
-                link.id = 'favicon';
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-
-            // Le asignamos la URL (o el tuyo por defecto si viene vacío)
-            link.href = url ? url : 'favicon.png';
-        };
-    </script>
-    <style>
-        /* La sombra editorial que le da el toque premium */
-        .editorial-shadow {
-            box-shadow: 0px 24px 48px rgba(24, 29, 27, 0.06);
+        // Si por algún motivo NO existe en el HTML, lo creamos al vuelo
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'favicon';
+            link.rel = 'icon';
+            document.head.appendChild(link);
         }
-    </style>
+
+        // Le asignamos la URL (o el tuyo por defecto si viene vacío)
+        link.href = url ? url : 'favicon.png';
+    };
+</script>
+<style>
+    /* La sombra editorial que le da el toque premium */
+    .editorial-shadow {
+        box-shadow: 0px 24px 48px rgba(24, 29, 27, 0.06);
+    }
+</style>
+
 </body>
 </html>
