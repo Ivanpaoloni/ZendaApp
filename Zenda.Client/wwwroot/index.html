@@ -119,17 +119,35 @@
     </script>
 
     <script>
+        function mostrarCartelActualizacion() {
+            const cartel = document.getElementById('update-notification');
+            if (cartel) {
+                cartel.classList.remove('hidden');
+                cartel.classList.add('flex');
+            }
+        }
+
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.ready.then(reg => {
+            // 1. PRIMERO: REGISTRAMOS EL SERVICE WORKER
+            // Blazor lo llama 'service-worker.js' (en desarrollo) o 'service-worker.js' compilado
+            navigator.serviceWorker.register('service-worker.js').then(reg => {
+
+                // 2. Revisamos si ya hay uno en espera al entrar
+                if (reg.waiting) {
+                    mostrarCartelActualizacion();
+                }
+
+                // 3. Escuchamos si llega una actualización mientras usamos la app
                 reg.addEventListener('updatefound', () => {
                     const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            document.getElementById('update-notification').classList.remove('hidden');
-                            document.getElementById('update-notification').classList.add('flex');
+                            mostrarCartelActualizacion();
                         }
                     });
                 });
+            }).catch(error => {
+                console.log('Error al registrar el Service Worker:', error);
             });
         }
     </script>

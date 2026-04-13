@@ -2,75 +2,76 @@
 @layout EmptyLayout
 @inject NavigationManager Nav
 
-<div class="min-h-screen bg-surface-container-low flex items-center justify-center p-6">
-    <div class="max-w-md w-full bg-white rounded-[3rem] editorial-shadow p-10 text-center animate-in zoom-in-95 duration-500">
+<div class="min-h-screen bg-surface-container-low flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-[2.5rem] editorial-shadow p-6 sm:p-8 text-center animate-in zoom-in-95 duration-500">
 
-        <div class="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-            <span class="material-symbols-outlined text-5xl">check_circle</span>
+        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3 animate-bounce">
+            <span class="material-symbols-outlined text-4xl">check_circle</span>
         </div>
-
-        <h1 class="text-3xl font-headline font-extrabold text-primary mb-2">
+        <h1 class="text-2xl font-headline font-extrabold text-primary mb-1">
             ¡Turno Confirmado!
         </h1>
-        <p class="text-on-surface-variant font-body mb-8">
+        <p class="text-on-surface-variant text-sm font-body mb-5">
             Tu reserva ha sido procesada con éxito.
         </p>
 
-        <div class="bg-surface-container-low rounded-3xl p-6 mb-10 space-y-4 text-left border border-surface-container-high">
-            <div class="flex items-center gap-4">
-                <span class="material-symbols-outlined text-primary/60">calendar_today</span>
+        <div class="bg-surface-container-low rounded-2xl p-4 mb-5 space-y-3 text-left border border-surface-container-high">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary/60 text-xl">calendar_today</span>
                 <div>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Fecha y Hora</p>
-                    <p class="font-headline font-bold text-primary">@FechaDisplay - @HoraDisplay hs</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant leading-none mb-1">Fecha y Hora</p>
+                    <p class="font-headline font-bold text-primary text-sm leading-none">@FechaDisplay - @HoraDisplay hs</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                <span class="material-symbols-outlined text-primary/60">person</span>
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary/60 text-xl">person</span>
                 <div>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Profesional</p>
-                    <p class="font-headline font-bold text-primary">@NombrePrestador</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant leading-none mb-1">Profesional</p>
+                    <p class="font-headline font-bold text-primary text-sm leading-none">@NombrePrestador</p>
                 </div>
             </div>
         </div>
 
-        @if (!string.IsNullOrEmpty(DireccionSede))
-        {
-            <a href="@GenerarGoogleMapsUrl()" target="_blank"
-               class="w-full py-4 px-4 bg-orange-500/10 text-orange-700 rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-orange-500/20 transition-all mb-4">
-                <span class="material-symbols-outlined">map</span>
-                ¿Cómo llegar? Ver en Maps
-            </a>
-        }
-
-        <a href="@GenerarGoogleCalendarUrl()" target="_blank"
-           class="w-full py-4 px-4 bg-primary/5 text-primary rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-primary/10 transition-all mb-4">
-            <span class="material-symbols-outlined">calendar_add_on</span>
-            Agendar en Google Calendar
-        </a>
-
-        <a href="@GenerarWhatsAppUrl()" target="_blank"
-           class="w-full py-4 px-4 bg-[#25D366]/10 text-[#075E54] rounded-2xl font-headline font-bold text-sm flex items-center justify-center gap-3 hover:bg-[#25D366] hover:text-white transition-all mb-4">
-            <i class="fa-brands fa-whatsapp text-xl"></i>
-            Enviar confirmación por WhatsApp
-        </a>
-        @if (!string.IsNullOrEmpty(TurnoId))
-        {
-            <div class="mt-8 pt-6 border-t border-surface-container-high">
-                <a href="/gestionar-turno?id=@TurnoId" class="text-xs font-bold text-error/80 hover:text-error underline">
-                    Me equivoqué, quiero cancelar la reserva
+        <div class="flex items-center justify-center gap-3 mb-6">
+            @if (!string.IsNullOrEmpty(DireccionSede))
+            {
+                <a href="@GenerarGoogleMapsUrl()" target="_blank"
+                   class="flex-1 py-3 px-2 bg-orange-500/10 text-orange-700 rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-orange-500/20 transition-all">
+                    <span class="material-symbols-outlined text-2xl">map</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Mapa</span>
                 </a>
-            </div>
-        }
-        <div class="space-y-3">
+            }
+
+            <a href="@GenerarGoogleCalendarUrl()" target="_blank"
+               class="flex-1 py-3 px-2 bg-primary/5 text-primary rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-primary/10 transition-all">
+                <span class="material-symbols-outlined text-2xl">calendar_add_on</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider">Agendar</span>
+            </a>
+
+            <a href="@GenerarWhatsAppUrl()" target="_blank"
+               class="flex-1 py-3 px-2 bg-[#25D366]/10 text-[#075E54] rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-[#25D366] hover:text-white transition-all group">
+                <i class="fa-brands fa-whatsapp text-2xl group-hover:text-white"></i>
+                <span class="text-[10px] font-bold uppercase tracking-wider">WhatsApp</span>
+            </a>
+        </div>
+
+        <div class="flex flex-col gap-4">
             <button @onclick='() => Nav.NavigateTo("/")'
-                    class="w-full py-4 bg-primary text-on-primary rounded-2xl font-headline font-bold hover:brightness-110 active:scale-95 transition-all">
+                    class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-headline font-bold text-sm hover:brightness-110 active:scale-95 transition-all shadow-md">
                 Volver al inicio
             </button>
+
+            @if (!string.IsNullOrEmpty(TurnoId))
+            {
+                <a href="/gestionar-turno?id=@TurnoId" class="text-xs font-bold text-error/80 hover:text-error underline">
+                    Me equivoqué, cancelar reserva
+                </a>
+            }
         </div>
+
     </div>
 </div>
-
 @code {
     [Parameter, SupplyParameterFromQuery] public string? Fecha { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? Hora { get; set; }
