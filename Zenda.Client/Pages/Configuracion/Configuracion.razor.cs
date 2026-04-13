@@ -5,7 +5,7 @@ using System.Timers;
 using Zenda.Client.Services;
 using Zenda.Core.DTOs;
 
-namespace Zenda.Client.Pages;
+namespace Zenda.Client.Pages.Configuracion;
 
 public partial class Configuracion : ComponentBase, IDisposable
 {
