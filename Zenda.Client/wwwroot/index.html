@@ -70,9 +70,6 @@
                 <span class="text-xs text-white/80">Zenda App se actualizó con mejoras.</span>
             </div>
         </div>
-        <button onclick="window.location.reload(true)" class="w-full md:w-auto bg-white text-primary px-6 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-md">
-            Actualizar ahora
-        </button>
     </div>
 
     <script src="_framework/blazor.webassembly.js"></script>
@@ -118,39 +115,6 @@
         };
     </script>
 
-    <script>
-        function mostrarCartelActualizacion() {
-            const cartel = document.getElementById('update-notification');
-            if (cartel) {
-                cartel.classList.remove('hidden');
-                cartel.classList.add('flex');
-            }
-        }
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js?v=' + Date.now()).then(reg => {
-
-                // --- 🚀 ESTA ES LA CLAVE PARA PESTAÑAS ABIERTAS ---
-                // Chequeamos cada 15 minutos si hay algo nuevo en el servidor
-                setInterval(() => {
-                    reg.update();
-                    console.log("Zenda Check: Buscando actualizaciones de fondo...");
-                }, 1000 * 60 * 15);
-
-                if (reg.waiting) {
-                    mostrarCartelActualizacion();
-                }
-
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            mostrarCartelActualizacion();
-                        }
-                    });
-                });
-            });
-        }
-    </script>
+    
 </body>
 </html>
