@@ -1,0 +1,74 @@
+﻿@page "/configuracion/plan"
+@using Zenda.Client.Services
+@inject AppState State
+@inject NavigationManager Nav
+
+<div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+    @* Cabecera *@
+    <div>
+        <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Mi Suscripción</h1>
+        <p class="text-on-surface-variant text-sm">Gestioná los límites y el nivel de tu cuenta.</p>
+    </div>
+
+    @if (State.CurrentNegocio != null)
+    {
+        @* Card de Plan Actual *@
+        <div class="bg-white p-8 rounded-[2.5rem] border border-surface-container-high editorial-shadow">
+            <div class="flex justify-between items-start mb-8">
+                <div>
+                    <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-bold rounded-full uppercase tracking-widest">
+                        Plan @State.CurrentNegocio.PlanNombre
+                    </span>
+                    <h2 class="text-4xl font-black text-primary mt-4 font-headline tracking-tighter">
+                        @(State.CurrentNegocio.PlanNombre == "Single" ? "Gratis" : "$15.000 / mes")
+                    </h2>
+                </div>
+                <div class="w-16 h-16 bg-surface-container-low rounded-3xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-3xl text-primary">verified_user</span>
+                </div>
+            </div>
+
+            @* Progress Bars de Límites *@
+            <div class="space-y-6">
+                @* Profesionales *@
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm font-bold">
+                        <span class="text-on-surface-variant">Profesionales</span>
+                        <span class="text-primary">Límite: @State.CurrentNegocio.MaxProfesionales</span>
+                    </div>
+                    <div class="h-3 bg-surface-container-high rounded-full overflow-hidden">
+                        <div class="bg-primary h-full transition-all duration-1000"
+                             style="width: 100%"></div> @* Aquí luego calcularemos el % real *@
+                    </div>
+                </div>
+
+                @* Sedes *@
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm font-bold">
+                        <span class="text-on-surface-variant">Sedes / Sucursales</span>
+                        <span class="text-primary">Límite: @State.CurrentNegocio.MaxSedes</span>
+                    </div>
+                    <div class="h-3 bg-surface-container-high rounded-full overflow-hidden">
+                        <div class="bg-primary h-full transition-all duration-1000"
+                             style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Sección de Upsell *@
+        <div class="bg-secondary-container/30 p-8 rounded-[2.5rem] border border-secondary-container/50 flex flex-col md:flex-row items-center gap-6">
+            <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                <span class="material-symbols-outlined text-primary text-3xl">rocket_launch</span>
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-primary text-lg">¿Necesitás más potencia?</h3>
+                <p class="text-on-surface-variant text-sm">Pasate al plan <strong>Business</strong> para automatizar recordatorios por WhatsApp y sumar hasta 5 profesionales.</p>
+            </div>
+            <button class="px-8 py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all whitespace-nowrap">
+                Subir de Nivel
+            </button>
+        </div>
+    }
+</div>
