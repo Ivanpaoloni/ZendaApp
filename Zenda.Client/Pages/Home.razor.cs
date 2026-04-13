@@ -115,7 +115,7 @@ public partial class Home : ComponentBase
 
                     var horaActualUtc = DateTime.UtcNow;
                     proximosTurnos = turnos
-                        .Where(t => t.FechaHoraInicioUtc >= horaActualUtc)
+                        .Where(t => t.FechaHoraInicioUtc >= horaActualUtc && t.Estado == EstadoTurnoEnum.Confirmado)
                         .OrderBy(t => t.FechaHoraInicioUtc)
                         .Take(5)
                         .ToList();
