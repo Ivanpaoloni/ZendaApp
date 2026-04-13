@@ -130,7 +130,7 @@
         if ('serviceWorker' in navigator) {
             // 1. PRIMERO: REGISTRAMOS EL SERVICE WORKER
             // Blazor lo llama 'service-worker.js' (en desarrollo) o 'service-worker.js' compilado
-            navigator.serviceWorker.register('service-worker.js').then(reg => {
+            navigator.serviceWorker.register('service-worker.js?v=' + Date.now()).then(reg => {
 
                 // 2. Revisamos si ya hay uno en espera al entrar
                 if (reg.waiting) {
