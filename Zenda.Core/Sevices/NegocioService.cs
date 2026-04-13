@@ -28,9 +28,23 @@ public class NegocioService : INegocioService
         // 3. Buscamos EXACTAMENTE ese ID en la base de datos
         var negocio = await _context.Negocios
             .Include(n => n.Sedes)
+            .Include(n => n.PlanSuscripcion)
             .FirstOrDefaultAsync(n => n.Id == tenantId);
 
-        return _mapper.Map<NegocioReadDto>(negocio);
+        if (negocio == null)
+            throw new InvalidOperationException("El negocio del usuario no existe.");
+
+        var dto = _mapper.Map<NegocioReadDto>(negocio);
+
+        if (negocio.PlanSuscripcion != null)
+        {
+            dto.PlanNombre = negocio.PlanSuscripcion.Nombre;
+            dto.PlanSuscripcionId = negocio.PlanSuscripcionId;
+            dto.MaxProfesionales = negocio.PlanSuscripcion.MaxProfesionales;
+            dto.MaxSedes = negocio.PlanSuscripcion.MaxSedes;
+        }
+
+        return dto;
     }
     public async Task<NegocioReadDto?> GetPublicBySlugAsync(string slug)
     {

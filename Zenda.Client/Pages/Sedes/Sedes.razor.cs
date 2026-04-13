@@ -7,6 +7,12 @@ namespace Zenda.Client.Pages.Sedes;
 public partial class Sedes : ComponentBase
 {
     [Inject] private SedeClient SedeService { get; set; } = default!;
+    [Inject] private AppState State { get; set; } = default!; 
+    [Inject] private NavigationManager Nav { get; set; } = default!; 
+
+    // 🎯 Variables para el control de plan
+    protected bool puedeAgregarMas = true;
+    protected bool mostrarModalUpgrade = false;
 
     // --- ESTADO GENERAL ---
     protected List<SedeReadDto>? sedes;
@@ -36,6 +42,11 @@ public partial class Sedes : ComponentBase
     {
         zonasHorarias = TimeZoneInfo.GetSystemTimeZones();
         await LoadSedes();
+
+        if (sedes != null && State.CurrentNegocio != null)
+        {
+            puedeAgregarMas = sedes.Count < State.CurrentNegocio.MaxSedes;
+        }
     }
 
     private async Task LoadSedes()
@@ -43,6 +54,17 @@ public partial class Sedes : ComponentBase
         sedes = await SedeService.GetAll();
     }
 
+    protected void ManejarClickNuevo()
+    {
+        if (puedeAgregarMas)
+        {
+            Nav.NavigateTo("nueva-sede"); // O la ruta que uses para crear sede
+        }
+        else
+        {
+            mostrarModalUpgrade = true;
+        }
+    }
     protected void LimpiarError() => errorMessage = null;
 
     // ==========================================

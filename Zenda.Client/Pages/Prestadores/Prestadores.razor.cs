@@ -6,10 +6,10 @@ namespace Zenda.Client.Pages.Prestadores;
 
 public partial class Prestadores : ComponentBase
 {
+
     [Inject] private PrestadorClient PrestadorService { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private AppState State { get; set; } = default!;
-    [Inject] private PlanClient PlanService { get; set; } = default!;
 
     protected List<PrestadorReadDto>? prestadores;
     protected string? errorMessage;
@@ -24,7 +24,11 @@ public partial class Prestadores : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         await CargarPrestadores(); 
-        puedeAgregarMas = await PlanService.PuedeAgregarProfesional();
+        
+        if (prestadores != null && State.CurrentNegocio != null)
+        {
+            puedeAgregarMas = prestadores.Count < State.CurrentNegocio.MaxProfesionales;
+        }
     }
     protected void ManejarClickNuevo()
     {

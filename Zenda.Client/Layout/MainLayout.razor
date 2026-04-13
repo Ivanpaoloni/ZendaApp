@@ -34,12 +34,24 @@
                     @(State.CurrentNegocio?.Nombre ?? "Zenda")
                 </div>
 
-                @* Badge opcional (SaaS) *@
+                @* Badge (SaaS) *@
                 @if (State.CurrentNegocio != null)
                 {
-                    <span class="hidden lg:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
-                        Free
-                    </span>
+                    <div class="flex items-center gap-2">
+                        @* LA ETIQUETA DEL PLAN LEYENDO DESDE LA MEMORIA *@
+                        @if (State.CurrentNegocio.PlanNombre == "Single")
+                        {
+                            <span class="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] uppercase font-bold rounded-lg tracking-wider">
+                                @State.CurrentNegocio.PlanNombre
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] uppercase font-bold rounded-lg tracking-wider border border-primary/20">
+                                @State.CurrentNegocio.PlanNombre
+                            </span>
+                        }
+                    </div>
                 }
             </div>
             <div class="hidden md:flex items-center gap-8">

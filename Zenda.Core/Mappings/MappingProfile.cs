@@ -50,7 +50,9 @@ public class MappingProfile : Profile
         #endregion
 
         #region Negocio
-        CreateMap<Negocio, NegocioReadDto>();
+        CreateMap<Negocio, NegocioReadDto>()
+            .ForMember(dest => dest.PlanNombre, opt => opt.MapFrom(src => src.PlanSuscripcion.Nombre));
+
         CreateMap<NegocioCreateDto, Negocio>();
         #endregion
 

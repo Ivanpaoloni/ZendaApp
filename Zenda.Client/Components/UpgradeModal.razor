@@ -1,0 +1,42 @@
+﻿@using Microsoft.AspNetCore.Components
+@inject NavigationManager Nav
+
+@if (Visible)
+{
+    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm border border-surface-container-high shadow-2xl animate-in zoom-in-95 duration-200 text-center">
+            <div class="w-20 h-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <span class="material-symbols-outlined text-4xl font-bold">@Icono</span>
+            </div>
+            <h3 class="font-headline font-bold text-2xl text-primary mb-2">@Titulo</h3>
+
+            <div class="text-on-surface-variant text-sm mb-8">
+                @ChildContent
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button @onclick='() => Nav.NavigateTo("configuracion/plan")' class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20">
+                    Ver planes y precios
+                </button>
+                <button @onclick="Cerrar" class="w-full py-4 text-on-surface-variant font-bold hover:bg-surface-container-low active:bg-surface-container rounded-2xl transition-all">
+                    Tal vez más tarde
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter] public string Titulo { get; set; } = "¡Hora de subir de nivel!";
+    [Parameter] public string Icono { get; set; } = "rocket_launch";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task Cerrar()
+    {
+        Visible = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+}
