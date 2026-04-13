@@ -132,7 +132,6 @@ public partial class Reserva : ComponentBase
         pasoActual = PasoReserva.CompletarDatos;
     }
 
-    // --- NAVEGACIÓN HACIA ATRÁS ---
     protected void VolverASedes() => pasoActual = PasoReserva.SeleccionarSede;
     protected void VolverAServicios() => pasoActual = PasoReserva.SeleccionarServicio;
     protected void VolverAPrestadores() => pasoActual = PasoReserva.SeleccionarPrestador;
