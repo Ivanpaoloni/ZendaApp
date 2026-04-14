@@ -55,7 +55,8 @@ public class AuthService : IAuthService
             {
                 Nombre = dto.NombreNegocio,
                 Slug = dto.SlugNegocio,
-                RubroId = dto.RubroId
+                RubroId = dto.RubroId,
+                PlanSuscripcionId = Guid.Parse("11111111-1111-1111-1111-111111111111") // Plan Gratis por defecto
             };
             var creadoNegocio = await _negocioService.CreateAsync(nuevoNegocio);
             

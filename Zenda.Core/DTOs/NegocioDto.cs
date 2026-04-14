@@ -22,7 +22,8 @@ public class NegocioReadDto
 public class NegocioCreateDto
 {
     public string Nombre { get; set; } = string.Empty;
-    public string Slug { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty; 
+    public Guid PlanSuscripcionId { get; set; }
     public Guid RubroId { get; set; }
 }
 
