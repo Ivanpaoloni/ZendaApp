@@ -4,6 +4,7 @@
 @inject NavigationManager Nav
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
 @implements IDisposable
 
 @using Zenda.Client.Services
@@ -126,6 +127,23 @@
             </div>
         </div>
 
+        <AuthorizeView>
+            <Authorized>
+                @if (!context.User.HasClaim(c => c.Type == "email_verified" && c.Value == "true"))
+                {
+                    <div class="bg-orange-50 border-b border-orange-200 px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm shrink-0">
+                        <div class="flex items-center gap-3 text-orange-800 text-xs font-medium">
+                            <span class="material-symbols-outlined text-[20px]">mark_email_unread</span>
+                            <span>Tu cuenta no está verificada. Revisá tu bandeja de entrada para no perder acceso.</span>
+                        </div>
+                        <button @onclick="ReenviarEmailConfirmacion" disabled="@reenviandoEmail"
+                                class="text-[10px] font-black uppercase tracking-widest text-orange-700 hover:text-orange-900 hover:underline whitespace-nowrap transition-all disabled:opacity-50">
+                            @(reenviandoEmail ? "Enviando..." : "Reenviar enlace")
+                        </button>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
         <div class="p-6 md:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-12 flex-1">
             @Body
         </div>
@@ -223,6 +241,8 @@
 </style>
 
 @code {
+    private bool reenviandoEmail = false;
+
     protected override async Task OnInitializedAsync()
     {
         // 1. Suscripciones a eventos
@@ -279,5 +299,53 @@
     {
         State.OnChange -= StateHasChanged;
         Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task ReenviarEmailConfirmacion()
+    {
+        if (reenviandoEmail) return;
+
+        reenviandoEmail = true;
+        StateHasChanged();
+
+        try
+        {
+            // 1. Recuperamos el token del LocalStorage
+            var token = await LocalStorage.GetItemAsync<string>("authToken");
+
+            if (string.IsNullOrEmpty(token))
+            {
+                Console.WriteLine("No hay token guardado. Imposible autorizar la petición.");
+                return;
+            }
+
+            // 2. Armamos la petición explícitamente
+            var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/resend-confirmation");
+
+            // 3. Le inyectamos el Header de Autorización
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            // 4. Enviamos la petición usando el Http inyectado
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Email reenviado exitosamente.");
+            }
+            else
+            {
+                Console.WriteLine($"La API devolvió un error: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error de conexión: {ex.Message}");
+        }
+        finally
+        {
+            await Task.Delay(3000);
+            reenviandoEmail = false;
+            StateHasChanged();
+        }
     }
 }

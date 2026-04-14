@@ -1,0 +1,86 @@
+﻿@page "/confirmar-email"
+@layout EmptyLayout
+@using Microsoft.AspNetCore.WebUtilities
+@using Zenda.Application.DTOs.Auth
+@using Microsoft.AspNetCore.Components.Authorization
+@using Zenda.Client.Auth
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<div class="min-h-screen flex items-center justify-center bg-background p-4">
+    <div class="max-w-md w-full p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm text-center">
+
+        @if (estado == 0)
+        {
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+            <h2 class="text-xl font-bold text-primary">Verificando tu cuenta...</h2>
+            <p class="text-sm text-on-surface-variant mt-2">Un momentito por favor.</p>
+        }
+        else if (estado == 1)
+        {
+            <span class="material-symbols-outlined text-[64px] text-green-600 mb-4">check_circle</span>
+            <h2 class="text-2xl font-bold text-primary mb-2">¡Todo listo!</h2>
+            <p class="text-sm text-on-surface-variant mb-6">Tu correo ha sido confirmado exitosamente.</p>
+            <button @onclick='() => Nav.NavigateTo("/", forceLoad: true)' class="w-full py-3 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-primary/90 transition-all">
+                Ir a mi Panel
+            </button>
+        }
+        else
+        {
+            <span class="material-symbols-outlined text-[64px] text-error mb-4">error</span>
+            <h2 class="text-xl font-bold text-error mb-2">Hubo un problema</h2>
+            <p class="text-sm text-on-surface-variant mb-6">@mensajeError</p>
+            <button @onclick='() => Nav.NavigateTo("/")' class="w-full py-3 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container transition-all">
+                Volver al inicio
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    private int estado = 0; // 0 = cargando, 1 = éxito, 2 = error
+    private string mensajeError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("uid", out var uid) &&
+            QueryHelpers.ParseQuery(uri.Query).TryGetValue("t", out var token))
+        {
+            try
+            {
+                var response = await Http.GetAsync($"api/auth/confirm-email?uid={uid}&t={token}");
+                var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+                if (response.IsSuccessStatusCode && result!.Success)
+                {
+                    // 1. Guardar el NUEVO token (que ya tiene email_verified=true)
+                    await LocalStorage.SetItemAsync("authToken", result.Token);
+
+                    // 2. Avisar a la app para que actualice permisos y quite el banner
+                    ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(result.Token);
+
+                    estado = 1; // Éxito
+                }
+                else
+                {
+                    mensajeError = result?.Message ?? "El enlace no es válido o ya expiró.";
+                    estado = 2; // Error
+                }
+            }
+            catch
+            {
+                mensajeError = "No se pudo conectar con el servidor.";
+                estado = 2;
+            }
+        }
+        else
+        {
+            mensajeError = "Enlace incompleto.";
+            estado = 2;
+        }
+    }
+}

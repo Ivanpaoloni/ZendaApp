@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -78,14 +79,19 @@ public class AuthService : IAuthService
             {
                 try
                 {
-                    await _emailService.EnviarBienvenidaRegistroAsync(
-                        newUser.Email,
-                        newUser.Nombre,
-                        nuevoNegocio.Nombre);
+                    // Generar token de Identity y codificarlo para URL
+                    var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
+
+                    var frontUrl = _config["FrontendUrl"]; // ej: https://localhost:5001 configurado en appsettings.json
+                    var confirmLink = $"{frontUrl}/confirmar-email?uid={newUser.Id}&t={encodedToken}";
+
+                    // Asegurate de que tu IEmailService reciba este nuevo parámetro 'confirmLink'
+                    await _emailService.EnviarBienvenidaRegistroAsync(newUser.Email, newUser.Nombre, nuevoNegocio.Nombre, confirmLink);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Error enviando email de bienvenida a {newUser.Email}");
+                    Console.WriteLine($"Error enviando email de bienvenida: {ex.Message}");
                 }
             }
 
@@ -147,8 +153,8 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.NameIdentifier, user.Id),
             new Claim(ClaimTypes.Email, user.Email!),
             new Claim(ClaimTypes.GivenName, user.Nombre),
-            // ¡ESTE ES EL CLAIM CLAVE PARA TU TENANTSERVICE!
-            new Claim("NegocioId", user.NegocioId.ToString() ?? string.Empty)
+            new Claim("NegocioId", user.NegocioId.ToString() ?? string.Empty),
+            new Claim("email_verified", user.EmailConfirmed.ToString().ToLower())
         };
 
         // Agregar los roles del usuario a los claims
@@ -174,5 +180,45 @@ public class AuthService : IAuthService
         var token = tokenHandler.CreateToken(tokenDescriptor);
 
         return tokenHandler.WriteToken(token);
+    }
+    public async Task<AuthResponseDto> ConfirmEmailAsync(string userId, string decodedToken)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AuthResponseDto { Success = false, Message = "Usuario no encontrado." };
+
+        var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+        if (!result.Succeeded)
+            return new AuthResponseDto { Success = false, Message = "El link expiró o es inválido." };
+
+        // Generar un nuevo token ahora que EmailConfirmed es true
+        var nuevoJwt = await GenerateJwtToken(user);
+
+        return new AuthResponseDto
+        {
+            Success = true,
+            Message = "¡Email confirmado con éxito!",
+            Token = nuevoJwt
+        };
+    }
+
+    public async Task<AuthResponseDto> ResendConfirmationEmailAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null || user.EmailConfirmed)
+            return new AuthResponseDto { Success = false, Message = "No requiere confirmación o el usuario no existe." };
+
+        var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
+
+        var frontUrl = _config["FrontendUrl"];
+        var confirmLink = $"{frontUrl}/confirmar-email?uid={user.Id}&t={encodedToken}";
+
+        // Acá usás tu servicio de email (asumiendo que tenés un método para esto)
+        await _emailService.EnviarEmailConfirmacionAsync(user.Email, user.Nombre, confirmLink);
+
+        return new AuthResponseDto { Success = true, Message = "Email reenviado correctamente." };
     }
 }

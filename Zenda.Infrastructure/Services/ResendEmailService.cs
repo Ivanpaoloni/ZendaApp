@@ -95,24 +95,30 @@ public class ResendEmailService : IEmailService
         return response.Success;
     }
 
-    // 3. BIENVENIDA AL SaaS
-    public async Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio)
+    // 3. BIENVENIDA AL SaaS (ACTUALIZADO CON LINK DE CONFIRMACIÓN)
+    public async Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio, string confirmLink)
     {
         var message = new EmailMessage
         {
             From = $"Equipo Zenda <{_fromEmail}>",
             To = { emailDestino },
-            Subject = $"🚀 ¡Bienvenido a Zenda, {nombreUsuario}!",
+            Subject = $"🚀 ¡Bienvenido a Zenda, {nombreUsuario}! Activá tu cuenta",
             HtmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
-                    <h2 style='color: #4f46e5; margin-top: 0;'>¡Bienvenido a bordo! 🚀</h2>
+                    <h2 style='color: #166534; margin-top: 0;'>¡Bienvenido a bordo! 🚀</h2>
                     <p>Hola <strong>{nombreUsuario}</strong>, estamos muy felices de que hayas elegido Zenda para llevar la gestión de <strong>{nombreNegocio}</strong> al siguiente nivel.</p>
                     
-                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                        <p style='margin: 0; font-size: 15px;'>💡 <strong>Siguiente paso:</strong> Ya podés ingresar a tu panel, crear tu primera sede y configurar a tu equipo de profesionales para empezar a recibir reservas.</p>
+                    <div style='background-color: #f7faf6; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #dcfce7; text-align: center;'>
+                        <p style='margin: 0 0 15px 0; font-size: 15px; color: #166534;'><strong>Para proteger tu cuenta y habilitar todas las funciones, necesitamos que confirmes tu correo electrónico.</strong></p>
+                        <a href='{confirmLink}' style='background-color: #166534; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);'>
+                            Confirmar mi correo electrónico
+                        </a>
                     </div>
 
-                    <p style='font-size: 14px; color: #555;'>Si tenés alguna duda o necesitás ayuda para arrancar, simplemente respondé a este correo y nos pondremos en contacto con vos.</p>
+                    <p style='font-size: 14px; color: #555;'>Si el botón no funciona, copiá y pegá este enlace en tu navegador:</p>
+                    <p style='font-size: 12px; color: #6b7280; word-break: break-all;'>{confirmLink}</p>
+
+                    <p style='font-size: 14px; color: #555; margin-top: 30px;'>Si tenés alguna duda o necesitás ayuda para arrancar, simplemente respondé a este correo.</p>
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
@@ -123,7 +129,6 @@ public class ResendEmailService : IEmailService
         var response = await _resend.EmailSendAsync(message);
         return response.Success;
     }
-
     // 4. CONTACTO DESDE LA LANDING PAGE
     public async Task<bool> EnviarConsultaContactoAsync(string nombreRemitente, string emailRemitente, string mensaje)
     {
@@ -187,6 +192,38 @@ public class ResendEmailService : IEmailService
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
                         Notificación automática de <strong>Zenda App</strong>
+                    </p>
+                </div>"
+        };
+        var response = await _resend.EmailSendAsync(message);
+        return response.Success;
+    }
+    // 6. REENVÍO DE CONFIRMACIÓN DE EMAIL (NUEVO)
+    public async Task<bool> EnviarEmailConfirmacionAsync(string emailDestino, string nombreUsuario, string confirmLink)
+    {
+        var message = new EmailMessage
+        {
+            From = $"Seguridad Zenda <{_fromEmail}>",
+            To = { emailDestino },
+            Subject = $"🔒 Zenda: Verificá tu correo electrónico",
+            HtmlBody = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #166534; margin-top: 0;'>Verificación de cuenta</h2>
+                    <p>Hola <strong>{nombreUsuario}</strong>,</p>
+                    <p>Recibimos una solicitud para verificar tu dirección de correo electrónico en Zenda App. Por favor, hacé clic en el botón de abajo para confirmar que este correo te pertenece.</p>
+                    
+                    <div style='text-align: center; margin: 35px 0;'>
+                        <a href='{confirmLink}' style='background-color: #166534; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);'>
+                            Verificar mi cuenta
+                        </a>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si no solicitaste esto o no tenés una cuenta en Zenda, podés ignorar este mensaje.</p>
+                    <p style='font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 20px;'>Link alternativo: <br>{confirmLink}</p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        <strong>Zenda App</strong>
                     </p>
                 </div>"
         };

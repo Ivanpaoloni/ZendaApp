@@ -1,4 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Security.Claims;
+using System.Text;
 using Zenda.Application.DTOs.Auth;
 using Zenda.Core.Interfaces;
 
@@ -33,6 +37,40 @@ public class AuthController : ControllerBase
 
         if (!result.Success)
             return Unauthorized(result);
+
+        return Ok(result);
+    }
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] string uid, [FromQuery] string t)
+    {
+        if (string.IsNullOrEmpty(uid) || string.IsNullOrEmpty(t))
+            return BadRequest(new AuthResponseDto { Success = false, Message = "Link inválido." });
+
+        // Decodificamos el token acá en el controller porque es un tema de transporte HTTP
+        var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(t));
+
+        var result = await _authService.ConfirmEmailAsync(uid, decodedToken);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    [Authorize] // Solo usuarios autenticados (los que entraron por Auto-Login) pueden pedir esto
+    [HttpPost("resend-confirmation")]
+    public async Task<IActionResult> ResendConfirmation()
+    {
+        // Extraemos el ID del usuario directamente del token JWT que envió en la cabecera HTTP
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _authService.ResendConfirmationEmailAsync(userId);
+
+        if (!result.Success)
+            return BadRequest(result);
 
         return Ok(result);
     }
