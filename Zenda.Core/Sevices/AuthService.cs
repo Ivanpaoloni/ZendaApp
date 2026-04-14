@@ -181,6 +181,23 @@ public class AuthService : IAuthService
 
         return tokenHandler.WriteToken(token);
     }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null)
+            return new AuthResponseDto { Success = false, Message = "Usuario no encontrado." };
+
+        // Como vuelve a generar el token, ahora leerá EmailConfirmed = true de la BD
+        var token = await GenerateJwtToken(user);
+
+        return new AuthResponseDto
+        {
+            Success = true,
+            Token = token
+        };
+    }
+
     public async Task<AuthResponseDto> ConfirmEmailAsync(string userId, string decodedToken)
     {
         var user = await _userManager.FindByIdAsync(userId);

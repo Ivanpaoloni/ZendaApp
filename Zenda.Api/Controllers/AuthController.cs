@@ -74,4 +74,21 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+    [Authorize] // Protegido, solo usuarios con sesión activa
+    [HttpGet("refresh-token")]
+    public async Task<IActionResult> RefreshToken()
+    {
+        // Extraemos el ID directo del token viejo que envió en la petición
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _authService.RefreshTokenAsync(userId);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }

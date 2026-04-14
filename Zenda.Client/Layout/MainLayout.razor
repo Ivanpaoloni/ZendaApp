@@ -7,6 +7,7 @@
 @inject HttpClient Http
 @implements IDisposable
 
+@using Zenda.Application.DTOs.Auth
 @using Zenda.Client.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Zenda.Core.DTOs
@@ -127,6 +128,7 @@
             </div>
         </div>
 
+        @* 🔥 BANNER DE VERIFICACIÓN 🔥 *@
         <AuthorizeView>
             <Authorized>
                 @if (!context.User.HasClaim(c => c.Type == "email_verified" && c.Value == "true"))
@@ -136,10 +138,19 @@
                             <span class="material-symbols-outlined text-[20px]">mark_email_unread</span>
                             <span>Tu cuenta no está verificada. Revisá tu bandeja de entrada para no perder acceso.</span>
                         </div>
-                        <button @onclick="ReenviarEmailConfirmacion" disabled="@reenviandoEmail"
-                                class="text-[10px] font-black uppercase tracking-widest text-orange-700 hover:text-orange-900 hover:underline whitespace-nowrap transition-all disabled:opacity-50">
-                            @(reenviandoEmail ? "Enviando..." : "Reenviar enlace")
-                        </button>
+
+                        @* Contenedor con los dos botones *@
+                        <div class="flex items-center gap-4 mt-2 sm:mt-0">
+                            <button @onclick="RefrescarEstado" disabled="@refrescando"
+                                    class="text-[10px] font-black uppercase tracking-widest text-green-700 hover:text-green-900 hover:underline whitespace-nowrap transition-all disabled:opacity-50">
+                                @(refrescando ? "Comprobando..." : "Ya lo confirmé")
+                            </button>
+
+                            <button @onclick="ReenviarEmailConfirmacion" disabled="@reenviandoEmail"
+                                    class="text-[10px] font-black uppercase tracking-widest text-orange-700 hover:text-orange-900 hover:underline whitespace-nowrap transition-all disabled:opacity-50">
+                                @(reenviandoEmail ? "Enviando..." : "Reenviar enlace")
+                            </button>
+                        </div>
                     </div>
                 }
             </Authorized>
@@ -242,6 +253,7 @@
 
 @code {
     private bool reenviandoEmail = false;
+    private bool refrescando = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -345,6 +357,52 @@
         {
             await Task.Delay(3000);
             reenviandoEmail = false;
+            StateHasChanged();
+        }
+    }
+    private async Task RefrescarEstado()
+    {
+        if (refrescando) return;
+
+        refrescando = true;
+        StateHasChanged();
+
+        try
+        {
+            var tokenViejo = await LocalStorage.GetItemAsync<string>("authToken");
+
+            if (string.IsNullOrEmpty(tokenViejo)) return;
+
+            // Pedimos el token fresco al nuevo endpoint
+            var request = new HttpRequestMessage(HttpMethod.Get, "api/auth/refresh-token");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokenViejo);
+
+            var response = await Http.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+                if (result != null && result.Success && !string.IsNullOrEmpty(result.Token))
+                {
+                    // 1. Sobreescribimos el token viejo por el nuevo
+                    await LocalStorage.SetItemAsync("authToken", result.Token);
+
+                    // 2. Le avisamos a Blazor que la sesión se actualizó
+                    ((CustomAuthStateProvider)AuthStateProvider).NotifyUserAuthentication(result.Token);
+
+                    // ¡Acá ocurre la magia! Al notificar a Blazor, el AuthorizeView se reevalúa,
+                    // lee el nuevo claim "email_verified: true" y el banner desaparece solo al instante.
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al refrescar estado: {ex.Message}");
+        }
+        finally
+        {
+            refrescando = false;
             StateHasChanged();
         }
     }
