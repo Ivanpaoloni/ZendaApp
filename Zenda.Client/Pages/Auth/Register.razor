@@ -1,10 +1,14 @@
 ﻿@page "/register"
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using System.Timers
+@using Microsoft.AspNetCore.Components.Authorization
 @using Zenda.Application.DTOs.Auth
+@using Zenda.Client.Auth
 @inject HttpClient Http
 @inject NavigationManager Nav
 @implements IDisposable
+@inject AuthenticationStateProvider AuthProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
 <div class="max-w-xl mx-auto mt-8 mb-12 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
     <div class="text-center mb-8">
@@ -226,7 +230,7 @@
 
     private async Task HandleRegister()
     {
-        // Validación del Rubro
+        // 1. Validación del Rubro (la que ya tenías)
         if (regModel.RubroId == Guid.Empty)
         {
             errorMessage = "Por favor, seleccioná a qué se dedica tu negocio.";
@@ -240,22 +244,38 @@
 
         try
         {
+            // 2. Llamada al endpoint (que ahora devuelve el Token)
             var response = await Http.PostAsJsonAsync("api/auth/register-owner", regModel);
             var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
-            if (result!.Success)
+            if (result!.Success && !string.IsNullOrEmpty(result.Token))
             {
-                Nav.NavigateTo("login");
+                // --- LÓGICA DE AUTO-LOGIN ---
+
+                // 3. Guardamos el token en LocalStorage
+                await LocalStorage.SetItemAsync("authToken", result.Token);
+
+                // 4. Notificamos al Provider (Casteamos a tu clase custom)
+                ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(result.Token);
+
+                // 5. Redirigimos al Dashboard (o al home)
+                // Uso forceLoad: true para asegurar que todos los servicios se reinicien con el nuevo contexto
+                Nav.NavigateTo("/", forceLoad: true);
             }
             else
             {
                 errorMessage = result.Message;
             }
         }
-        catch { errorMessage = "Error de conexión con la API."; }
-        finally { isSubmitting = false; }
+        catch
+        {
+            errorMessage = "Error de conexión con la API.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
     }
-
     public void Dispose()
     {
         debounceTimer?.Dispose();

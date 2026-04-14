@@ -104,7 +104,15 @@ public class AuthService : IAuthService
             // Confirmamos la transacción
             await transaction.CommitAsync();
 
-            return new AuthResponseDto { Success = true, Message = "Dueño y negocio creados con éxito." };
+            // GENERAR TOKEN AUTOMÁTICAMENTE
+            var token = await GenerateJwtToken(newUser);
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Message = "Dueño y negocio creados con éxito.",
+                Token = token // <--- Agregamos el token aquí
+            };
         }
         catch (Exception ex)
         {
