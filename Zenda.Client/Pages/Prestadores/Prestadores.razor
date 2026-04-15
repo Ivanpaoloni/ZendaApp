@@ -60,13 +60,16 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             @foreach (var p in prestadores)
             {
-                <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all relative overflow-hidden">
+                <div class="bg-white p-6 rounded-[2.5rem] border border-surface-container-high editorial-shadow group hover:border-primary/20 transition-all relative overflow-hidden flex flex-col h-full">
 
-                    <div class="flex justify-between items-start mb-6">
-                        <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500">
+                    <div class="flex justify-between items-start mb-4">
+                        @* AVATAR (Con soporte para foto en el futuro) *@
+                        <div class="w-14 h-14 rounded-2xl bg-secondary-container/30 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-500 overflow-hidden shrink-0">
+                            @* Si tuvieras p.FotoUrl harías un <img> acá. Por ahora dejamos tu ícono: *@
                             <span class="material-symbols-outlined text-3xl">person</span>
                         </div>
 
+                        @* BOTONES DE ACCIÓN *@
                         <div class="flex items-center gap-1">
                             <button @onclick='() => Nav.NavigateTo($"/prestadores/editar/{p.Id}")'
                                     class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-all" title="Editar">
@@ -79,11 +82,42 @@
                         </div>
                     </div>
 
-                    <h3 class="text-xl font-bold text-primary mb-4">@p.Nombre</h3>
+                    @* INFO PRINCIPAL *@
+                    <div class="mb-4 flex-1">
+                        <h3 class="text-xl font-bold text-primary leading-tight">@p.Nombre</h3>
 
-                    <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
-                    </button>
+                        @if (p.Servicios != null && p.Servicios.Any())
+                        {
+                            @* string.Join une todos los nombres con una coma y un espacio *@
+                            <p class="text-sm text-on-surface-variant font-medium mt-1 line-clamp-2" title="@string.Join(", ", p.Servicios.Select(s => s.Nombre))">
+                                @string.Join(", ", p.Servicios.Select(s => s.Nombre))
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="text-sm text-on-surface-variant/50 italic mt-1">Sin servicios asignados</p>
+                        }
+
+                        <div class="mt-4 space-y-2">
+                            @* EJEMPLO: Sede (Badge) *@
+                            @if (!string.IsNullOrEmpty(p.SedeNombre))
+                            {
+                                <div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-surface-container-low border border-surface-container-high text-xs font-bold text-on-surface-variant">
+                                    <span class="material-symbols-outlined text-[14px]">location_on</span>
+                                    @p.SedeNombre
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+
+                    @* BOTÓN CONFIGURAR AGENDA (Empujado hacia abajo con mt-auto gracias al flex-col del padre) *@
+                    <div class="mt-auto pt-2">
+                        <button @onclick="() => IrAAgenda(p)" class="w-full py-3 bg-primary/5 text-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-sm">calendar_month</span> Configurar Agenda
+                        </button>
+                    </div>
+
                 </div>
             }
         </div>

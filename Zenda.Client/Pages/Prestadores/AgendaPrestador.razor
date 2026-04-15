@@ -26,33 +26,76 @@
         <h2 class="text-xl font-bold text-primary mb-3 pl-2">1. Agenda Semanal Base</h2>
         <div class="bg-white rounded-[2.5rem] border border-surface-container-high editorial-shadow overflow-hidden">
             @foreach (var dia in dias)
-            {
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-surface-container last:border-0 hover:bg-secondary-container/10 transition-colors gap-4">
-                    <div class="flex items-center gap-4">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" @bind="dia.Activo" class="sr-only peer">
-                            <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
-                        <span class="font-bold text-primary w-24">@dia.Nombre</span>
-                    </div>
-
-                    @if (dia.Activo)
-                    {
-                        <div class="flex items-center gap-2 animate-in fade-in zoom-in duration-300 ml-[3.75rem] sm:ml-0">
-                            <input type="time" @bind="dia.Inicio" class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
-                            <span class="text-[10px] font-black opacity-20">-</span>
-                            <input type="time" @bind="dia.Fin" class="w-full sm:w-auto p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center" />
-                        </div>
-                    }
-                    else
-                    {
-                        <span class="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest italic animate-in fade-in duration-500 ml-[3.75rem] sm:ml-0">
-                            Cerrado
-                        </span>
-                    }
-                </div>
-            }
+{
+    @* 1. Cambiamos p-6 por p-4 sm:p-6 para ganar 16px extra en celulares *@
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-b border-surface-container last:border-0 hover:bg-secondary-container/10 transition-colors gap-4">
+        
+        <div class="flex items-center gap-4">
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" @bind="dia.Activo" class="sr-only peer">
+                <div class="w-11 h-6 bg-surface-container-highest rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+            <span class="font-bold text-primary w-24">@dia.Nombre</span>
         </div>
+
+        @if (dia.Activo)
+        {
+            <div class="flex flex-col gap-3 w-full sm:w-auto mt-2 sm:mt-0 animate-in fade-in zoom-in duration-300">
+                @foreach (var rango in dia.Rangos)
+                {
+                    @* 2. Achicamos el gap en mobile (gap-1) y lo restauramos en PC (sm:gap-2) *@
+                    <div class="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
+                        
+                        @* 3. Magia pura: min-w-0 obliga al input a no desbordar *@
+                        <input type="time" @bind="rango.Inicio" 
+                               class="min-w-0 flex-1 sm:flex-none sm:w-28 p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center shadow-sm sm:shadow-none" />
+                        
+                        <span class="text-[10px] font-black opacity-30 shrink-0">-</span>
+                        
+                        <input type="time" @bind="rango.Fin" 
+                               class="min-w-0 flex-1 sm:flex-none sm:w-28 p-2 bg-surface-container-low rounded-lg text-xs font-bold outline-none border-0 focus:ring-2 focus:ring-primary/20 text-center shadow-sm sm:shadow-none" />
+                        
+                        @if (dia.Rangos.Count > 1)
+                        {
+                            <button type="button" @onclick="() => dia.Rangos.Remove(rango)" 
+                                    class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors shrink-0 flex items-center justify-center" 
+                                    title="Eliminar este turno">
+                                <span class="material-symbols-outlined text-[18px] sm:text-[16px]">delete</span>
+                            </button>
+                        }
+                        else
+                        {
+                            @* Espaciador un poquito más chico para mobile *@
+                            <div class="w-7 sm:w-8 shrink-0"></div>
+                        }
+                    </div>
+                }
+                
+                <div class="flex justify-start">
+                    <button type="button" @onclick="() => AgregarRango(dia)" 
+                            class="text-[11px] font-bold text-primary flex items-center gap-1 hover:bg-primary/10 w-fit bg-primary/5 px-2 py-1.5 rounded-lg transition-all">
+                        <span class="material-symbols-outlined text-[14px]">add</span> Sumar otro horario
+                    </button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <span class="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-widest italic animate-in fade-in duration-500 mt-2 sm:mt-0">
+                Cerrado
+            </span>
+        }
+    </div>
+}      
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorAgenda))
+        {
+            <div class="mb-4 p-3 bg-error/10 text-error border border-error/20 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span>@errorAgenda</span>
+            </div>
+        }
 
         <div class="mt-4">
             <button @onclick="GuardarAgenda" disabled="@isSaving"
@@ -207,7 +250,7 @@
 
     <div class="pt-8 flex justify-center">
         <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-sm font-bold text-on-surface-variant hover:text-primary transition-colors underline underline-offset-4">
-            Volver a Prestadores
+            Volver al Equipo
         </button>
     </div>
 </div>
@@ -225,8 +268,9 @@
     private List<BloqueoReadDto> bloqueos = new();
     private bool cargandoBloqueos = true;
     private bool guardandoBloqueo = false;
-    private string errorBloqueo = ""; // Para mostrar mensajes de validación
-    
+    private string errorBloqueo = ""; 
+    private string errorAgenda = "";
+
     // Formulario Nuevo Bloqueo Multidía
     private DateTime nuevoBloqueoFechaInicio = DateTime.Today;
     private DateTime nuevoBloqueoFechaFin = DateTime.Today;
@@ -250,68 +294,121 @@
     // LÓGICA AGENDA SEMANAL
     // ==========================================
     private async Task CargarAgendaSemanal()
+{
+    try
     {
-        try
+        var actual = await AgendaService.GetByPrestador(State.PrestadorEnEdicion!.Id);
+        if (actual != null && actual.Any())
         {
-            var actual = await AgendaService.GetByPrestador(State.PrestadorEnEdicion!.Id);
-            if (actual != null)
-            {
-                foreach (var disp in actual)
-                {
-                    var d = dias.FirstOrDefault(x => x.Num == disp.DiaSemana);
-                    if (d != null)
-                    {
-                        d.Activo = true;
-                        if (TimeOnly.TryParse(disp.HoraInicio, out var inicio))
-                            d.Inicio = DateTime.Today.Add(inicio.ToTimeSpan());
+            // Limpiamos los rangos por defecto antes de cargar la base
+            foreach (var d in dias) d.Rangos.Clear();
 
-                        if (TimeOnly.TryParse(disp.HoraFin, out var fin))
-                            d.Fin = DateTime.Today.Add(fin.ToTimeSpan());
+            foreach (var disp in actual)
+            {
+                var d = dias.FirstOrDefault(x => x.Num == disp.DiaSemana);
+                if (d != null)
+                {
+                    d.Activo = true;
+                    if (TimeOnly.TryParse(disp.HoraInicio, out var inicio) && TimeOnly.TryParse(disp.HoraFin, out var fin))
+                    {
+                        d.Rangos.Add(new RangoHorarioVM 
+                        {
+                            Inicio = DateTime.Today.Add(inicio.ToTimeSpan()),
+                            Fin = DateTime.Today.Add(fin.ToTimeSpan())
+                        });
                     }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error cargando agenda: {ex.Message}");
+            
+            // Si hay un día marcado activo pero quedó vacío, le ponemos un rango por defecto
+            foreach (var d in dias.Where(x => x.Activo && !x.Rangos.Any()))
+                d.Rangos.Add(new RangoHorarioVM());
         }
     }
-
-    private async Task GuardarAgenda()
+    catch (Exception ex)
     {
-        if (isSaving) return;
-        
-        isSaving = true;
-        guardadoExitoso = false; 
-        StateHasChanged();
+        Console.WriteLine($"Error cargando agenda: {ex.Message}");
+    }
+}
 
-        var agenda = dias.Where(d => d.Activo).Select(d => new DisponibilidadCreateDto
+private async Task GuardarAgenda()
+{
+    if (isSaving) return;
+    errorAgenda = "";
+
+    foreach (var d in dias.Where(x => x.Activo))
+    {
+        // Validar que no cruce la medianoche (Inicio < Fin)
+        foreach (var rango in d.Rangos)
         {
-            PrestadorId = State.PrestadorEnEdicion!.Id,
-            DiaSemana = d.Num,
-            HoraInicio = TimeOnly.FromDateTime(d.Inicio),
-            HoraFin = TimeOnly.FromDateTime(d.Fin)
-        }).ToList();
-
-        var exito = await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda);
-        
-        isSaving = false;
-
-        if (exito)
-        {
-            guardadoExitoso = true;
-            StateHasChanged();
-            
-            await Task.Delay(2500);
-            
-            guardadoExitoso = false;
-            StateHasChanged();
+            if (rango.Inicio.TimeOfDay >= rango.Fin.TimeOfDay)
+            {
+                errorAgenda = $"Revisá el {d.Nombre}: El horario {rango.Inicio:HH:mm} a {rango.Fin:HH:mm} no es válido. La hora de fin debe ser posterior al inicio.";
+                return; // Cortamos la ejecución, no guardamos nada
+            }
         }
-        else
+
+        // Validar que los cortes del mismo día no se superpongan
+        if (d.Rangos.Count > 1)
         {
-            Console.WriteLine("Error al guardar la agenda.");
+            // Ordenamos los rangos por hora de inicio para compararlos en escalera
+            var ordenados = d.Rangos.OrderBy(r => r.Inicio.TimeOfDay).ToList();
+            
+            for (int i = 0; i < ordenados.Count - 1; i++)
+            {
+                if (ordenados[i].Fin.TimeOfDay > ordenados[i + 1].Inicio.TimeOfDay)
+                {
+                    errorAgenda = $"Revisá el {d.Nombre}: Tenés horarios que se pisan entre sí.";
+                    return; // Cortamos la ejecución
+                }
+            }
         }
     }
+    
+    isSaving = true;
+    guardadoExitoso = false; 
+
+    StateHasChanged();
+
+    // Aplanamos la lista: Días Activos -> Sus múltiples rangos
+    var agenda = new List<DisponibilidadCreateDto>();
+    foreach (var d in dias.Where(x => x.Activo))
+    {
+        foreach (var rango in d.Rangos)
+        {
+            agenda.Add(new DisponibilidadCreateDto
+            {
+                PrestadorId = State.PrestadorEnEdicion!.Id,
+                DiaSemana = d.Num,
+                HoraInicio = TimeOnly.FromDateTime(rango.Inicio),
+                HoraFin = TimeOnly.FromDateTime(rango.Fin)
+            });
+        }
+    }
+
+    var exito = await AgendaService.Upsert(State.PrestadorEnEdicion!.Id, agenda);
+    
+    isSaving = false;
+
+    if (exito)
+    {
+        guardadoExitoso = true;
+        StateHasChanged();
+        await Task.Delay(2500);
+        guardadoExitoso = false;
+        StateHasChanged();
+    }
+}
+
+// Método Helper para la UI
+private void AgregarRango(DiaVM dia)
+{
+    var ultimo = dia.Rangos.LastOrDefault();
+    var nuevoInicio = ultimo != null ? ultimo.Fin.AddHours(1) : DateTime.Today.AddHours(16);
+    var nuevoFin = nuevoInicio.AddHours(4);
+    
+    dia.Rangos.Add(new RangoHorarioVM { Inicio = nuevoInicio, Fin = nuevoFin });
+}
 
     // ==========================================
     // LÓGICA BLOQUEOS
@@ -384,19 +481,25 @@
         }
     }
 
-    // ViewModel
-    public class DiaVM
-    {
-        public int Num { get; set; }
-        public string Nombre { get; set; }
-        public bool Activo { get; set; }
-        public DateTime Inicio { get; set; } = DateTime.Today.AddHours(9);
-        public DateTime Fin { get; set; } = DateTime.Today.AddHours(18);
+    public class RangoHorarioVM
+{
+    public DateTime Inicio { get; set; } = DateTime.Today.AddHours(9);
+    public DateTime Fin { get; set; } = DateTime.Today.AddHours(13); // Por defecto mañana
+}
 
-        public DiaVM(int num, string nombre)
-        {
-            Num = num;
-            Nombre = nombre;
-        }
+public class DiaVM
+{
+    public int Num { get; set; }
+    public string Nombre { get; set; }
+    public bool Activo { get; set; }
+    
+    // Ahora un día tiene una LISTA de rangos
+    public List<RangoHorarioVM> Rangos { get; set; } = new() { new RangoHorarioVM() };
+
+    public DiaVM(int num, string nombre)
+    {
+        Num = num;
+        Nombre = nombre;
     }
+}
 }

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Zenda.Core.Entities;
 
 namespace Zenda.Core.DTOs
 {
@@ -14,7 +15,6 @@ namespace Zenda.Core.DTOs
         // public List<DisponibilidadCreateDto> Horarios { get; set; } = new();
     }
 
-    // Este es el que devolvemos (GET)
     public class PrestadorReadDto
     {
         public Guid Id { get; set; }
@@ -22,7 +22,8 @@ namespace Zenda.Core.DTOs
         public string Nombre { get; set; } = string.Empty;
         public int DuracionTurnoMinutos { get; set; }
 
-        // Asumiendo que tenés un DTO de lectura para la disponibilidad
+
+        public string SedeNombre { get; set; } = string.Empty;
         public List<DisponibilidadReadDto> Horarios { get; set; } = new();
         public List<ServicioReadDto> Servicios { get; set; } = new();
     }

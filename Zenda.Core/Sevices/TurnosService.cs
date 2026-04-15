@@ -92,6 +92,7 @@ public class TurnosService : ITurnosService
         var configuracion = await _context.Disponibilidad
             .IgnoreQueryFilters()
             .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
+            .OrderBy(d => d.HoraInicio)
             .ToListAsync();
 
         var turnosOcupados = await _context.Turnos
@@ -102,6 +103,7 @@ public class TurnosService : ITurnosService
                         t.Estado != EstadoTurnoEnum.Cancelado)
             .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
             .ToListAsync();
+
 
         // Esta query está perfecta, trae los multi-días correctamente
         var bloqueos = await _context.BloqueosAgenda
@@ -202,14 +204,16 @@ public class TurnosService : ITurnosService
         // BARRERA 2: Horario de trabajo
         int diaSemana = (int)fechaCruda.DayOfWeek;
         var horaSolicitada = TimeOnly.FromDateTime(fechaCruda);
+        var horaFinSolicitada = horaSolicitada.AddMinutes(servicio.DuracionMinutos);
 
-        var horarioLaboral = prestador.Horarios.FirstOrDefault(h => h.DiaSemana == diaSemana);
+        // Validamos que el turno solicitado entre en ALGUNO de los rangos habilitados para ese día
+        bool turnoDentroDeHorario = prestador.Horarios
+            .Where(h => h.DiaSemana == diaSemana)
+            .Any(h => horaSolicitada >= h.HoraInicio && horaFinSolicitada <= h.HoraFin);
 
-        if (horarioLaboral == null ||
-            horaSolicitada < horarioLaboral.HoraInicio ||
-            horaSolicitada.AddMinutes(prestador.DuracionTurnoMinutos) > horarioLaboral.HoraFin)
+        if (!turnoDentroDeHorario)
         {
-            throw new InvalidOperationException("El horario solicitado está fuera de la jornada laboral del profesional.");
+            throw new InvalidOperationException("El horario solicitado está fuera de la jornada laboral o cae en un horario de descanso.");
         }
 
         // BARRERA 3: Choque de Turnos

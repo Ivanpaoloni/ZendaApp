@@ -48,6 +48,7 @@ public class PrestadoresService : IPrestadoresService
             .Where(p => p.NegocioId == negocioId && !p.IsDeleted)
             .Include(p => p.Horarios)
             .Include(p => p.Servicios)
+            .Include(p => p.Sede)
             .AsNoTracking()
             .ToListAsync();
 
@@ -62,6 +63,7 @@ public class PrestadoresService : IPrestadoresService
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
             .Include(p => p.Servicios)
+            .Include(p => p.Sede)
             .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == negocioId && !p.IsDeleted);
 
         return prestador == null ? null : _mapper.Map<PrestadorReadDto>(prestador);

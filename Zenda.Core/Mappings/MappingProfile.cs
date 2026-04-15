@@ -10,7 +10,9 @@ public class MappingProfile : Profile
     {
         #region Prestadores
 
-        CreateMap<Prestador, PrestadorReadDto>();
+        CreateMap<Prestador, PrestadorReadDto>()
+            .ForMember(dest => dest.SedeNombre, opt => opt.MapFrom(src => src.Sede != null ? src.Sede.Nombre : ""));
+
         CreateMap<PrestadorCreateDto, Prestador>();
         CreateMap<PrestadorUpdateDto, Prestador>();
 
