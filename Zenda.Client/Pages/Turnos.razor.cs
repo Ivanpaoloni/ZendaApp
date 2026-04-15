@@ -113,7 +113,7 @@ public partial class Turnos : ComponentBase
                 filtrados = filtrados.Select(g => new KeyValuePair<string, List<TurnoReadDto>>(
                     g.Key,
                     g.Value.Where(t =>
-                        (string.IsNullOrWhiteSpace(busquedaCliente) || t.NombreClienteInvitado.Contains(busquedaCliente, StringComparison.OrdinalIgnoreCase)) &&
+                        (string.IsNullOrWhiteSpace(busquedaCliente) || t.ClienteNombre.Contains(busquedaCliente, StringComparison.OrdinalIgnoreCase)) &&
                         (string.IsNullOrEmpty(estadoFiltro) || t.Estado.ToString() == estadoFiltro) &&
                         (string.IsNullOrEmpty(sedeFiltro) || t.SedeNombre == sedeFiltro) &&
                         (string.IsNullOrEmpty(servicioFiltro) || t.ServicioNombre == servicioFiltro)

@@ -12,7 +12,6 @@ namespace Zenda.Core.DTOs
         [Required]
         public DateTime Inicio { get; set; }
 
-        // --- Datos del Invitado (MVP) ---
         [Required(ErrorMessage = "El nombre es obligatorio.")]
         [StringLength(100, MinimumLength = 3, ErrorMessage = "El nombre debe tener entre 3 y 100 caracteres.")]
         public string NombreClienteInvitado { get; set; } = string.Empty;
@@ -25,16 +24,19 @@ namespace Zenda.Core.DTOs
         [Phone(ErrorMessage = "El formato del teléfono no es válido.")]
         public string TelefonoClienteInvitado { get; set; } = string.Empty;
     }
-    
+
     public class TurnoReadDto
     {
         public Guid Id { get; set; }
         public DateTime FechaHoraInicioUtc { get; set; }
         public DateTime FechaHoraFinUtc { get; set; }
 
-        public string NombreClienteInvitado { get; set; } = string.Empty;
-        public string EmailClienteInvitado { get; set; } = string.Empty;
-        public string TelefonoClienteInvitado { get; set; } = string.Empty; 
+        // --- AHORA VIENEN DEL CLIENTE ---
+        public Guid ClienteId { get; set; }
+        public string ClienteNombre { get; set; } = string.Empty;
+        public string ClienteEmail { get; set; } = string.Empty;
+        public string ClienteTelefono { get; set; } = string.Empty;
+
         public Guid PrestadorId { get; set; }
         public string PrestadorNombre { get; set; } = string.Empty;
         public EstadoTurnoEnum Estado { get; set; } = EstadoTurnoEnum.Pendiente;
@@ -43,7 +45,7 @@ namespace Zenda.Core.DTOs
         public string ServicioNombre { get; set; } = string.Empty;
         public int DuracionMinutos { get; set; }
         public decimal Precio { get; set; }
-        public string SedeNombre { get; set; } = string.Empty; // para filtrado
+        public string SedeNombre { get; set; } = string.Empty;
         public string NegocioSlug { get; set; } = string.Empty;
     }
 }

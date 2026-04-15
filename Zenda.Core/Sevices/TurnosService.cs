@@ -243,16 +243,44 @@ public class TurnosService : ITurnosService
         // ==========================================
         // SI PASA TODAS LAS BARRERAS, GUARDAMOS
         // ==========================================
+        // Buscamos si ya existe el cliente por email en ESTE negocio
+        var emailNormalizado = dto.EmailClienteInvitado.Trim().ToLower();
 
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(c => c.NegocioId == prestador.NegocioId && c.Email.ToLower() == emailNormalizado);
+
+        if (cliente == null)
+        {
+            // Es nuevo, lo creamos
+            cliente = new Cliente
+            {
+                Id = Guid.CreateVersion7(),
+                NegocioId = prestador.NegocioId,
+                Nombre = dto.NombreClienteInvitado.Trim(),
+                Email = emailNormalizado,
+                Telefono = dto.TelefonoClienteInvitado.Trim()
+            };
+            _context.Clientes.Add(cliente);
+        }
+        else
+        {
+            // Ya existe. Pequeña magia: si nos pasa un teléfono nuevo, se lo actualizamos
+            if (!string.IsNullOrWhiteSpace(dto.TelefonoClienteInvitado) && cliente.Telefono != dto.TelefonoClienteInvitado)
+            {
+                cliente.Telefono = dto.TelefonoClienteInvitado.Trim();
+            }
+            // También podríamos actualizar el nombre si quisiéramos
+        }
         var nuevoTurno = new Turno
         {
             NegocioId = prestador.NegocioId,
             PrestadorId = dto.PrestadorId,
             FechaHoraInicioUtc = fechaUtcDefinitiva,
             FechaHoraFinUtc = fechaFinUtcDefinitiva,
-            NombreClienteInvitado = dto.NombreClienteInvitado,
-            TelefonoClienteInvitado = dto.TelefonoClienteInvitado,
-            EmailClienteInvitado = dto.EmailClienteInvitado,
+
+            // ASIGNAMOS EL CLIENTE (Adiós campos sueltos)
+            ClienteId = cliente.Id,
+
             Estado = EstadoTurnoEnum.Confirmado,
             ServicioId = dto.ServicioId
         };
@@ -320,9 +348,11 @@ public class TurnosService : ITurnosService
         .Select(t => new TurnoReadDto
         {
             Id = t.Id,
-            NombreClienteInvitado = t.NombreClienteInvitado,
-            TelefonoClienteInvitado = t.TelefonoClienteInvitado,
-            EmailClienteInvitado = t.EmailClienteInvitado,
+
+            ClienteId = t.ClienteId,
+            ClienteNombre = t.Cliente.Nombre,
+            ClienteEmail = t.Cliente.Email,
+            ClienteTelefono = t.Cliente.Telefono,
 
             PrestadorId = t.PrestadorId,
             PrestadorNombre = t.Prestador!.Nombre,
@@ -374,15 +404,15 @@ public class TurnosService : ITurnosService
             }
 
             // 2. Le avisamos al cliente por correo que el negocio le canceló la reserva
-            if (!string.IsNullOrEmpty(turno.EmailClienteInvitado) && turno.Prestador?.Sede != null && turno.Prestador?.Negocio != null)
+            if (!string.IsNullOrEmpty(turno.Cliente.Email) && turno.Prestador?.Sede != null && turno.Prestador?.Negocio != null)
             {
                 // Calculamos la hora local de la sede para el texto del correo
                 var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador.Sede.ZonaHorariaId);
                 var inicioSedeLocal = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, zonaSede);
 
                 await _emailService.EnviarCancelacionTurnoAsync(
-                    turno.EmailClienteInvitado,
-                    turno.NombreClienteInvitado,
+                    turno.Cliente.Email,
+                    turno.Cliente.Nombre,
                     turno.Prestador.Negocio.Nombre,
                     inicioSedeLocal,
                     turno.Prestador.Negocio.Slug
@@ -415,7 +445,9 @@ public class TurnosService : ITurnosService
             Id = turno.Id,
             FechaHoraInicioUtc = turno.FechaHoraInicioUtc,
             Estado = turno.Estado,
-            NombreClienteInvitado = turno.NombreClienteInvitado,
+            ClienteNombre = turno.Cliente.Nombre,
+            ClienteTelefono = turno.Cliente.Telefono,
+            ClienteEmail = turno.Cliente.Email,
             PrestadorNombre = turno.Prestador.Nombre,
             ServicioNombre = turno.Servicio.Nombre,
             SedeNombre = turno.Prestador.Sede?.Nombre ?? "",
@@ -462,11 +494,11 @@ public class TurnosService : ITurnosService
         var exito = await _context.SaveChangesAsync() > 0;
 
         // 🎯 SI SE GUARDÓ LA CANCELACIÓN, ENVIAMOS EL EMAIL
-        if (exito && !string.IsNullOrEmpty(turno.EmailClienteInvitado))
+        if (exito && !string.IsNullOrEmpty(turno.Cliente.Email))
         {
             await _emailService.EnviarCancelacionTurnoAsync(
-                turno.EmailClienteInvitado,
-                turno.NombreClienteInvitado,
+                turno.Cliente.Email,
+                turno.Cliente.Nombre,
                 turno.Prestador.Negocio.Nombre,
                 inicioSedeLocal, // Le pasamos la hora local para que el email no lo confunda
                 turno.Prestador.Negocio.Slug

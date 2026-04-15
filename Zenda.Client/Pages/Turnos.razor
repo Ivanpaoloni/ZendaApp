@@ -223,7 +223,7 @@
                                     <div class="flex gap-1">
                                         @if (turno.Estado != EstadoTurnoEnum.Completado && turno.Estado != EstadoTurnoEnum.Cancelado)
                                         {
-                                            <a href="@GenerarWhatsAppUrl(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado, horaInicio)" target="_blank"
+                                            <a href="@GenerarWhatsAppUrl(turno.ClienteTelefono, turno.ClienteNombre, horaInicio)" target="_blank"
                                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366] hover:text-white transition-colors" title="WhatsApp">
                                                 <i class="fa-brands fa-whatsapp text-[16px]"></i>
                                             </a>
@@ -248,7 +248,7 @@
                                     </div>
                                 </div>
 
-                                <h4 class="font-bold text-sm text-primary leading-tight truncate">@turno.NombreClienteInvitado</h4>
+                                <h4 class="font-bold text-sm text-primary leading-tight truncate">@turno.ClienteNombre</h4>
                                 <p class="text-[11px] text-on-surface-variant truncate mt-0.5">@turno.ServicioNombre</p>
                             </div>
                         }
@@ -272,7 +272,7 @@
             </div>
 
             <p class="text-sm text-on-surface-variant mb-6">
-                Estás por cancelar el turno de <strong class="text-primary">@turnoAEliminar?.NombreClienteInvitado</strong>. Esta acción le enviará un correo de notificación y liberará el horario en la agenda.
+                Estás por cancelar el turno de <strong class="text-primary">@turnoAEliminar?.ClienteNombre</strong>. Esta acción le enviará un correo de notificación y liberará el horario en la agenda.
             </p>
 
             <div class="flex gap-3">
