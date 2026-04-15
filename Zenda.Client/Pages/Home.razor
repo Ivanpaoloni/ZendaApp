@@ -193,7 +193,7 @@
                         @* Datos del Turno *@
                         <div class="flex-grow">
                             <div class="flex items-center gap-2">
-                                <h4 class="font-headline font-bold text-lg text-primary">@turno.NombreClienteInvitado</h4>
+                                <h4 class="font-headline font-bold text-lg text-primary">@turno.ClienteNombre</h4>
                                 <span class="hidden md:inline-block px-2 py-0.5 @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) text-[9px] font-bold uppercase tracking-wider rounded-lg">
                                     @turno.Estado
                                 </span>
@@ -211,7 +211,7 @@
                                 @tiempoFaltante
                             </span>
 
-                            <button @onclick="() => AbrirWhatsApp(turno.TelefonoClienteInvitado, turno.NombreClienteInvitado)"
+                            <button @onclick="() => AbrirWhatsApp(turno.ClienteTelefono, turno.ClienteNombre)"
                                     title="Contactar por WhatsApp"
                                     class="w-10 h-10 rounded-full bg-green-50 text-green-600 hover:bg-green-500 hover:text-white flex items-center justify-center transition-all shadow-sm">
                                 <i class="fa-brands fa-whatsapp text-lg"></i>

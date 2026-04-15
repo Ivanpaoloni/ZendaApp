@@ -1,0 +1,243 @@
+﻿@page "/clientes"
+@using Microsoft.AspNetCore.Authorization
+@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@attribute [Authorize]
+
+@inject ClienteClient ClienteService
+
+<div class="space-y-8 animate-in fade-in duration-500 pb-20 relative">
+
+    @* CABECERA Y BUSCADOR *@
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Clientes</h1>
+            <p class="text-on-surface-variant text-sm">Tu base de datos y fidelización.</p>
+        </div>
+
+        <div class="w-full md:w-80 relative">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+            <input type="text" @bind="searchTerm" @bind:event="oninput" placeholder="Buscar por nombre o teléfono..."
+                   class="w-full pl-12 pr-4 py-3 bg-white rounded-2xl border border-surface-container-high focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all editorial-shadow" />
+        </div>
+    </div>
+
+    @* LISTA DE CLIENTES *@
+    @if (clientes == null)
+    {
+        <div class="py-20 text-center animate-pulse text-primary font-bold">Cargando clientes...</div>
+    }
+    else if (!clientes.Any())
+    {
+        <div class="py-16 text-center bg-surface-container-low rounded-[3rem] border-2 border-dashed border-surface-container-high">
+            <span class="material-symbols-outlined text-5xl text-primary/30 mb-4">group_off</span>
+            <h3 class="text-xl font-bold text-primary">Aún no tenés clientes</h3>
+            <p class="text-sm text-on-surface-variant mt-2">Los clientes aparecerán acá automáticamente cuando hagan una reserva.</p>
+        </div>
+    }
+    else
+    {
+        <div class="bg-white border border-surface-container-high rounded-[2rem] overflow-hidden editorial-shadow">
+            <div class="divide-y divide-surface-container">
+                @foreach (var c in clientesFiltrados)
+                {
+                    <div @onclick="() => AbrirDetalle(c)" class="p-4 sm:p-6 hover:bg-secondary-container/10 transition-colors cursor-pointer flex items-center justify-between group">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                                @(c.Nombre.FirstOrDefault())
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-primary text-base leading-tight">@c.Nombre</h4>
+                                <div class="flex items-center gap-3 mt-1 text-xs text-on-surface-variant">
+                                    @if (!string.IsNullOrEmpty(c.Telefono))
+                                    {
+                                        <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">call</span> @c.Telefono</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(c.Email))
+                                    {
+                                        <span class="flex items-center gap-1 hidden sm:flex"><span class="material-symbols-outlined text-[14px]">mail</span> @c.Email</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="text-right hidden sm:block">
+                                <p class="text-xs font-bold text-primary">@c.CantidadTurnos reservas</p>
+                            </div>
+                            <span class="material-symbols-outlined text-on-surface-variant/50 group-hover:text-primary transition-colors">chevron_right</span>
+                        </div>
+                    </div>
+                }
+            </div>
+            @if (!clientesFiltrados.Any())
+            {
+                <div class="p-8 text-center text-on-surface-variant text-sm">No se encontraron clientes que coincidan con la búsqueda.</div>
+            }
+        </div>
+    }
+
+</div>
+
+@* DRAWER DE DETALLES DEL CLIENTE *@
+@if (clienteSeleccionado != null)
+{
+    <div class="fixed inset-0 z-[100] flex justify-end">
+        @* Backdrop oscuro *@
+        <div class="absolute inset-0 bg-black/20 backdrop-blur-sm animate-in fade-in duration-300" @onclick="CerrarDetalle"></div>
+
+        @* Panel lateral *@
+        <div class="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+
+            @* Cabecera Drawer *@
+            <div class="p-6 border-b border-surface-container flex items-center justify-between bg-surface-container-low/50">
+                <h3 class="font-headline font-bold text-xl text-primary">Perfil del Cliente</h3>
+                <button @onclick="CerrarDetalle" class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+
+            @* Info Contacto *@
+            <div class="p-6 border-b border-surface-container shrink-0">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center font-headline font-bold text-2xl shadow-md">
+                        @(clienteSeleccionado.Nombre.FirstOrDefault())
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-primary leading-none">@clienteSeleccionado.Nombre</h2>
+                        <p class="text-sm text-on-surface-variant mt-1">Cliente desde @(historial.LastOrDefault()?.FechaHoraInicioUtc.ToString("MMMM yyyy") ?? "Hoy")</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3 bg-surface-container-low p-4 rounded-2xl border border-surface-container">
+
+                    @* Teléfono *@
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3 text-sm text-on-surface-variant">
+                            <span class="material-symbols-outlined text-primary/70">call</span>
+                            @(string.IsNullOrEmpty(clienteSeleccionado.Telefono) ? "Sin teléfono" : clienteSeleccionado.Telefono)
+                        </div>
+                    </div>
+
+                    @* Email *@
+                    <div class="flex items-center gap-3 text-sm text-on-surface-variant">
+                        <span class="material-symbols-outlined text-primary/70">mail</span>
+                        @(string.IsNullOrEmpty(clienteSeleccionado.Email) ? "Sin email" : clienteSeleccionado.Email)
+                    </div>
+                </div>
+
+                @* BOTÓN DE WHATSAPP *@
+                @if (!string.IsNullOrEmpty(clienteSeleccionado.Telefono))
+                {
+                    <a href="@ObtenerLinkWhatsApp(clienteSeleccionado.Telefono)" target="_blank"
+                       class="mt-4 w-full py-3 bg-[#25D366]/10 text-[#1da851] font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#25D366] hover:text-white transition-all shadow-sm">
+
+                        @* SVG del Logo de WhatsApp *@
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                        </svg>
+                        Contactar por WhatsApp
+                    </a>
+                }
+            </div>
+            @* Notas del Cliente *@
+            @if (!string.IsNullOrEmpty(clienteSeleccionado.Notas))
+            {
+                <div class="px-6 pb-2">
+                    <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+                        <h4 class="text-xs font-bold text-amber-800 uppercase tracking-widest mb-1 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">edit_note</span> Notas internas
+                        </h4>
+                        <p class="text-sm text-amber-900 leading-relaxed">
+                            @clienteSeleccionado.Notas
+                        </p>
+                    </div>
+                </div>
+            }
+            @* Historial de Turnos *@
+            <div class="flex-1 overflow-y-auto p-6 bg-surface-container-low/30">
+                <h4 class="font-bold text-primary mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">history</span> Historial de Reservas
+                </h4>
+
+                @if (cargandoHistorial)
+                {
+                    <div class="animate-pulse space-y-3">
+                        <div class="h-16 bg-surface-container rounded-xl"></div>
+                        <div class="h-16 bg-surface-container rounded-xl"></div>
+                    </div>
+                }
+                else if (!historial.Any())
+                {
+                    <p class="text-sm text-on-surface-variant italic">No hay reservas registradas.</p>
+                }
+                else
+                {
+                    <div class="space-y-3">
+                        @foreach (var turno in historial.OrderByDescending(t => t.FechaHoraInicioUtc))
+                        {
+                            bool esFuturo = turno.FechaHoraInicioUtc > DateTime.UtcNow;
+
+                            <div class="bg-white p-4 rounded-xl border @(esFuturo ? "border-primary/30 shadow-sm" : "border-surface-container-high opacity-70") flex justify-between items-center">
+                                <div>
+                                    <p class="font-bold text-sm text-primary">@turno.ServicioNombre</p>
+                                    <p class="text-xs text-on-surface-variant mt-1">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("dd MMM yyyy - HH:mm")</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] font-bold uppercase tracking-widest @(esFuturo ? "text-green-600 bg-green-50 px-2 py-1 rounded-md" : "text-on-surface-variant")">
+                                        @(esFuturo ? "Próximo" : "Completado")
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ClienteReadDto>? clientes;
+    private string searchTerm = "";
+
+    // Estado del Drawer
+    private ClienteReadDto? clienteSeleccionado;
+    private List<TurnoReadDto> historial = new();
+    private bool cargandoHistorial = false;
+
+    // Propiedad computada para el buscador
+    private IEnumerable<ClienteReadDto> clientesFiltrados =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? (clientes ?? new())
+            : (clientes ?? new()).Where(c =>
+                c.Nombre.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (c.Telefono != null && c.Telefono.Contains(searchTerm)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        clientes = await ClienteService.GetAll();
+    }
+
+    private async Task AbrirDetalle(ClienteReadDto cliente)
+    {
+        clienteSeleccionado = cliente;
+        cargandoHistorial = true;
+        historial.Clear();
+
+        historial = await ClienteService.GetHistorial(cliente.Id);
+        cargandoHistorial = false;
+    }
+
+    private void CerrarDetalle()
+    {
+        clienteSeleccionado = null;
+    }
+    private string ObtenerLinkWhatsApp(string telefonoOriginal)
+    {
+        if (string.IsNullOrEmpty(telefonoOriginal)) return "";
+
+        var numLimpio = new string(telefonoOriginal.Where(char.IsDigit).ToArray());
+
+        return $"https://wa.me/{numLimpio}";
+    }
+}

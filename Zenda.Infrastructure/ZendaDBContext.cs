@@ -16,6 +16,7 @@ namespace Zenda.Infrastructure
         }
         public DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
         public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
+        public DbSet<Cliente> Clientes { get; set; }
         public Guid? CurrentTenantId => _tenantService.GetCurrentTenantId();
         public DbSet<Disponibilidad> Disponibilidad { get; set; }
         public DbSet<Negocio> Negocios { get; set; }
@@ -27,14 +28,60 @@ namespace Zenda.Infrastructure
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // ¡Esto siempre debe estar primero
+            // ¡Esto siempre debe estar primero!
             // Es lo que mapea las tablas de Identity (AspNetUsers, etc.)
             base.OnModelCreating(modelBuilder);
 
+            // ==============================================
+            // FILTROS GLOBALES (MULTI-TENANT & SOFT DELETE)
+            // ==============================================
             modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<BloqueoAgenda>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
+
+            // NUEVO: Filtro para que el Tenant solo vea sus propios clientes
+            modelBuilder.Entity<Cliente>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+
+            // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
+            modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
+
+            // ==============================================
+            // CONFIGURACIÓN DE ENTIDADES
+            // ==============================================
+
+            // --- NUEVO: Configuración de Cliente ---
+            modelBuilder.Entity<Cliente>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.Nombre).IsRequired().HasMaxLength(100);
+                entity.Property(c => c.Email).HasMaxLength(150);
+                entity.Property(c => c.Telefono).HasMaxLength(50);
+
+                // Relación Cliente -> Negocio (Un cliente pertenece a un negocio)
+                entity.HasOne<Negocio>()
+                      .WithMany()
+                      .HasForeignKey(c => c.NegocioId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Turno>(entity =>
+            {
+                // 1. Relación con Prestador
+                entity.HasOne(t => t.Prestador)
+                      .WithMany(p => p.Turnos)
+                      .HasForeignKey(t => t.PrestadorId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // 2. NUEVO: Relación con Cliente
+                entity.HasOne(t => t.Cliente)
+                      .WithMany(c => c.Turnos)
+                      .HasForeignKey(t => t.ClienteId)
+                      .OnDelete(DeleteBehavior.Restrict); // Si borramos un cliente, los turnos se quedan (o podés usar Cascade si preferís borrar el historial)
+
+                // 3. Conversión de Enum a String
+                entity.Property(t => t.Estado).HasConversion<string>().HasMaxLength(20);
+            });
 
             modelBuilder.Entity<Rubro>(entity =>
             {
@@ -82,9 +129,6 @@ namespace Zenda.Infrastructure
                 }
             );
 
-            // Como Disponibilidad no tiene NegocioId directo, filtramos a través de su Prestador
-            modelBuilder.Entity<Disponibilidad>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
-
             modelBuilder.Entity<Negocio>(entity =>
             {
                 entity.HasKey(n => n.Id);
@@ -93,15 +137,12 @@ namespace Zenda.Infrastructure
 
                 entity.Property(n => n.AnticipacionMinimaHoras).HasDefaultValue(2);
                 entity.Property(n => n.VentanaReservaDias).HasDefaultValue(30);
-
-                // NUEVO: Valor por defecto para la grilla
                 entity.Property(n => n.IntervaloTurnosMinutos).HasDefaultValue(30);
 
-                // NUEVO: Relación 1 a N con Rubro
                 entity.HasOne(n => n.Rubro)
                       .WithMany(r => r.Negocios)
                       .HasForeignKey(n => n.RubroId)
-                      .OnDelete(DeleteBehavior.Restrict); // Restrict evita borrar un rubro si hay negocios que lo están usando
+                      .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasMany(n => n.Sedes)
                       .WithOne(s => s.Negocio)
@@ -111,7 +152,6 @@ namespace Zenda.Infrastructure
 
             modelBuilder.Entity<Sede>(entity =>
             {
-                // 1 Sede -> N Prestadores
                 entity.HasMany(s => s.Prestadores)
                       .WithOne(p => p.Sede)
                       .HasForeignKey(p => p.SedeId)
@@ -139,44 +179,25 @@ namespace Zenda.Infrastructure
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            modelBuilder.Entity<Turno>(entity =>
-            {
-                // 1. Relación con Prestador (Lo que ya tenías)
-                entity.HasOne(t => t.Prestador)
-                      .WithMany(p => p.Turnos)
-                      .HasForeignKey(t => t.PrestadorId)
-                      .OnDelete(DeleteBehavior.Restrict);
-
-                // 2. Conversión de Enum a String (Lo nuevo)
-                // Esto hace que en C# uses 'EstadoTurno' pero en SQL se lea "Pendiente", "Confirmado", etc.
-                entity.Property(t => t.Estado).HasConversion<string>().HasMaxLength(20); // Opcional, pero recomendado para performance
-            });
-
             modelBuilder.Entity<CategoriaServicio>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Nombre).IsRequired().HasMaxLength(50);
 
-                // Un Negocio tiene muchas Categorías
                 entity.HasMany(c => c.Servicios)
                       .WithOne(s => s.Categoria)
                       .HasForeignKey(s => s.CategoriaId)
-                      .OnDelete(DeleteBehavior.Restrict); // No borramos servicios si se borra la categoría por error
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Servicio>(entity =>
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Nombre).IsRequired().HasMaxLength(100);
-
-                // Configuración para el precio (Sugerido para SQL Server/Postgres)
-                entity.Property(e => e.Precio)
-                      .HasPrecision(18, 2);
-
+                entity.Property(e => e.Precio).HasPrecision(18, 2);
                 entity.Property(e => e.DuracionMinutos).IsRequired();
             });
-        }
-        // Dentro de tu ZendaDbContext.cs
+        }// Dentro de tu ZendaDbContext.cs
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             foreach (var entry in ChangeTracker.Entries<BaseEntity>())
