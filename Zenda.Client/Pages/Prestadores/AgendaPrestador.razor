@@ -329,8 +329,15 @@
         errorBloqueo = ""; // Limpiamos el error previo
 
         // 1. Ensamblamos la fecha con la hora
-        var inicioCompleto = nuevoBloqueoFechaInicio.Date + nuevoBloqueoInicio.TimeOfDay;
-        var finCompleto = nuevoBloqueoFechaFin.Date + nuevoBloqueoFin.TimeOfDay;
+        var inicioCompleto = DateTime.SpecifyKind(
+            nuevoBloqueoFechaInicio.Date + nuevoBloqueoInicio.TimeOfDay, 
+            DateTimeKind.Unspecified
+        );
+
+        var finCompleto = DateTime.SpecifyKind(
+            nuevoBloqueoFechaFin.Date + nuevoBloqueoFin.TimeOfDay, 
+            DateTimeKind.Unspecified
+        );
 
         // 2. CANDADO LÓGICO: Validamos que el rango tenga sentido
         if (finCompleto <= inicioCompleto)
