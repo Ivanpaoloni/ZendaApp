@@ -3,6 +3,7 @@
 @inject AppState State
 @inject NavigationManager Nav
 @inject HttpClient Http
+@inject NegocioClient NegocioClient
 
 <div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
@@ -78,25 +79,18 @@
 @code {
     private async Task IrAPagar(Guid planId, string nombrePlan, decimal precio)
     {
-        var request = new { PlanId = planId, NombrePlan = nombrePlan, Precio = precio };
+        // Llamamos al método de nuestro Client (este SÍ manda tu sesión/token)
+        var urlCheckout = await NegocioClient.GenerarLinkPagoAsync(planId, nombrePlan, precio);
 
-        // Llamamos a nuestro nuevo endpoint
-        var response = await Http.PostAsJsonAsync("api/mercadopago/generar-link", request);
-
-        if (response.IsSuccessStatusCode)
+        if (!string.IsNullOrEmpty(urlCheckout))
         {
-            var result = await response.Content.ReadFromJsonAsync<CheckoutResponse>();
-
-            if (result != null && !string.IsNullOrEmpty(result.UrlCheckout))
-            {
-                // Redirigimos al usuario a Mercado Pago
-                Nav.NavigateTo(result.UrlCheckout);
-            }
+            // Redirigimos al usuario a Mercado Pago
+            Nav.NavigateTo(urlCheckout);
         }
         else
         {
             // TODO: Mostrar un toast de error (por ejemplo, con un servicio de notificaciones)
-            Console.WriteLine("Error al generar el link de pago.");
+            Console.WriteLine("Error: La API rebotó la petición.");
         }
     }
 

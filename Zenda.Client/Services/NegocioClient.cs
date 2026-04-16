@@ -59,7 +59,22 @@ public class NegocioClient : BaseClient
 
         return null;
     }
+    public async Task<string?> GenerarLinkPagoAsync(Guid planId, string nombrePlan, decimal precio)
+    {
+        var request = new { PlanId = planId, NombrePlan = nombrePlan, Precio = precio };
 
-    // Clase auxiliar para leer la respuesta JSON { "url": "..." }
+        // OJO: Usamos _http porque así se llama tu variable privada en esta clase
+        var response = await _http.PostAsJsonAsync("api/mercadopago/generar-link", request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<CheckoutResponse>();
+            return result?.UrlCheckout;
+        }
+
+        return null;
+    }
+
+    private class CheckoutResponse { public string? UrlCheckout { get; set; } }
     private class LogoResponse { public string Url { get; set; } = ""; }
 }
