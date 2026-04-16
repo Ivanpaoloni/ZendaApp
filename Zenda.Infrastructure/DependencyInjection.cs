@@ -32,6 +32,7 @@ public static class DependencyInjection
         });
         services.AddHttpClient<ResendClient>();
         services.AddTransient<IResend, ResendClient>();
+        services.AddScoped<IMercadoPagoService, MercadoPagoService>();
         services.AddScoped<IEmailService, ResendEmailService>();
 
         // 3. Hangfire y Tareas en Segundo Plano
