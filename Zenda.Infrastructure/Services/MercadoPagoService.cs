@@ -48,9 +48,9 @@ public class MercadoPagoService : IMercadoPagoService
             // Redirecciones cuando el usuario termina el flujo
             BackUrls = new PreferenceBackUrlsRequest
             {
-                Success = "https://app.zenda-app.com.ar/configuracion/mi-plan?pago=exitoso",
-                Failure = "https://app.zenda-app.com.ar/configuracion/mi-plan?pago=fallido",
-                Pending = "https://app.zenda-app.com.ar/configuracion/mi-plan?pago=pendiente"
+                Success = "https://app.zenda-app.com.ar/configuracion/plan?pago=exitoso",
+                Failure = "https://app.zenda-app.com.ar/configuracion/plan?pago=fallido",
+                Pending = "https://app.zenda-app.com.ar/configuracion/plan?pago=pendiente"
             },
             AutoReturn = "approved"
         };
@@ -92,8 +92,9 @@ public class MercadoPagoService : IMercadoPagoService
 
                     if (negocio != null)
                     {
-                        // IMPORTANTE: Asegurate de que tu entidad Negocio en Zenda.Core tenga la propiedad PlanSuscripcionId
-                        // negocio.PlanSuscripcionId = planId; 
+                        negocio.PlanSuscripcionId = planId;
+
+                        _dbContext.Negocios.Update(negocio);
 
                         await _dbContext.SaveChangesAsync();
                         _logger.LogInformation("¡Éxito! Negocio {NegocioId} fue actualizado al plan {PlanId}.", negocioId, planId);

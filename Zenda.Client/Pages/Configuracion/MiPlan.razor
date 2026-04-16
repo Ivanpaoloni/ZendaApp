@@ -77,6 +77,24 @@
 </div>
 
 @code {
+    // Mercado Pago manda el estado en el parámetro "status"
+    [Parameter][SupplyParameterFromQuery(Name = "status")] public string? Status { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Si la página se refrescó por el redirect y el AppState se vació, lo recargamos
+        if (State.CurrentNegocio == null)
+        {
+            await State.LoadCurrentNegocioAsync();
+        }
+
+        // 2. Si el pago fue aprobado, podés hacer algo (como un log o aviso)
+        if (Status == "approved")
+        {
+            Console.WriteLine("¡El pago fue detectado como aprobado en la URL!");
+        }
+    }
+
     private async Task IrAPagar(Guid planId, string nombrePlan, decimal precio)
     {
         // Llamamos al método de nuestro Client (este SÍ manda tu sesión/token)

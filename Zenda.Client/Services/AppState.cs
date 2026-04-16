@@ -3,6 +3,11 @@ using Zenda.Core.DTOs;
 
 public class AppState
 {
+    private readonly IServiceProvider _serviceProvider;
+    public AppState(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+    }
     // 1. El negocio actual (Para mostrar el nombre/slug en el Layout sin llamar a la API siempre)
     public NegocioReadDto? CurrentNegocio { get; set; }
 
@@ -25,5 +30,25 @@ public class AppState
         PrestadorEnEdicion = null;
         SedeSeleccionada = null;
         NotifyStateChanged();
+    }
+
+    public async Task LoadCurrentNegocioAsync()
+    {
+        try
+        {
+            // Pedimos el NegocioClient de forma segura
+            var negocioClient = _serviceProvider.GetRequiredService<NegocioClient>();
+            var negocio = await negocioClient.GetPerfilAsync();
+
+            if (negocio != null)
+            {
+                CurrentNegocio = negocio;
+                NotifyStateChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rehidratando el estado: {ex.Message}");
+        }
     }
 }
