@@ -59,7 +59,7 @@ public class MercadoPagoService : IMercadoPagoService
         Preference preference = await client.CreateAsync(request);
 
         // InitPoint es la URL pública del checkout de Mercado Pago
-        return preference.InitPoint;
+        return preference.SandboxInitPoint;
     }
     public async Task ProcesarPagoRecibidoAsync(long paymentId)
     {
