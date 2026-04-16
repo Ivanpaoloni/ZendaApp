@@ -230,4 +230,38 @@ public class ResendEmailService : IEmailService
         var response = await _resend.EmailSendAsync(message);
         return response.Success;
     }
+    // 7. RECUPERACIÓN DE CONTRASEÑA
+    public async Task<bool> EnviarRecuperacionClaveAsync(string email, string resetLink)
+    {
+        var message = new EmailMessage
+        {
+            From = $"Seguridad Zenda <{_fromEmail}>",
+            To = { email },
+            Subject = "🔒 Zenda: Recuperá tu contraseña",
+            HtmlBody = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
+                    <h2 style='color: #166534; margin-top: 0; text-align: center;'>Recuperá tu acceso</h2>
+                    <p>Hola,</p>
+                    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en Zenda. Hacé clic en el botón de abajo para crear una nueva.</p>
+                    
+                    <div style='text-align: center; margin: 35px 0;'>
+                        <a href='{resetLink}' style='background-color: #166534; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);'>
+                            Restablecer mi contraseña
+                        </a>
+                    </div>
+
+                    <p style='font-size: 14px; color: #555;'>Si no solicitaste este cambio, podés ignorar este correo de forma segura.</p>
+                    <p style='font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 20px;'>Link alternativo: <br>{resetLink}</p>
+                    
+                    <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
+                    <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
+                        El enlace expira en 24 horas.<br>
+                        <strong>Zenda App</strong>
+                    </p>
+                </div>"
+        };
+
+        var response = await _resend.EmailSendAsync(message);
+        return response.Success;
+    }
 }

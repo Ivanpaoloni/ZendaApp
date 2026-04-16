@@ -238,4 +238,47 @@ public class AuthService : IAuthService
 
         return new AuthResponseDto { Success = true, Message = "Email reenviado correctamente." };
     }
+
+    public async Task<AuthResponseDto> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+
+        // Si el usuario no existe o no tiene el email confirmado, no hacemos nada,
+        // pero devolvemos éxito para no dar pistas a posibles atacantes.
+        if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
+        {
+            return new AuthResponseDto { Success = true, Message = "Si el correo existe, recibirás un enlace." };
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        // Codificamos el token para la URL
+        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+        // CORRECCIÓN: Usamos _config en lugar de _configuration
+        var frontendUrl = _config["FrontendUrl"] ?? "https://app.zenda-app.com.ar";
+        var resetLink = $"{frontendUrl}/restablecer-contrasena?email={request.Email}&token={encodedToken}";
+
+        await _emailService.EnviarRecuperacionClaveAsync(request.Email, resetLink);
+
+        return new AuthResponseDto { Success = true, Message = "Si el correo existe, recibirás un enlace." };
+    }
+
+    public async Task<AuthResponseDto> ResetPasswordAsync(string email, string decodedToken, string newPassword)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            return new AuthResponseDto { Success = false, Message = "Error al restablecer la contraseña." };
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
+
+        if (result.Succeeded)
+        {
+            return new AuthResponseDto { Success = true, Message = "Contraseña restablecida correctamente." };
+        }
+
+        return new AuthResponseDto { Success = false, Message = "El enlace no es válido o ha expirado." };
+    }
 }

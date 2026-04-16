@@ -91,4 +91,29 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var result = await _authService.ForgotPasswordAsync(request);
+
+        // Por seguridad, solemos devolver 200 OK aunque el mail no exista, 
+        // para evitar ataques de enumeración de usuarios.
+        return Ok(result);
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        // Decodificamos el token acá en el controller porque es un tema de transporte HTTP
+        var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(request.Token));
+
+        // Le pasamos el token limpio al servicio
+        var result = await _authService.ResetPasswordAsync(request.Email, decodedToken, request.NewPassword);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }

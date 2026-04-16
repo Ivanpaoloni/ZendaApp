@@ -10,4 +10,5 @@ public interface IEmailService
     Task<bool> EnviarCancelacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurnoLocal, string negocioSlug);
     Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio, string confirmLink);
     Task<bool> EnviarEmailConfirmacionAsync(string emailDestino, string nombreUsuario, string confirmLink);
+    Task<bool> EnviarRecuperacionClaveAsync(string email, string resetLink);
 }

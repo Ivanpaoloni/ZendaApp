@@ -46,7 +46,8 @@
                     <div class="md:col-span-2 flex flex-col gap-2">
                         <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1">¿A qué se dedica tu negocio?</label>
                         <select @bind="regModel.RubroId" class="input-zenda bg-white cursor-pointer" required>
-                            <option value="" disabled selected>Seleccioná un rubro...</option>
+                           <option value="@Guid.Empty" disabled selected>Seleccioná un rubro...</option>
+
                             @foreach (var rubro in rubrosDisponibles)
                             {
                                 <option value="@rubro.Id">@rubro.Nombre</option>
@@ -174,6 +175,7 @@
         debounceTimer = new System.Timers.Timer(600);
         debounceTimer.Elapsed += ValidarSlugEnApi;
         debounceTimer.AutoReset = false;
+        //regModel.RubroId = rubrosDisponibles.First().Id;
     }
 
     private void OnNombreNegocioInput(ChangeEventArgs e)

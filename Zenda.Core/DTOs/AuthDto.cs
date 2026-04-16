@@ -28,3 +28,16 @@ public class AuthResponseDto
     public string Message { get; set; } = string.Empty;
     public string? Token { get; set; }
 }
+
+public class ForgotPasswordRequest
+{
+    // Usamos Required y EmailAddress si tenés DataAnnotations
+    public string Email { get; set; } = string.Empty;
+}
+
+public class ResetPasswordRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
