@@ -37,14 +37,13 @@ public class TurnosController : ControllerBase
     {
         return Ok(await _turnosService.GetByPrestadorAsync(prestadorId));
     }
+   
     [AllowAnonymous]
-    [HttpGet("disponibilidad/{prestadorId}")]
-    public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad(Guid prestadorId, [FromQuery] DateTime fecha, [FromQuery] Guid servicioId)
+    [HttpGet("disponibilidad")]
+    public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad([FromQuery] Guid sedeId,[FromQuery] DateTime fecha,[FromQuery] Guid servicioId,[FromQuery] Guid? prestadorId = null)
     {
-        // Le pasamos el nuevo parámetro al servicio
-        return Ok(await _turnosService.GetDisponibilidadAsync(prestadorId, fecha, servicioId));
+        return Ok(await _turnosService.GetDisponibilidadAsync(prestadorId, sedeId, fecha, servicioId));
     }
-
     [HttpGet("fecha/{fecha}")]
     public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetTurnosPorFecha(DateTime fecha)
     {

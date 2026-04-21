@@ -21,6 +21,7 @@ public partial class Reserva : ComponentBase
     [Inject] protected ServicioClient _servicioClient { get; set; } = default!;
     [Inject] protected TurnoClient TurnoService { get; set; } = default!;
     [Inject] protected IJSRuntime JS { get; set; } = default!;
+
     // --- ENUM Y ESTADO ---
     protected enum PasoReserva { Cargando, SeleccionarSede, SeleccionarServicio, SeleccionarPrestador, SeleccionarTurno, CompletarDatos, NoEncontrado }
     protected PasoReserva pasoActual = PasoReserva.Cargando;
@@ -39,6 +40,7 @@ public partial class Reserva : ComponentBase
     protected List<PrestadorReadDto> prestadoresDeSede = new();
     protected List<ServicioPublicoDto> serviciosDeSede = new();
     protected List<PrestadorReadDto> prestadoresFiltrados = new();
+    protected Dictionary<string, Guid> prestadoresPorHoraLibre = new();
 
     // --- SELECCIONES ---
     protected SedeReadDto? sedeSeleccionada;
@@ -154,22 +156,22 @@ public partial class Reserva : ComponentBase
     {
         cargandoHorarios = true;
         slots.Clear();
+        prestadoresPorHoraLibre.Clear();
         horaSeleccionada = null;
 
         try
         {
-            if (prestadorSeleccionado != null)
+            // Si no hay prestador, mandamos null
+            Guid? idAEnviar = prestadorSeleccionado?.Id;
+
+            var res = await TurnoService.GetDisponibilidad(idAEnviar, sedeSeleccionada!.Id, fechaSeleccionada, servicioSeleccionado!.Id);
+
+            if (res != null)
             {
-                var res = await TurnoService.GetDisponibilidad(prestadorSeleccionado.Id, fechaSeleccionada, servicioSeleccionado!.Id);
-                slots = res?.HorariosLibres ?? new();
-            }
-            else
-            {
-                var primerPrestador = prestadoresFiltrados.FirstOrDefault();
-                if (primerPrestador != null)
+                foreach (var slot in res.HorariosLibres)
                 {
-                    var res = await TurnoService.GetDisponibilidad(primerPrestador.Id, fechaSeleccionada, servicioSeleccionado!.Id);
-                    slots = res?.HorariosLibres ?? new();
+                    slots.Add(slot.Hora); // Para pintar los botones en pantalla
+                    prestadoresPorHoraLibre[slot.Hora] = slot.PrestadorId; // Para saber a quién asignarle el turno final
                 }
             }
         }
@@ -195,14 +197,36 @@ public partial class Reserva : ComponentBase
 
             if (prestadorSeleccionado != null)
             {
+                // El usuario eligió específicamente a este profesional
                 idPrestadorFinal = prestadorSeleccionado.Id;
                 nombrePrestadorReserva = prestadorSeleccionado.Nombre;
             }
             else
             {
-                var asignado = prestadoresFiltrados.First();
-                idPrestadorFinal = asignado.Id;
-                nombrePrestadorReserva = asignado.Nombre;
+                // 🔥 CORRECCIÓN AQUÍ: Buscamos qué profesional aportó esta hora libre desde el backend
+                if (prestadoresPorHoraLibre.TryGetValue(horaSeleccionada!, out Guid idPrestadorAsignado))
+                {
+                    var prestadorAsignado = prestadoresFiltrados.FirstOrDefault(p => p.Id == idPrestadorAsignado);
+                    if (prestadorAsignado != null)
+                    {
+                        idPrestadorFinal = prestadorAsignado.Id;
+                        nombrePrestadorReserva = prestadorAsignado.Nombre;
+                    }
+                    else
+                    {
+                        // Fallback de seguridad (no debería ocurrir si la data es consistente)
+                        var asignado = prestadoresFiltrados.First();
+                        idPrestadorFinal = asignado.Id;
+                        nombrePrestadorReserva = asignado.Nombre;
+                    }
+                }
+                else
+                {
+                    // Fallback si por algún motivo la hora no está en el diccionario
+                    var asignado = prestadoresFiltrados.First();
+                    idPrestadorFinal = asignado.Id;
+                    nombrePrestadorReserva = asignado.Nombre;
+                }
             }
 
             var h = TimeOnly.Parse(horaSeleccionada!);

@@ -44,128 +44,100 @@ public class TurnosService : ITurnosService
         return _mapper.Map<IEnumerable<TurnoReadDto>>(turnos);
     }
 
-    public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid prestadorId, DateTime fecha, Guid servicioId)
+    public async Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid? prestadorId, Guid sedeId, DateTime fecha, Guid servicioId)
     {
-        // 1. Traemos al prestador con Sede y Negocio
-        var prestador = await _context.Prestadores
+        var respuesta = new DisponibilidadFechaDto { Fecha = fecha.Date };
+
+        // 1. Buscamos prestadores de esta sede que brinden el servicio seleccionado
+        var queryPrestadores = _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Include(p => p.Negocio)
-            .Select(p => new { p.Id, p.DuracionTurnoMinutos, p.Sede, p.Negocio })
-            .FirstOrDefaultAsync(p => p.Id == prestadorId);
+            .Where(p => p.SedeId == sedeId && p.Servicios.Any(s => s.Id == servicioId));
 
-        if (prestador == null || prestador.Sede == null || prestador.Negocio == null)
-            throw new Exception("Prestador, Sede o Negocio no encontrados");
+        // Si pasaron un ID específico, filtramos solo a ese
+        if (prestadorId.HasValue)
+            queryPrestadores = queryPrestadores.Where(p => p.Id == prestadorId.Value);
 
-        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
-        int anticipacionHoras = prestador.Negocio.AnticipacionMinimaHoras;
+        var prestadores = await queryPrestadores.ToListAsync();
+        if (!prestadores.Any()) return respuesta;
 
-        // =================================================================
-        // 2. ESCUDO: ¿El día consultado ya pasó en la vida real?
-        // =================================================================
+        var primerPrestador = prestadores.First();
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(primerPrestador.Sede.ZonaHorariaId);
+        int anticipacionHoras = primerPrestador.Negocio.AnticipacionMinimaHoras;
+
+        // Escudos de fechas
         var fechaHoraActualSede = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
-        var fechaActualSede = fechaHoraActualSede.Date;
-
-        var respuesta = new DisponibilidadFechaDto { Fecha = fecha.Date };
-
-        if (fecha.Date < fechaActualSede) return respuesta;
-
-        // =================================================================
-        //  MAGIA 1: Obtenemos la duración REAL del servicio elegido
-        // =================================================================
-        int duracionServicio = prestador.DuracionTurnoMinutos > 0 ? prestador.DuracionTurnoMinutos : 30; // Fallback
-
-        var servicio = await _context.Servicios.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == servicioId);
-        if (servicio != null && servicio.DuracionMinutos > 0)
-        {
-            duracionServicio = servicio.DuracionMinutos;
-        }
-
-        var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
-        var finDiaLocal = inicioDiaLocal.AddDays(1);
-
-        var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
-        var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
-
-        int diaBuscado = (int)fecha.DayOfWeek;
-
-        var configuracion = await _context.Disponibilidad
-            .IgnoreQueryFilters()
-            .Where(d => d.PrestadorId == prestadorId && d.DiaSemana == diaBuscado)
-            .OrderBy(d => d.HoraInicio)
-            .ToListAsync();
-
-        var turnosOcupados = await _context.Turnos
-            .IgnoreQueryFilters()
-            .Where(t => t.PrestadorId == prestadorId &&
-                        t.FechaHoraInicioUtc >= inicioDiaUtc &&
-                        t.FechaHoraInicioUtc < finDiaUtc &&
-                        t.Estado != EstadoTurnoEnum.Cancelado)
-            .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
-            .ToListAsync();
-
-
-        // Esta query está perfecta, trae los multi-días correctamente
-        var bloqueos = await _context.BloqueosAgenda
-            .IgnoreQueryFilters()
-            .Where(b => b.PrestadorId == prestadorId &&
-                        b.InicioUtc < finDiaUtc &&
-                        b.FinUtc > inicioDiaUtc)
-            .ToListAsync();
+        if (fecha.Date < fechaHoraActualSede.Date) return respuesta;
 
         var barreraAnticipacion = fechaHoraActualSede.AddHours(anticipacionHoras);
-
         if (fecha.Date < barreraAnticipacion.Date) return respuesta;
 
         var horaMinimaPermitida = TimeOnly.FromDateTime(barreraAnticipacion);
         bool aplicaBarreraHoy = fecha.Date == barreraAnticipacion.Date;
 
-        // 🔥 CAMBIO CLAVE ACÁ: Leemos la configuración del negocio
-        // Usamos el intervalo que eligió el dueño. Si por alguna razón el dato está en 0 (base corrupta), le damos 30 de fallback.
-        int intervaloGrillaMinutos = prestador.Negocio.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
+        // Duración del servicio
+        int duracionServicio = 30; // Fallback
+        var servicio = await _context.Servicios.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == servicioId);
+        if (servicio != null && servicio.DuracionMinutos > 0) duracionServicio = servicio.DuracionMinutos;
 
-        foreach (var rango in configuracion)
+        var inicioDiaLocal = DateTime.SpecifyKind(fecha.Date, DateTimeKind.Unspecified);
+        var finDiaLocal = inicioDiaLocal.AddDays(1);
+        var inicioDiaUtc = TimeZoneInfo.ConvertTimeToUtc(inicioDiaLocal, zonaSede);
+        var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
+        int diaBuscado = (int)fecha.DayOfWeek;
+
+        // Diccionario temporal para guardar Hora -> Prestador (Si 2 prestadores tienen la 10:30, gana el primero que la ofrezca)
+        var turnosConsolidados = new Dictionary<string, Guid>();
+
+        foreach (var prestador in prestadores)
         {
-            var inicioSlot = rango.HoraInicio;
-            var limiteFin = rango.HoraFin;
+            int intervaloGrillaMinutos = prestador.Negocio.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
 
-            while (inicioSlot.AddMinutes(duracionServicio) <= limiteFin)
+            var configuracion = await _context.Disponibilidad
+                .IgnoreQueryFilters().Where(d => d.PrestadorId == prestador.Id && d.DiaSemana == diaBuscado).OrderBy(d => d.HoraInicio).ToListAsync();
+
+            var turnosOcupados = await _context.Turnos
+                .IgnoreQueryFilters()
+                .Where(t => t.PrestadorId == prestador.Id && t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc && t.Estado != EstadoTurnoEnum.Cancelado)
+                .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc }).ToListAsync();
+
+            var bloqueos = await _context.BloqueosAgenda
+                .IgnoreQueryFilters()
+                .Where(b => b.PrestadorId == prestador.Id && b.InicioUtc < finDiaUtc && b.FinUtc > inicioDiaUtc).ToListAsync();
+
+            foreach (var rango in configuracion)
             {
-                var finSlot = inicioSlot.AddMinutes(duracionServicio);
-
-                // 🎯 REFACTOR CLAVE: Armamos la fecha+hora exacta del Slot y la pasamos a UTC
-                var slotInicioLocal = inicioDiaLocal.Add(inicioSlot.ToTimeSpan());
-                var slotFinLocal = inicioDiaLocal.Add(finSlot.ToTimeSpan());
-
-                var slotInicioUtc = TimeZoneInfo.ConvertTimeToUtc(slotInicioLocal, zonaSede);
-                var slotFinUtc = TimeZoneInfo.ConvertTimeToUtc(slotFinLocal, zonaSede);
-
-                bool muyPronto = aplicaBarreraHoy && inicioSlot <= horaMinimaPermitida;
-
-                // Chequeo de Turnos (Superposición exacta UTC)
-                bool estaOcupado = turnosOcupados.Any(t =>
-                    t.FechaHoraInicioUtc < slotFinUtc && slotInicioUtc < t.FechaHoraFinUtc
-                );
-
-                // Chequeo de Bloqueos (Superposición exacta UTC, soporta multi-día perfecto)
-                bool estaBloqueado = bloqueos.Any(b =>
-                    b.InicioUtc < slotFinUtc && slotInicioUtc < b.FinUtc
-                );
-
-                // Si no está ocupado, no está bloqueado, y no es muy pronto:
-                if (!estaOcupado && !estaBloqueado && !muyPronto)
+                var inicioSlot = rango.HoraInicio;
+                while (inicioSlot.AddMinutes(duracionServicio) <= rango.HoraFin)
                 {
-                    respuesta.HorariosLibres.Add(inicioSlot.ToString("HH:mm"));
-                }
+                    var finSlot = inicioSlot.AddMinutes(duracionServicio);
+                    var slotInicioLocal = inicioDiaLocal.Add(inicioSlot.ToTimeSpan());
+                    var slotFinLocal = inicioDiaLocal.Add(finSlot.ToTimeSpan());
+                    var slotInicioUtc = TimeZoneInfo.ConvertTimeToUtc(slotInicioLocal, zonaSede);
+                    var slotFinUtc = TimeZoneInfo.ConvertTimeToUtc(slotFinLocal, zonaSede);
 
-                // 🔥 USAMOS EL INTERVALO DINÁMICO ACÁ PARA AVANZAR EL SLOT
-                inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
+                    bool muyPronto = aplicaBarreraHoy && inicioSlot <= horaMinimaPermitida;
+                    bool estaOcupado = turnosOcupados.Any(t => t.FechaHoraInicioUtc < slotFinUtc && slotInicioUtc < t.FechaHoraFinUtc);
+                    bool estaBloqueado = bloqueos.Any(b => b.InicioUtc < slotFinUtc && slotInicioUtc < b.FinUtc);
+
+                    if (!estaOcupado && !estaBloqueado && !muyPronto)
+                    {
+                        // Lo agregamos si nadie más cubrió esta hora aún
+                        turnosConsolidados.TryAdd(inicioSlot.ToString("HH:mm"), prestador.Id);
+                    }
+                    inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
+                }
             }
         }
 
+        respuesta.HorariosLibres = turnosConsolidados
+            .Select(tc => new HorarioDisponibleDto { Hora = tc.Key, PrestadorId = tc.Value })
+            .OrderBy(x => TimeOnly.Parse(x.Hora))
+            .ToList();
+
         return respuesta;
     }
-
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
         var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);
