@@ -17,4 +17,5 @@ public class PlanSuscripcion : BaseEntity
 
     // Opcional para el futuro:
     public decimal PrecioMensual { get; set; }
+    public string? MercadoPagoPlanId { get; set; }
 }

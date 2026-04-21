@@ -1,8 +1,13 @@
 ﻿namespace Zenda.Core.DTOs;
 
-public record GenerarLinkDto
+public class GenerarLinkDto
 {
-    public Guid PlanId { get; init; }
-    public string NombrePlan { get; init; } = string.Empty;
-    public decimal Precio { get; init; }
+    public Guid PlanId { get; set; }
+    public string NombrePlan { get; set; } = string.Empty;
+    public decimal Precio { get; set; }
+}
+
+public class GenerarLinkResponseDto
+{
+    public string UrlCheckout { get; set; } = string.Empty;
 }

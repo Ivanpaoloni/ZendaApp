@@ -25,7 +25,8 @@ namespace Zenda.Infrastructure
         public DbSet<Sede> Sedes { get; set; }
         public DbSet<Servicio> Servicios { get; set; }
         public DbSet<Turno> Turnos { get; set; }
-
+        public DbSet<SuscripcionNegocio> SuscripcionesNegocio { get; set; }
+        public DbSet<HistorialPago> HistorialPagos { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ¡Esto siempre debe estar primero!
@@ -197,7 +198,45 @@ namespace Zenda.Infrastructure
                 entity.Property(e => e.Precio).HasPrecision(18, 2);
                 entity.Property(e => e.DuracionMinutos).IsRequired();
             });
-        }// Dentro de tu ZendaDbContext.cs
+
+            modelBuilder.Entity<SuscripcionNegocio>(entity =>
+            {
+                entity.HasKey(s => s.Id);
+
+                // Convertir el Enum a String en la BD
+                entity.Property(s => s.Estado)
+                      .HasConversion<string>()
+                      .HasMaxLength(30);
+
+                entity.Property(s => s.MercadoPagoPreapprovalId).HasMaxLength(150);
+
+                // Relación: Un Negocio tiene una Suscripción (o historial de ellas)
+                entity.HasOne(s => s.Negocio)
+                      .WithMany() // Si decides que Negocio tenga un ICollection<SuscripcionNegocio>, ponlo aquí
+                      .HasForeignKey(s => s.NegocioId)
+                      .OnDelete(DeleteBehavior.Restrict);
+
+                // Relación: La Suscripción pertenece a un Plan
+                entity.HasOne(s => s.PlanSuscripcion)
+                      .WithMany()
+                      .HasForeignKey(s => s.PlanSuscripcionId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<HistorialPago>(entity =>
+            {
+                entity.HasKey(h => h.Id);
+
+                entity.Property(h => h.MontoCobrado).HasPrecision(18, 2);
+                entity.Property(h => h.MercadoPagoPaymentId).HasMaxLength(150);
+
+                // Relación: Un Historial de Pago pertenece a un contrato de Suscripción
+                entity.HasOne(h => h.SuscripcionNegocio)
+                      .WithMany() // Opcional: .WithMany(s => s.Pagos) si lo agregas a la entidad
+                      .HasForeignKey(h => h.SuscripcionNegocioId)
+                      .OnDelete(DeleteBehavior.Cascade); // Si se borra la suscripción, se borra su historial
+            });
+        }
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             foreach (var entry in ChangeTracker.Entries<BaseEntity>())

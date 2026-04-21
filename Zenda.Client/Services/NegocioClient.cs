@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
+using System.Net.Http;
 using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 
@@ -59,20 +60,26 @@ public class NegocioClient : BaseClient
 
         return null;
     }
-    public async Task<string?> GenerarLinkPagoAsync(Guid planId, string nombrePlan, decimal precio)
+    // 🎯 NUEVO MÉTODO PARA MERCADOPAGO
+    public async Task<GenerarLinkResponseDto?> GenerarLinkDePagoAsync(GenerarLinkDto request)
     {
-        var request = new { PlanId = planId, NombrePlan = nombrePlan, Precio = precio };
-
-        // OJO: Usamos _http porque así se llama tu variable privada en esta clase
-        var response = await _http.PostAsJsonAsync("api/mercadopago/generar-link", request);
-
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var result = await response.Content.ReadFromJsonAsync<CheckoutResponse>();
-            return result?.UrlCheckout;
-        }
+            // Hacemos el POST al controlador MercadoPagoController
+            var response = await _http.PostAsJsonAsync("api/MercadoPago/generar-link", request);
 
-        return null;
+            if (response.IsSuccessStatusCode)
+            {
+                // Si todo sale bien, leemos la URL que nos devolvió la API
+                return await response.Content.ReadFromJsonAsync<GenerarLinkResponseDto>();
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private class CheckoutResponse { public string? UrlCheckout { get; set; } }

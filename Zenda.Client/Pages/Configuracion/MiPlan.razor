@@ -1,5 +1,6 @@
 ﻿@page "/configuracion/plan"
 @using Zenda.Client.Services
+@using Zenda.Core.DTOs
 @inject AppState State
 @inject NavigationManager Nav
 @inject HttpClient Http
@@ -97,18 +98,22 @@
 
     private async Task IrAPagar(Guid planId, string nombrePlan, decimal precio)
     {
-        // Llamamos al método de nuestro Client (este SÍ manda tu sesión/token)
-        var urlCheckout = await NegocioClient.GenerarLinkPagoAsync(planId, nombrePlan, precio);
+        // 1. Armamos el DTO de envío
+        var obj = new GenerarLinkDto { PlanId = planId, NombrePlan = nombrePlan, Precio = precio };
 
-        if (!string.IsNullOrEmpty(urlCheckout))
+        // 2. Guardamos la RESPUESTA (que es un objeto GenerarLinkResponseDto, no un string)
+        var response = await NegocioClient.GenerarLinkDePagoAsync(obj);
+
+        // 3. Verificamos si la respuesta no es nula Y si tiene la URL adentro
+        if (!string.IsNullOrEmpty(response?.UrlCheckout))
         {
-            // Redirigimos al usuario a Mercado Pago
-            Nav.NavigateTo(urlCheckout);
+            // Redirigimos al usuario a Mercado Pago usando el string que viene dentro del objeto
+            Nav.NavigateTo(response.UrlCheckout);
         }
         else
         {
-            // TODO: Mostrar un toast de error (por ejemplo, con un servicio de notificaciones)
-            Console.WriteLine("Error: La API rebotó la petición.");
+            // TODO: Mostrar un toast de error
+            Console.WriteLine("Error: La API rebotó la petición o no devolvió la URL.");
         }
     }
 

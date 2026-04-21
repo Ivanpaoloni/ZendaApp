@@ -14,6 +14,8 @@ public partial class Configuracion : ComponentBase, IDisposable
     [Inject] protected UsuarioClient UsuarioService { get; set; } = default!;
     [Inject] protected NegocioClient NegocioService { get; set; } = default!;
     [Inject] protected AppState State { get; set; } = default!;
+    [Inject] protected FacturacionClient FacturacionService { get; set; } = default!;
+    [Inject] protected NavigationManager Nav { get; set; } = default!; // 🎯 Inyectamos para redirigir a MP
 
     protected string pestañaActiva = "perfil";
     protected bool cargando = true;
@@ -27,13 +29,37 @@ public partial class Configuracion : ComponentBase, IDisposable
     protected NegocioUpdateDto perfilNegocio = new();
     protected string slugOriginal = string.Empty;
     protected bool validandoSlug = false;
-    protected bool? slugDisponible = null; // null = sin validar, true = libre, false = ocupado
-    private System.Timers.Timer? debounceTimer; // El reloj para esperar que deje de teclear
+    protected bool? slugDisponible = null;
+    private System.Timers.Timer? debounceTimer;
     protected string? logoPreviewUrl;
     protected IBrowserFile? logoSeleccionado;
     protected bool subiendoLogo = false;
 
-    //Hardcodeo de rubros
+    // 🎯 DATOS DE FACTURACIÓN
+    protected FacturacionDto resumenFacturacion = new();
+    protected PlanVista? planSeleccionado;
+    protected bool mostrarModalUpgrade = false;
+
+    // Mapeamos los planes con sus IDs reales para mandarlos a MP
+    protected List<PlanVista> planesDisponibles = new()
+    {
+        new PlanVista { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Single", PrecioTexto = "Gratis", PrecioMensual = 0, MaxSedes = 1, MaxProfesionales = 1, HabilitaRecordatorios = false },
+        new PlanVista { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Nombre = "Business", PrecioTexto = "$15.000", PrecioMensual = 15000, MaxSedes = 2, MaxProfesionales = 5, HabilitaRecordatorios = true },
+        new PlanVista { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Nombre = "Pro", PrecioTexto = "$35.000", PrecioMensual = 35000, MaxSedes = 10, MaxProfesionales = 50, HabilitaRecordatorios = true }
+    };
+
+    public class PlanVista
+    {
+        public Guid Id { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string PrecioTexto { get; set; } = string.Empty;
+        public decimal PrecioMensual { get; set; }
+        public int MaxSedes { get; set; }
+        public int MaxProfesionales { get; set; }
+        public bool HabilitaRecordatorios { get; set; }
+    }
+
+    // Hardcodeo de rubros
     private List<RubroOption> rubrosDisponibles = new()
     {
         new RubroOption { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Barbería" },
@@ -47,12 +73,12 @@ public partial class Configuracion : ComponentBase, IDisposable
         public Guid Id { get; set; }
         public string Nombre { get; set; } = "";
     }
+
     protected override async Task OnInitializedAsync()
     {
-        // Configuramos el timer una sola vez. Espera 600ms.
         debounceTimer = new System.Timers.Timer(600);
         debounceTimer.Elapsed += ValidarSlugEnApi;
-        debounceTimer.AutoReset = false; // Que corra una sola vez por cada reseteo
+        debounceTimer.AutoReset = false;
 
         await CargarDatos();
     }
@@ -65,8 +91,9 @@ public partial class Configuracion : ComponentBase, IDisposable
 
             var taskUsuario = UsuarioService.GetMiPerfil();
             var taskNegocio = NegocioService.GetPerfilAsync();
+            var taskFacturacion = FacturacionService.GetResumenAsync(); // 🎯 Llamamos a la nueva API
 
-            await Task.WhenAll(taskUsuario, taskNegocio);
+            await Task.WhenAll(taskUsuario, taskNegocio, taskFacturacion);
 
             var usuarioDb = taskUsuario.Result;
             if (usuarioDb != null)
@@ -84,7 +111,6 @@ public partial class Configuracion : ComponentBase, IDisposable
                 perfilNegocio.Slug = negocioDb.Slug;
                 perfilNegocio.LogoUrl = negocioDb.LogoUrl;
 
-                // NUEVO: Mapeamos los datos de negocio y reservas
                 perfilNegocio.RubroId = negocioDb.RubroId;
                 perfilNegocio.AnticipacionMinimaHoras = negocioDb.AnticipacionMinimaHoras;
                 perfilNegocio.IntervaloTurnosMinutos = negocioDb.IntervaloTurnosMinutos;
@@ -93,10 +119,52 @@ public partial class Configuracion : ComponentBase, IDisposable
                 slugDisponible = true;
             }
 
+            // 🎯 Asignamos la facturación
+            resumenFacturacion = taskFacturacion.Result;
         }
         catch (Exception)
         {
             mensajeError = "Ocurrió un error al cargar la información.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    protected void IniciarCambioPlan(PlanVista plan)
+    {
+        planSeleccionado = plan;
+        mostrarModalUpgrade = true;
+    }
+
+    protected async Task PagarConMercadoPago()
+    {
+        if (planSeleccionado == null) return;
+
+        mostrarModalUpgrade = false;
+        cargando = true; // Mostramos el loader de pantalla completa
+        mensajeError = null;
+
+        try
+        {
+            // 🎯 Asumiendo que agregaste un método a NegocioClient para generar el link
+            // Si le pusiste otro nombre en tu cliente, ajustalo aquí:
+            var request = new GenerarLinkDto { PlanId = planSeleccionado.Id, NombrePlan = planSeleccionado.Nombre, Precio = planSeleccionado.PrecioMensual };
+            var response = await NegocioService.GenerarLinkDePagoAsync(request);
+
+            if (!string.IsNullOrEmpty(response?.UrlCheckout))
+            {
+                Nav.NavigateTo(response.UrlCheckout); // 🚀 Redirigimos a MP
+            }
+            else
+            {
+                mensajeError = "No pudimos conectar con Mercado Pago. Intentá de nuevo.";
+            }
+        }
+        catch
+        {
+            mensajeError = "Ocurrió un error al procesar el pago.";
         }
         finally
         {
