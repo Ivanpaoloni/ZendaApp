@@ -27,6 +27,7 @@ namespace Zenda.Infrastructure
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<SuscripcionNegocio> SuscripcionesNegocio { get; set; }
         public DbSet<HistorialPago> HistorialPagos { get; set; }
+        public DbSet<PlanSuscripcion> PlanesSuscripcion { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ¡Esto siempre debe estar primero!
@@ -100,7 +101,10 @@ namespace Zenda.Infrastructure
             });
 
             var planFreeId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-            modelBuilder.Entity<PlanSuscripcion>().HasData(
+            modelBuilder.Entity<PlanSuscripcion>(entity =>
+            {
+                entity.ToTable("PlanSuscripcion");
+                entity.HasData(
                 new PlanSuscripcion
                 {
                     Id = planFreeId,
@@ -129,6 +133,8 @@ namespace Zenda.Infrastructure
                     HabilitaRecordatoriosHangfire = true
                 }
             );
+            });
+
 
             modelBuilder.Entity<Negocio>(entity =>
             {

@@ -82,7 +82,12 @@ public partial class Prestadores : ComponentBase
             errorMessage = ex.Message;
         }
     }
-
+    protected void IrAFacturacion()
+    {
+        mostrarModalUpgrade = false;
+        // Mandamos al usuario a la vista de configuración
+        Nav.NavigateTo("/configuracion?tab=facturacion");
+    }
     protected async Task ManejarRespuestaConfirmacion(bool confirmado)
     {
         mostrarConfirmacion = false;

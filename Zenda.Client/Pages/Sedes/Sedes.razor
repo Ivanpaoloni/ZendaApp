@@ -169,8 +169,16 @@
              Mensaje="@mensajeAlerta"
              OnCerrar="CerrarAlerta" />
 
-<UpgradeModal @bind-Visible="mostrarModalUpgrade"
-              Titulo="¡Expandí tus fronteras!"
-              Icono="storefront">
-    Has alcanzado el límite de <strong>@State.CurrentNegocio?.MaxSedes sedes</strong> de tu plan <strong>@State.CurrentNegocio?.PlanNombre</strong>. Subí de nivel para abrir más sucursales.
+<UpgradeModal Visible="mostrarModalUpgrade"
+              VisibleChanged="(val) => mostrarModalUpgrade = val"
+              Titulo="Límite de Sedes"
+              Icono="domain_disabled">
+
+    <p class="mb-6">Tu plan actual no te permite agregar más sedes. Necesitas mejorar tu plan para seguir creciendo.</p>
+
+    <button @onclick="IrAFacturacion" class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 transition-all flex justify-center items-center gap-2">
+        <span class="material-symbols-outlined">arrow_forward</span>
+        Ir a ver Planes
+    </button>
+
 </UpgradeModal>

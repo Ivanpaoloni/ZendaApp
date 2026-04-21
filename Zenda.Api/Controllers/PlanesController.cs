@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.Interfaces;
 
 [ApiController]
@@ -31,5 +32,13 @@ public class PlanesController : ControllerBase
     {
         var tiene = await _planService.TieneRecordatoriosAutomaticosAsync();
         return Ok(tiene);
+    }
+
+    [HttpGet]
+    [AllowAnonymous] // Cualquiera puede ver los planes
+    public async Task<IActionResult> GetPlanes()
+    {
+        var planes = await _planService.ObtenerPlanesActivosAsync();
+        return Ok(planes);
     }
 }

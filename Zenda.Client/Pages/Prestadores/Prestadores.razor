@@ -124,10 +124,18 @@
     }
 </div>
 
-<UpgradeModal @bind-Visible="mostrarModalUpgrade"
+<UpgradeModal Visible="mostrarModalUpgrade"
+              VisibleChanged="(val) => mostrarModalUpgrade = val"
               Titulo="¡Hacé crecer tu equipo!"
               Icono="group_add">
-    Llegaste al límite de profesionales de tu plan <strong>@State.CurrentNegocio?.PlanNombre</strong>. Subí de nivel para sumar más profesionales y potenciar tus reservas.
+
+    <p class="mb-6">Llegaste al límite de personal de tu plan <strong>@State.CurrentNegocio?.PlanNombre</strong>. Subí de nivel para sumar más profesionales y potenciar tus reservas.</p>
+
+    <button @onclick="IrAFacturacion" class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 transition-all flex justify-center items-center gap-2">
+        <span class="material-symbols-outlined">arrow_forward</span>
+        Ir a ver Planes
+    </button>
+
 </UpgradeModal>
 
 <ConfirmDialog Visible="@mostrarConfirmacion"

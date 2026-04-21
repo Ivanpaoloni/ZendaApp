@@ -15,7 +15,11 @@ public partial class Configuracion : ComponentBase, IDisposable
     [Inject] protected NegocioClient NegocioService { get; set; } = default!;
     [Inject] protected AppState State { get; set; } = default!;
     [Inject] protected FacturacionClient FacturacionService { get; set; } = default!;
-    [Inject] protected NavigationManager Nav { get; set; } = default!; // 🎯 Inyectamos para redirigir a MP
+    [Inject] protected NavigationManager Nav { get; set; } = default!;
+    [Inject] protected PlanClient PlanService { get; set; } = default!;
+    
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? TabQuery { get; set; }
 
     protected string pestañaActiva = "perfil";
     protected bool cargando = true;
@@ -37,16 +41,9 @@ public partial class Configuracion : ComponentBase, IDisposable
 
     // 🎯 DATOS DE FACTURACIÓN
     protected FacturacionDto resumenFacturacion = new();
-    protected PlanVista? planSeleccionado;
+    protected List<PlanVistaDto> planesDisponibles = new();
+    protected PlanVistaDto? planSeleccionado;
     protected bool mostrarModalUpgrade = false;
-
-    // Mapeamos los planes con sus IDs reales para mandarlos a MP
-    protected List<PlanVista> planesDisponibles = new()
-    {
-        new PlanVista { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Nombre = "Single", PrecioTexto = "Gratis", PrecioMensual = 0, MaxSedes = 1, MaxProfesionales = 1, HabilitaRecordatorios = false },
-        new PlanVista { Id = Guid.Parse("22222222-2222-2222-2222-222222222222"), Nombre = "Business", PrecioTexto = "$15.000", PrecioMensual = 15000, MaxSedes = 2, MaxProfesionales = 5, HabilitaRecordatorios = true },
-        new PlanVista { Id = Guid.Parse("33333333-3333-3333-3333-333333333333"), Nombre = "Pro", PrecioTexto = "$35.000", PrecioMensual = 35000, MaxSedes = 10, MaxProfesionales = 50, HabilitaRecordatorios = true }
-    };
 
     public class PlanVista
     {
@@ -76,6 +73,10 @@ public partial class Configuracion : ComponentBase, IDisposable
 
     protected override async Task OnInitializedAsync()
     {
+        if (!string.IsNullOrEmpty(TabQuery))
+        {
+            pestañaActiva = TabQuery;
+        }
         debounceTimer = new System.Timers.Timer(600);
         debounceTimer.Elapsed += ValidarSlugEnApi;
         debounceTimer.AutoReset = false;
@@ -89,12 +90,16 @@ public partial class Configuracion : ComponentBase, IDisposable
         {
             cargando = true;
 
+            // Disparamos las 4 peticiones al mismo tiempo (sin el await todavía)
             var taskUsuario = UsuarioService.GetMiPerfil();
             var taskNegocio = NegocioService.GetPerfilAsync();
-            var taskFacturacion = FacturacionService.GetResumenAsync(); // 🎯 Llamamos a la nueva API
+            var taskFacturacion = FacturacionService.GetResumenAsync();
+            var taskPlanes = PlanService.GetPlanesAsync(); // 🎯 Nueva petición
 
-            await Task.WhenAll(taskUsuario, taskNegocio, taskFacturacion);
+            // 🎯 MAGIA: Esperamos que TODAS terminen simultáneamente
+            await Task.WhenAll(taskUsuario, taskNegocio, taskFacturacion, taskPlanes);
 
+            // Asignamos resultados
             var usuarioDb = taskUsuario.Result;
             if (usuarioDb != null)
             {
@@ -110,17 +115,15 @@ public partial class Configuracion : ComponentBase, IDisposable
                 perfilNegocio.Nombre = negocioDb.Nombre;
                 perfilNegocio.Slug = negocioDb.Slug;
                 perfilNegocio.LogoUrl = negocioDb.LogoUrl;
-
                 perfilNegocio.RubroId = negocioDb.RubroId;
                 perfilNegocio.AnticipacionMinimaHoras = negocioDb.AnticipacionMinimaHoras;
                 perfilNegocio.IntervaloTurnosMinutos = negocioDb.IntervaloTurnosMinutos;
-
                 slugOriginal = negocioDb.Slug;
                 slugDisponible = true;
             }
 
-            // 🎯 Asignamos la facturación
             resumenFacturacion = taskFacturacion.Result;
+            planesDisponibles = taskPlanes.Result; // 🎯 Asignamos los planes reales
         }
         catch (Exception)
         {
@@ -132,7 +135,8 @@ public partial class Configuracion : ComponentBase, IDisposable
         }
     }
 
-    protected void IniciarCambioPlan(PlanVista plan)
+    // 4. Actualiza la firma de IniciarCambioPlan
+    protected void IniciarCambioPlan(PlanVistaDto plan)
     {
         planSeleccionado = plan;
         mostrarModalUpgrade = true;

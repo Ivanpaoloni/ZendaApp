@@ -1,7 +1,9 @@
-﻿using Zenda.Core.Models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using Zenda.Core.Models;
 
 namespace Zenda.Core.Entities;
 
+[Table("PlanSuscripcion")]
 public class PlanSuscripcion : BaseEntity
 {
     public string Nombre { get; set; } = string.Empty; // "Free", "Business", "Pro"

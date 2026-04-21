@@ -99,7 +99,12 @@ public partial class Sedes : ComponentBase
     }
 
     protected void CerrarModalSede() => mostrarModalSede = false;
-
+    protected void IrAFacturacion()
+    {
+        mostrarModalUpgrade = false;
+        // Mandamos al usuario a la vista de configuración
+        Nav.NavigateTo("/configuracion?tab=facturacion");
+    }
     protected async Task GuardarSede()
     {
         isSubmitting = true;
