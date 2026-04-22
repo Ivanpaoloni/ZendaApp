@@ -482,3 +482,5 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+/Zenda.Api/appsettings.Development.json
+/Zenda.Api/appsettings.Development.json
