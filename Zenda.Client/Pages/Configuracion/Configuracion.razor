@@ -173,7 +173,7 @@
                                     <label class="text-[10px] font-bold text-primary px-1 uppercase tracking-wider">Tu Enlace (Slug)</label>
                                     <div class="relative flex items-center">
                                         <div class=" left-4 text-on-surface-variant/50 font-bold pointer-events-none">
-                                            zenda.app/
+                                            app.zenda-app.com.ar/
                                         </div>
 
                                         <input value="@perfilNegocio.Slug" @oninput="OnSlugInput"
@@ -285,7 +285,7 @@
                 @if (pestañaActiva == "facturacion")
                 {
                     <div class="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div class="mb-8">
+                        <div class="mb-8 flex items-center gap-4">
                             <h2 class="text-2xl font-headline font-bold text-primary">Suscripción y Facturación</h2>
                             <p class="text-on-surface-variant text-sm">Gestioná tu plan, límites y revisá tus pagos.</p>
                         </div>
@@ -332,7 +332,20 @@
                                     </div>
 
                                     <ul class="space-y-3 mb-8 text-sm text-on-surface-variant flex-grow">
-                                        @* ... tus li del plan ... *@
+                                        <li class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                            Hasta <strong>@plan.MaxSedes</strong> sede@(plan.MaxSedes > 1 ? "s" : "")
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                            Hasta <strong>@plan.MaxProfesionales</strong> profesional@(plan.MaxProfesionales > 1 ? "es" : "")
+                                        </li>
+                                        <li class="flex items-center gap-2 @(plan.HabilitaRecordatorios ? "" : "opacity-40")">
+                                            <span class="material-symbols-outlined text-[18px] @(plan.HabilitaRecordatorios ? "text-green-600" : "text-on-surface-variant")">
+                                                @(plan.HabilitaRecordatorios ? "check_circle" : "cancel")
+                                            </span>
+                                            Recordatorios WhatsApp
+                                        </li>
                                     </ul>
 
                                     <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual"
@@ -346,9 +359,9 @@
                         <hr class="border-surface-container-high my-8" />
 
                         @* 3. HISTORIAL DE PAGOS *@
-                        <div>
+                        <div class="w-full max-w-full">
                             <h3 class="text-lg font-headline font-bold text-primary mb-4">Historial de Pagos</h3>
-                            <div class="overflow-x-auto rounded-2xl border border-surface-container-high">
+                            <div class="w-full overflow-x-auto rounded-2xl border border-surface-container-high">
                                 <table class="w-full text-sm text-left min-w-[600px]">
                                     <thead class="bg-surface-container-low text-on-surface-variant text-[10px] uppercase tracking-wider">
                                         <tr>
