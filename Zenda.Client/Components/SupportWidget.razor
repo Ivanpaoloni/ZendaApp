@@ -17,7 +17,7 @@
 @code {
     private string GetWhatsAppLink()
     {
-        var number = Config["SupportSettings:WhatsAppNumber"] ?? "5491100000000";
+        var number = Config["SupportSettings:WhatsAppNumber"] ?? "5493434577593";
         var message = Uri.EscapeDataString(Config["SupportSettings:DefaultMessage"] ?? "Hola, necesito ayuda con ZendaApp.");
         return $"https://wa.me/{number}?text={message}";
     }
