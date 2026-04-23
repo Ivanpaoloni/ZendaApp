@@ -111,44 +111,68 @@
 }
 
 @* --- WIDGETS DE RESUMEN --- *@
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
+@if (dashboardResumen != null && dashboardResumen.Ingresos != null)
+{
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
 
-    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
-        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">calendar_today</span>
+        <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all flex flex-col justify-between">
+            <div class="mb-4">
+                <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Ingresos totales</h6>
+                <p class="text-sm font-medium text-on-surface-variant/70 capitalize">@dashboardResumen.MesActualNombre</p>
+            </div>
+
+            <div>
+                <p class="text-4xl font-headline font-black text-primary mb-2">@dashboardResumen.Ingresos.ValorActual.ToString("C0")</p>
+                <div class="flex items-center text-sm">
+                    <span class="@(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "text-green-600" : "text-red-500") font-bold flex items-center bg-@(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "green" : "red")-50 px-2 py-0.5 rounded-lg">
+                        <span class="material-symbols-outlined text-[16px] mr-1">
+                            @(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "trending_up" : "trending_down")
+                        </span>
+                        @(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "+" : "")@dashboardResumen.Ingresos.PorcentajeCrecimiento%
+                    </span>
+                    <span class="text-on-surface-variant/70 font-medium ml-2 text-xs">vs @dashboardResumen.MesAnteriorNombre</span>
+                </div>
+            </div>
         </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Turnos Hoy</p>
-        <p class="text-3xl font-headline font-black text-primary">@turnosHoy</p>
+
+        <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-4 -top-4 w-24 h-24 bg-orange-50 rounded-full opacity-50 pointer-events-none"></div>
+            <div class="mb-4 relative z-10">
+                <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Día más fuerte</h6>
+                <p class="text-sm font-medium text-on-surface-variant/70 capitalize">@dashboardResumen.MesActualNombre</p>
+            </div>
+
+            <div class="relative z-10">
+                <p class="text-4xl font-headline font-black text-orange-600 mb-2">@dashboardResumen.DiaMasFuerte.Dia</p>
+                <div class="flex items-center text-sm font-bold text-orange-500">
+                    <span class="material-symbols-outlined text-[16px] mr-1">local_fire_department</span>
+                    @dashboardResumen.DiaMasFuerte.Mensaje
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all flex flex-col justify-between">
+            <div class="mb-4">
+                <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Reservas totales</h6>
+                <p class="text-sm font-medium text-on-surface-variant/70 capitalize">@dashboardResumen.MesActualNombre</p>
+            </div>
+
+            <div>
+                <p class="text-4xl font-headline font-black text-primary mb-2">@dashboardResumen.Reservas.ValorActual</p>
+                <div class="flex items-center text-sm">
+                    <span class="@(dashboardResumen.Reservas.EsCrecimientoPositivo ? "text-green-600" : "text-red-500") font-bold flex items-center bg-@(dashboardResumen.Reservas.EsCrecimientoPositivo ? "green" : "red")-50 px-2 py-0.5 rounded-lg">
+                        <span class="material-symbols-outlined text-[16px] mr-1">
+                            @(dashboardResumen.Reservas.EsCrecimientoPositivo ? "trending_up" : "trending_down")
+                        </span>
+                        @(dashboardResumen.Reservas.EsCrecimientoPositivo ? "+" : "")@dashboardResumen.Reservas.PorcentajeCrecimiento%
+                    </span>
+                    <span class="text-on-surface-variant/70 font-medium ml-2 text-xs">vs @dashboardResumen.MesAnteriorNombre</span>
+                </div>
+            </div>
+        </div>
+
     </div>
-
-    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
-        <div class="w-10 h-10 rounded-xl bg-green-500/10 text-green-600 flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">check_circle</span>
-        </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Completados</p>
-        <p class="text-3xl font-headline font-black text-green-600">@completadosHoy</p>
-    </div>
-
-    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
-        <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">payments</span>
-        </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Caja Proyectada</p>
-        <p class="text-3xl font-headline font-black text-blue-600">@ingresosProyectadosHoy.ToString("C0")</p>
-    </div>
-
-    <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all">
-        <div class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center mb-4">
-            <span class="material-symbols-outlined">group</span>
-        </div>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Equipo Activo</p>
-        <div class="flex items-baseline gap-1">
-            <p class="text-3xl font-headline font-black text-orange-600">@equipoActivoHoy</p>
-            <p class="text-sm font-bold text-on-surface-variant/50">/ @totalPrestadores</p>
-        </div>
-    </div>
-</div>
-
+}
 @* --- LISTA DE TURNOS Y ACCIONES --- *@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-300">
 

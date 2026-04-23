@@ -13,4 +13,5 @@ public interface ITurnosService
     Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado);
     Task<bool> CancelarPorClienteAsync(Guid turnoId);
     Task<TurnoReadDto> GetResumenPublicoAsync(Guid turnoId);
+    Task<DashboardResumenDto> GetDashboardResumenAsync();
 }

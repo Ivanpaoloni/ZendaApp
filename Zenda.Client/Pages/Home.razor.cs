@@ -42,6 +42,7 @@ public partial class Home : ComponentBase
     protected string nombreNegocio = "ZendaApp";
     protected string ocupacion = "0%";
 
+    protected DashboardResumenDto dashboardResumen = default!;
     protected List<TurnoReadDto> proximosTurnos = new();
     protected List<BloqueoReadDto> ausenciasHoy = new();
     protected bool cargando = true;
@@ -83,14 +84,16 @@ public partial class Home : ComponentBase
             var categoriasTask = _servicioClient.GetCatalogo();
             var bloqueosTask = _disponibilidadService.GetBloqueosDeHoy();
             var turnosTask = _turnoService.GetByFecha(hoy);
+            var resumenTask = _turnoService.GetDashboardResumenAsync();
 
-            await Task.WhenAll(sedesTask, prestadoresTask, categoriasTask, bloqueosTask, turnosTask);
+            await Task.WhenAll(sedesTask, prestadoresTask, categoriasTask, bloqueosTask, turnosTask, resumenTask);
 
             var sedes = sedesTask.Result;
             var prestadores = prestadoresTask.Result;
             var categorias = categoriasTask.Result;
             var bloqueos = bloqueosTask.Result ?? new();
             var turnos = turnosTask.Result ?? new List<TurnoReadDto>();
+            dashboardResumen = resumenTask.Result ?? new DashboardResumenDto();
 
             ausenciasHoy = bloqueos;
             sedesContador = sedes?.Count ?? 0;

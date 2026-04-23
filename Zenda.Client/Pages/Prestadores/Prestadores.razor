@@ -35,7 +35,7 @@
 
     @if (prestadores == null)
     {
-        <div class="py-20 text-center animate-pulse text-primary font-bold">Sincronizando equipo...</div>
+        <Spinner></Spinner>
     }
     else if (!prestadores.Any())
     {

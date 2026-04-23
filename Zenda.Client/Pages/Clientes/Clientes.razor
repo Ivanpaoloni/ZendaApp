@@ -1,5 +1,6 @@
 ﻿@page "/clientes"
 @using Microsoft.AspNetCore.Authorization
+@using Zenda.Client.Components
 @using Zenda.Core.DTOs
 @using Zenda.Client.Services
 @attribute [Authorize]
@@ -25,7 +26,7 @@
     @* LISTA DE CLIENTES *@
     @if (clientes == null)
     {
-        <div class="py-20 text-center animate-pulse text-primary font-bold">Cargando clientes...</div>
+        <Spinner></Spinner>
     }
     else if (!clientes.Any())
     {

@@ -489,4 +489,93 @@ public class TurnosService : ITurnosService
 
         return exito;
     }
+    public async Task<DashboardResumenDto> GetDashboardResumenAsync()
+    {
+        var negocioId = _tenantService.GetCurrentTenantId();
+
+        var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+        var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
+
+        var now = DateTime.UtcNow;
+        var inicioMesActual = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var inicioMesAnterior = inicioMesActual.AddMonths(-1);
+
+        var turnos = await _context.Turnos
+            .AsNoTracking()
+            .Include(t => t.Servicio)
+            .Where(t => t.NegocioId == negocioId &&
+                        t.FechaHoraInicioUtc >= inicioMesAnterior &&
+                        t.Estado != EstadoTurnoEnum.Cancelado)
+            .Select(t => new {
+                t.FechaHoraInicioUtc,
+                Precio = t.Servicio.Precio
+            })
+            .ToListAsync();
+
+        var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActual).ToList();
+        var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnterior && t.FechaHoraInicioUtc < inicioMesActual).ToList();
+
+        decimal ingresosActual = turnosActual.Sum(t => t.Precio);
+        decimal ingresosAnterior = turnosAnterior.Sum(t => t.Precio);
+        int reservasActual = turnosActual.Count;
+        int reservasAnterior = turnosAnterior.Count;
+
+        // --- NUEVO CÁLCULO: DÍA MÁS FUERTE ---
+        var diaPicoAgrupado = turnosActual
+            // 1. Transformamos a hora local
+            .Select(t => TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede))
+            // 2. Agrupamos por día de la semana (Lunes, Martes, etc.)
+            .GroupBy(fechaLocal => fechaLocal.DayOfWeek)
+            // 3. Ordenamos por el que tenga más turnos
+            .OrderByDescending(g => g.Count())
+            .FirstOrDefault();
+
+        string diaFuerte = "Sin datos";
+        string mensajeDia = "Esperando reservas";
+
+        if (diaPicoAgrupado != null && reservasActual > 0)
+        {
+            var culturaInfo = new System.Globalization.CultureInfo("es-AR");
+            // Traducimos el DayOfWeek a texto (ej: "viernes")
+            diaFuerte = culturaInfo.DateTimeFormat.GetDayName(diaPicoAgrupado.Key);
+            // Capitalizamos (ej: "Viernes")
+            diaFuerte = char.ToUpper(diaFuerte[0]) + diaFuerte.Substring(1);
+
+            // Calculamos qué porcentaje representa ese día sobre el total del mes
+            int porcentaje = (int)Math.Round((double)diaPicoAgrupado.Count() / reservasActual * 100);
+            mensajeDia = $"{porcentaje}% de tus turnos";
+        }
+
+        var cultura = new System.Globalization.CultureInfo("es-AR");
+
+        return new DashboardResumenDto
+        {
+            MesActualNombre = inicioMesActual.ToString("MMMM yyyy", cultura).ToLower(),
+            MesAnteriorNombre = inicioMesAnterior.ToString("MMMM yyyy", cultura).ToLower(),
+            Ingresos = new MetricaComparativaDto
+            {
+                ValorActual = ingresosActual,
+                ValorAnterior = ingresosAnterior,
+                PorcentajeCrecimiento = CalcularPorcentajeCrecimiento(ingresosAnterior, ingresosActual)
+            },
+            Reservas = new MetricaComparativaDto
+            {
+                ValorActual = reservasActual,
+                ValorAnterior = reservasAnterior,
+                PorcentajeCrecimiento = CalcularPorcentajeCrecimiento(reservasAnterior, reservasActual)
+            },
+            DiaMasFuerte = new TendenciaReservaDto
+            {
+                Dia = diaFuerte,
+                Mensaje = mensajeDia
+            }
+        };
+    }
+
+    private decimal CalcularPorcentajeCrecimiento(decimal anterior, decimal actual)
+    {
+        if (anterior == 0) return actual > 0 ? 100 : 0;
+        return Math.Round(((actual - anterior) / anterior) * 100, 1);
+    }
 }

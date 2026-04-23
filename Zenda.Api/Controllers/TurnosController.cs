@@ -93,4 +93,12 @@ public class TurnosController : ControllerBase
         if (turno == null) return NotFound();
         return Ok(turno);
     }
+
+    [Authorize]
+    [HttpGet("dashboard/resumen")]
+    public async Task<ActionResult<DashboardResumenDto>> GetDashboardResumen()
+    {
+        var resumen = await _turnosService.GetDashboardResumenAsync();
+        return Ok(resumen);
+    }
 }

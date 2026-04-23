@@ -154,9 +154,7 @@
     @* --- ESTADO DE CARGA Y VACÍO --- *@
     @if (cargando)
     {
-        <div class="flex flex-col items-center justify-center py-20">
-            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <Zenda.Client.Components.Spinner></Zenda.Client.Components.Spinner>
     }
     else if (!turnosDelDia.Any())
     {

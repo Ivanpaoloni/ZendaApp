@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 
@@ -54,5 +55,9 @@ public class TurnoClient : BaseClient
 
         var error = await response.Content.ReadAsStringAsync();
         throw new Exception(ParseError(error)); // Usando tu BaseClient con ParseError
+    }
+    public async Task<DashboardResumenDto?> GetDashboardResumenAsync()
+    {
+        return await _http.GetFromJsonAsync<DashboardResumenDto>("api/Turnos/dashboard/resumen");
     }
 }
