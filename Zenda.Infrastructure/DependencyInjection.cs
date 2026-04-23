@@ -18,7 +18,7 @@ public static class DependencyInjection
         {
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
 
-            // Apagamos el validador dinámico para poder migrar tranquilos 🔥
+            // Apagamos el validador dinámico para poder migrar tranquilos 
             options.ConfigureWarnings(warnings =>
                 warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
@@ -42,9 +42,31 @@ public static class DependencyInjection
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"))));
+            .UsePostgreSqlStorage(options => 
+            {
+                options.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"));
+            }, new PostgreSqlStorageOptions 
+            {
+                // OPTIMIZACIÓN 1: Reducir la frecuencia de consulta (Polling)
+                // Por defecto, Hangfire consulta la DB muy rápido. 15 segundos es perfecto para 
+                // recordatorios de turnos sin asfixiar la base de datos.
+                QueuePollInterval = TimeSpan.FromSeconds(15), 
+                
+                // OPTIMIZACIÓN 2: Limpieza de disco
+                // Verifica los trabajos completados/expirados cada 1 hora en lugar de constantemente.
+                JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                
+                // Otras opciones recomendadas para estabilidad:
+                PrepareSchemaIfNecessary = true
+            }));
 
-        services.AddHangfireServer();
+        // OPTIMIZACIÓN 3: Limitar los trabajadores (Workers)
+        // Por defecto Hangfire usa Environment.ProcessorCount * 5 (lo que abre muchas conexiones).
+        // 2 Workers son más que suficientes para ZendaApp antes del lanzamiento masivo.
+        services.AddHangfireServer(options => 
+        {
+            options.WorkerCount = 2; 
+        });
 
         return services;
     }
