@@ -58,6 +58,10 @@ builder.Services.AddHttpClient<FacturacionClient>(client => client.BaseAddress =
 
 builder.Services.AddHttpClient<PlanClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();  
+
+builder.Services.AddHttpClient<CajaClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>()
     .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
 
 // 4. Configuración de Auth y LocalStorage

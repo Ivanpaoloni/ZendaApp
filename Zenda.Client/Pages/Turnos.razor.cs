@@ -30,10 +30,16 @@ public partial class Turnos : ComponentBase
     protected List<string> listaSedesDropdown = new();
     protected List<string> listaServiciosDropdown = new();
 
-    // 🎯 NUEVO: Variables para el Modal
+    // modales
     protected bool mostrarModal = false;
     protected TurnoReadDto? turnoAEliminar;
     protected bool procesandoCancelacion = false;
+
+    protected bool mostrarModalCobro = false;
+    protected TurnoReadDto? turnoACobrar;
+    protected bool procesandoCobro = false;
+    protected MedioPagoEnum medioPagoSeleccionado = MedioPagoEnum.Efectivo;
+    protected string errorCobro = "";
 
     // Propiedad calculada que cuenta cuántos filtros están en uso
     protected int CantidadFiltrosActivos =>
@@ -216,5 +222,46 @@ public partial class Turnos : ComponentBase
         var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
         var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
         return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
+    }
+    protected void MostrarModalCobro(TurnoReadDto turno)
+    {
+        errorCobro = "";
+        medioPagoSeleccionado = MedioPagoEnum.Efectivo; // Reseteamos por defecto
+        turnoACobrar = turno;
+        mostrarModalCobro = true;
+    }
+
+    protected void CerrarModalCobro()
+    {
+        mostrarModalCobro = false;
+        turnoACobrar = null;
+    }
+
+    protected async Task ConfirmarCobro()
+    {
+        if (turnoACobrar == null) return;
+
+        procesandoCobro = true;
+        errorCobro = "";
+        StateHasChanged();
+
+        try
+        {
+            // 1. Llamamos a nuestra API
+            await TurnoService.CobrarTurno(turnoACobrar.Id, medioPagoSeleccionado);
+
+            // 2. Si fue exitoso, actualizamos la vista localmente
+            turnoACobrar.Estado = EstadoTurnoEnum.Completado;
+            CerrarModalCobro();
+        }
+        catch (Exception ex)
+        {
+            errorCobro = ex.Message;
+        }
+        finally
+        {
+            procesandoCobro = false;
+            StateHasChanged();
+        }
     }
 }

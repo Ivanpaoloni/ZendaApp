@@ -35,7 +35,7 @@
     }
 
     @* Lista de Sedes *@
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
         @if (sedes == null)
         {
             <Spinner></Spinner>
@@ -111,21 +111,21 @@
                     <div class="flex flex-col gap-2">
                         <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Nombre de la Sede</label>
                         <InputText @bind-Value="nuevaSede.Nombre" placeholder="Ej: Sucursal Centro"
-                                    class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
                         <ValidationMessage For="@(() => nuevaSede.Nombre)" class="text-error text-[10px] font-bold px-1" />
                     </div>
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Dirección Exacta</label>
                         <InputText @bind-Value="nuevaSede.Direccion" placeholder="Ej: Av. Corrientes 1234, CABA"
-                                    class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
+                                   class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary" />
                         <ValidationMessage For="@(() => nuevaSede.Direccion)" class="text-error text-[10px] font-bold px-1" />
                     </div>
 
                     <div class="flex flex-col gap-2">
                         <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant ml-1">Zona Horaria del Local</label>
                         <InputSelect @bind-Value="nuevaSede.ZonaHorariaId"
-                                        class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary appearance-none cursor-pointer">
+                                     class="w-full p-4 bg-surface-container-low rounded-2xl outline-none focus:ring-2 focus:ring-primary font-body text-primary appearance-none cursor-pointer">
                             @foreach (var tz in zonasHorarias)
                             {
                                 <option value="@tz.Id">@tz.DisplayName</option>

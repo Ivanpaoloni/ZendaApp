@@ -354,6 +354,7 @@ public class TurnosService : ITurnosService
         var turno = await _context.Turnos
             .Include(t => t.Prestador)
                 .ThenInclude(p => p.Sede)
+            .Include(t => t.Cliente)
             .Include(t => t.Prestador)
                 .ThenInclude(p => p.Negocio)
             .FirstOrDefaultAsync(t => t.Id == turnoId && t.Prestador.NegocioId == negocioId);
@@ -404,6 +405,7 @@ public class TurnosService : ITurnosService
             .IgnoreQueryFilters()
             .Include(t => t.Prestador)
                 .ThenInclude(p => p.Sede)
+                .Include(t => t.Cliente)
             // NUEVO: Traemos el negocio para sacar el Slug
             .Include(t => t.Prestador)
                 .ThenInclude(p => p.Negocio)
@@ -577,5 +579,66 @@ public class TurnosService : ITurnosService
     {
         if (anterior == 0) return actual > 0 ? 100 : 0;
         return Math.Round(((actual - anterior) / anterior) * 100, 1);
+    }
+
+    public async Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, MedioPagoEnum medioPago)
+    {
+        var negocioId = _tenantService.GetCurrentTenantId();
+
+        // 1. Traemos el turno con su Servicio, Prestador, SEDE y Cliente
+        var turno = await _context.Turnos
+            .Include(t => t.Servicio)
+            .Include(t => t.Prestador)
+                .ThenInclude(p => p.Sede) // <-- CRUCIAL: Incluimos la sede para leer su zona horaria
+            .Include(t => t.Cliente)
+            .FirstOrDefaultAsync(t => t.Id == turnoId && t.NegocioId == negocioId);
+
+        if (turno == null) throw new Exception("Turno no encontrado.");
+        if (turno.Estado == EstadoTurnoEnum.Completado) throw new Exception("El turno ya fue cobrado anteriormente.");
+
+        // 2. Extraer la fecha de forma dinámica según la Sede y aplicar el PARCHE para PostgreSQL
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador!.Sede!.ZonaHorariaId);
+        var hoyLocalCrudo = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede).Date;
+
+        // LA MAGIA PARA POSTGRESQL:
+        var hoyLocal = DateTime.SpecifyKind(hoyLocalCrudo, DateTimeKind.Utc);
+
+        var cajaDelDia = await _context.CajasDiarias
+            .FirstOrDefaultAsync(c => c.SedeId == turno.Prestador.SedeId && c.EstaAbierta && c.FechaCaja == hoyLocal);
+
+        // Si el usuario olvidó abrir la caja, se la abrimos automáticamente en cero (auto-apertura)
+        if (cajaDelDia == null)
+        {
+            cajaDelDia = new CajaDiaria
+            {
+                NegocioId = negocioId.Value,
+                SedeId = turno.Prestador.SedeId,
+                FechaCaja = hoyLocal, // PostgreSQL ahora lo acepta perfecto
+                MontoInicial = 0,
+                EstaAbierta = true
+            };
+            _context.CajasDiarias.Add(cajaDelDia);
+            await _context.SaveChangesAsync(); // Guardamos para generar el ID
+        }
+
+        // 3. Crear el Movimiento (Congelando el precio histórico)
+        var ingreso = new MovimientoCaja
+        {
+            NegocioId = negocioId.Value,
+            CajaDiariaId = cajaDelDia.Id,
+            Monto = turno.Servicio.Precio, // ¡AQUÍ CONGELAMOS EL VALOR!
+            Tipo = TipoMovimientoEnum.Ingreso,
+            MedioPago = medioPago,
+            Detalle = $"Cobro Turno: {turno.Servicio.Nombre} - {turno.Cliente.Nombre}",
+            TurnoId = turno.Id
+        };
+
+        _context.MovimientosCaja.Add(ingreso);
+
+        // 4. Actualizamos el estado del turno
+        turno.Estado = EstadoTurnoEnum.Completado;
+
+        // Ejecutamos la transacción en base de datos
+        return await _context.SaveChangesAsync() > 0;
     }
 }

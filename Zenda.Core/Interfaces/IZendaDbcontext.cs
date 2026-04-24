@@ -19,6 +19,8 @@ public interface IZendaDbContext
     DbSet<SuscripcionNegocio> SuscripcionesNegocio { get; set; }
     DbSet<HistorialPago> HistorialPagos { get; set; }
     DbSet<PlanSuscripcion> PlanesSuscripcion { get; set; }
+    DbSet<CajaDiaria> CajasDiarias { get; set; }
+    DbSet<MovimientoCaja> MovimientosCaja { get; set; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     // Agregamos FindAsync para que el Service lo use sin depender de la implementación

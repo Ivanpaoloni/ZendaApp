@@ -115,14 +115,21 @@
 {
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
 
-        <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all flex flex-col justify-between">
+        <a href="/caja" class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group cursor-pointer relative hover:-translate-y-1 active:scale-95 no-underline block">
+
+            <div class="absolute right-4 top-4 p-1.5 text-on-surface-variant opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all translate-x-2 group-hover:translate-x-0">
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </div>
+
             <div class="mb-4">
-                <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Ingresos totales</h6>
+                <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Ingresos totales</h6>
                 <p class="text-sm font-medium text-on-surface-variant/70 capitalize">@dashboardResumen.MesActualNombre</p>
             </div>
 
             <div>
-                <p class="text-4xl font-headline font-black text-primary mb-2">@dashboardResumen.Ingresos.ValorActual.ToString("C0")</p>
+                <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                    @dashboardResumen.Ingresos.ValorActual.ToString("C0")
+                </p>
                 <div class="flex items-center text-sm">
                     <span class="@(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "text-green-600" : "text-red-500") font-bold flex items-center bg-@(dashboardResumen.Ingresos.EsCrecimientoPositivo ? "green" : "red")-50 px-2 py-0.5 rounded-lg">
                         <span class="material-symbols-outlined text-[16px] mr-1">
@@ -133,7 +140,7 @@
                     <span class="text-on-surface-variant/70 font-medium ml-2 text-xs">vs @dashboardResumen.MesAnteriorNombre</span>
                 </div>
             </div>
-        </div>
+        </a>
 
         <div class="bg-white p-6 rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all flex flex-col justify-between relative overflow-hidden">
             <div class="absolute -right-4 -top-4 w-24 h-24 bg-orange-50 rounded-full opacity-50 pointer-events-none"></div>

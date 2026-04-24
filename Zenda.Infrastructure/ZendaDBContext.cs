@@ -28,6 +28,8 @@ namespace Zenda.Infrastructure
         public DbSet<SuscripcionNegocio> SuscripcionesNegocio { get; set; }
         public DbSet<HistorialPago> HistorialPagos { get; set; }
         public DbSet<PlanSuscripcion> PlanesSuscripcion { get; set; }
+        public DbSet<CajaDiaria> CajasDiarias { get; set; }
+        public DbSet<MovimientoCaja> MovimientosCaja { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // ¡Esto siempre debe estar primero!
@@ -41,6 +43,8 @@ namespace Zenda.Infrastructure
             modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<BloqueoAgenda>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<CajaDiaria>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<MovimientoCaja>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
 
             // NUEVO: Filtro para que el Tenant solo vea sus propios clientes
             modelBuilder.Entity<Cliente>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
@@ -119,7 +123,7 @@ namespace Zenda.Infrastructure
                     Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Nombre = "Pro",
                     Slug = "pro",
-                    MaxSedes = 2,
+                    MaxSedes = 1,
                     MaxProfesionales = 5,
                     HabilitaRecordatoriosHangfire = true
                 },
@@ -128,8 +132,8 @@ namespace Zenda.Infrastructure
                     Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
                     Nombre = "Business",
                     Slug = "business",
-                    MaxSedes = 10,
-                    MaxProfesionales = 50,
+                    MaxSedes = 5,
+                    MaxProfesionales = 25,
                     HabilitaRecordatoriosHangfire = true
                 }
             );
@@ -241,6 +245,39 @@ namespace Zenda.Infrastructure
                       .WithMany() // Opcional: .WithMany(s => s.Pagos) si lo agregas a la entidad
                       .HasForeignKey(h => h.SuscripcionNegocioId)
                       .OnDelete(DeleteBehavior.Cascade); // Si se borra la suscripción, se borra su historial
+            });
+
+            // --- CONFIGURACIÓN DE CAJA ---
+            modelBuilder.Entity<CajaDiaria>(entity =>
+            {
+                entity.HasKey(c => c.Id);
+                entity.Property(c => c.MontoInicial).HasPrecision(18, 2);
+                entity.Property(c => c.MontoFinalDeclarado).HasPrecision(18, 2);
+
+                entity.HasOne(c => c.Sede)
+                      .WithMany()
+                      .HasForeignKey(c => c.SedeId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<MovimientoCaja>(entity =>
+            {
+                entity.HasKey(m => m.Id);
+                entity.Property(m => m.Monto).HasPrecision(18, 2);
+                entity.Property(m => m.Detalle).HasMaxLength(255);
+
+                entity.Property(m => m.Tipo).HasConversion<string>().HasMaxLength(20);
+                entity.Property(m => m.MedioPago).HasConversion<string>().HasMaxLength(30);
+
+                entity.HasOne(m => m.CajaDiaria)
+                      .WithMany(c => c.Movimientos)
+                      .HasForeignKey(m => m.CajaDiariaId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(m => m.Turno)
+                      .WithMany() // Un turno podría tener múltiples pagos (ej: mitad efectivo, mitad MP)
+                      .HasForeignKey(m => m.TurnoId)
+                      .OnDelete(DeleteBehavior.SetNull); // Si se borra el turno (hard delete), el pago queda en caja para la AFIP/Contabilidad
             });
         }
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
