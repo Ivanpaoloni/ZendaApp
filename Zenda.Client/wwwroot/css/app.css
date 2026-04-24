@@ -12,7 +12,7 @@
     
     /* Paleta de colores SaaS */
     --zenda-bg: #F9FAFB; /* Gris off-white, reduce fatiga visual */
-    --zenda-text-main: #111827; /* Negro/Gris profundo para lectura óptima */
+    /*--zenda-text-main: #111827;*/ /* Negro/Gris profundo para lectura óptima */
     --zenda-text-muted: #6B7280;
     --zenda-primary: #6366F1; /* Color Primario (Índigo moderno). Cámbialo si tu logo tiene otro color */
     
