@@ -79,6 +79,8 @@
     [Parameter, SupplyParameterFromQuery] public string? Duracion { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? Direccion { get; set; }
     [Parameter, SupplyParameterFromQuery] public string? TurnoId { get; set; }
+    [Parameter, SupplyParameterFromQuery] public string? TelefonoNegocio { get; set; }
+
     private string DireccionSede => Direccion ?? "";
     private string FechaDisplay => Fecha ?? "--/--/----";
     private string HoraDisplay => Hora ?? "--:--";
@@ -136,8 +138,14 @@
                       $"*Hora:* {HoraDisplay} hs%0A" +
                       $"¡Nos vemos pronto!";
 
-        // Si tenés el celular del barbero, podés ponerlo acá (ej: 54911...)
-        // Si lo dejás vacío, abre el selector de contactos para que el cliente elija a quién mandárselo.
+        if (!string.IsNullOrEmpty(TelefonoNegocio))
+        {
+            // Quitamos espacios, guiones o símbolos raros para que WhatsApp no falle
+            var numLimpio = new string(TelefonoNegocio.Where(char.IsDigit).ToArray());
+            return $"https://wa.me/{numLimpio}?text={mensaje}";
+        }
+
+        // Fallback: Si por algún motivo no llega el teléfono, le abre el selector de contactos
         return $"https://wa.me/?text={mensaje}";
     }
 }

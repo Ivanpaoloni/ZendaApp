@@ -203,7 +203,6 @@ public partial class Reserva : ComponentBase
             }
             else
             {
-                // 🔥 CORRECCIÓN AQUÍ: Buscamos qué profesional aportó esta hora libre desde el backend
                 if (prestadoresPorHoraLibre.TryGetValue(horaSeleccionada!, out Guid idPrestadorAsignado))
                 {
                     var prestadorAsignado = prestadoresFiltrados.FirstOrDefault(p => p.Id == idPrestadorAsignado);
@@ -214,7 +213,6 @@ public partial class Reserva : ComponentBase
                     }
                     else
                     {
-                        // Fallback de seguridad (no debería ocurrir si la data es consistente)
                         var asignado = prestadoresFiltrados.First();
                         idPrestadorFinal = asignado.Id;
                         nombrePrestadorReserva = asignado.Nombre;
@@ -222,7 +220,6 @@ public partial class Reserva : ComponentBase
                 }
                 else
                 {
-                    // Fallback si por algún motivo la hora no está en el diccionario
                     var asignado = prestadoresFiltrados.First();
                     idPrestadorFinal = asignado.Id;
                     nombrePrestadorReserva = asignado.Nombre;
@@ -254,7 +251,10 @@ public partial class Reserva : ComponentBase
                 var duracionReal = servicioSeleccionado?.DuracionMinutos ?? 30;
                 var turnoId = resultado.Id;
 
-                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}&TurnoId={turnoId}");
+                // 🎯 NUEVO: Tomamos el teléfono del negocio y lo preparamos para la URL
+                var telefonoNegocioEnc = Uri.EscapeDataString(negocio?.Telefono ?? "");
+
+                Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}&TurnoId={turnoId}&TelefonoNegocio={telefonoNegocioEnc}");
             }
             else
             {

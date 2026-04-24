@@ -503,25 +503,42 @@ public class TurnosService : ITurnosService
         var inicioMesActual = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var inicioMesAnterior = inicioMesActual.AddMonths(-1);
 
+        // 1. OBTENEMOS LAS RESERVAS (Para las métricas de cantidad y día fuerte)
         var turnos = await _context.Turnos
             .AsNoTracking()
-            .Include(t => t.Servicio)
             .Where(t => t.NegocioId == negocioId &&
                         t.FechaHoraInicioUtc >= inicioMesAnterior &&
                         t.Estado != EstadoTurnoEnum.Cancelado)
             .Select(t => new {
-                t.FechaHoraInicioUtc,
-                Precio = t.Servicio.Precio
+                t.FechaHoraInicioUtc
+                // Ya no necesitamos el Precio del servicio aquí
             })
             .ToListAsync();
 
         var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActual).ToList();
         var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnterior && t.FechaHoraInicioUtc < inicioMesActual).ToList();
 
-        decimal ingresosActual = turnosActual.Sum(t => t.Precio);
-        decimal ingresosAnterior = turnosAnterior.Sum(t => t.Precio);
         int reservasActual = turnosActual.Count;
         int reservasAnterior = turnosAnterior.Count;
+
+
+        // 2. NUEVO: OBTENEMOS LOS INGRESOS REALES DE LA CAJA (Dinero que realmente entró)
+        var ingresosCaja = await _context.MovimientosCaja
+            .AsNoTracking()
+            .Where(m => m.NegocioId == negocioId &&
+                        m.CreatedAtUtc >= inicioMesAnterior &&
+                        m.Tipo == TipoMovimientoEnum.Ingreso) // Solo sumamos lo que entró
+            .Select(m => new {
+                m.CreatedAtUtc,
+                m.Monto
+            })
+            .ToListAsync();
+
+        var ingresosMesActual = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesActual).ToList();
+        var ingresosMesAnterior = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesAnterior && m.CreatedAtUtc < inicioMesActual).ToList();
+
+        decimal ingresosActual = ingresosMesActual.Sum(m => m.Monto);
+        decimal ingresosAnterior = ingresosMesAnterior.Sum(m => m.Monto);
 
         // --- NUEVO CÁLCULO: DÍA MÁS FUERTE ---
         var diaPicoAgrupado = turnosActual

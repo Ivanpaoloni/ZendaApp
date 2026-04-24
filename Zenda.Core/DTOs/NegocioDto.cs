@@ -17,6 +17,7 @@ public class NegocioReadDto
     public string PlanNombre { get; set; } = string.Empty;
     public int MaxProfesionales { get; set; }
     public int MaxSedes { get; set; }
+    public string? Telefono { get; set; }
 }
 
 public class NegocioCreateDto

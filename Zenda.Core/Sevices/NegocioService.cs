@@ -48,13 +48,29 @@ public class NegocioService : INegocioService
     }
     public async Task<NegocioReadDto?> GetPublicBySlugAsync(string slug)
     {
-        // consulta pública
+        // 1. Consulta pública del negocio
         var negocio = await _context.Negocios
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(n => n.Slug == slug);
 
-        return _mapper.Map<NegocioReadDto>(negocio);
+        if (negocio == null) return null;
+
+        var dto = _mapper.Map<NegocioReadDto>(negocio);
+
+        // 2. 🎯 MAGIA DE IDENTITY: Usamos _context.Users (disponible gracias a IdentityDbContext)
+        var usuarioDueño = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.NegocioId == negocio.Id);
+
+        if (usuarioDueño != null)
+        {
+            // Identity usa "PhoneNumber" de forma nativa
+            dto.Telefono = usuarioDueño.PhoneNumber;
+        }
+
+        return dto;
     }
+
     public async Task<NegocioReadDto?> GetByIdAsync(Guid id)
     {
         var negocio = await _context.Negocios.FirstOrDefaultAsync(n => n.Id == id && !n.IsDeleted);
