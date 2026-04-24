@@ -1,24 +1,63 @@
 @inject IConfiguration Config
 
-<div class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50 flex items-center">
-    
-    <a href="@GetWhatsAppLink()" 
-       target="_blank" 
-       class="group relative flex items-center justify-center w-14 h-14 bg-[#25D366] text-white rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all duration-300 editorial-shadow">
-        
-        <i class="fa-brands fa-whatsapp text-3xl"></i>
+<div class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end">
 
-        <span class="hidden md:block absolute right-16 px-3 py-2 bg-on-surface text-background text-sm font-body font-medium rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
-            ¿Necesitas ayuda?
-        </span>
-    </a>
+    @if (isMenuOpen)
+    {
+        <div class="mb-4 w-72 bg-background rounded-3xl p-5 editorial-shadow border border-outline-variant flex flex-col gap-4 origin-bottom-right transition-all duration-300">
+
+            <div class="flex flex-col">
+                <span class="font-headline font-bold text-on-surface text-lg tracking-tight">Soporte Técnico</span>
+                <span class="font-body text-sm text-on-surface-variant mt-1">¿Cómo podemos ayudarte hoy?</span>
+            </div>
+
+            <div class="flex flex-col gap-2 mt-2">
+                <a href="@GetWhatsAppLink()"
+                   target="_blank"
+                   @onclick="ToggleMenu"
+                   class="flex items-center justify-center gap-2 w-full bg-[#25D366] text-white py-3 px-4 rounded-2xl font-bold font-body active:scale-95 transition-all shadow-md">
+                    <i class="fa-brands fa-whatsapp text-xl"></i>
+                    Chat por WhatsApp
+                </a>
+
+                <button @onclick="ToggleMenu"
+                        class="flex items-center justify-center w-full bg-surface-container-high hover:bg-surface-container-high/80 text-on-surface py-3 px-4 rounded-2xl font-bold font-body active:scale-95 transition-all">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    }
+
+    <button @onclick="ToggleMenu"
+            class="group relative flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all duration-300 editorial-shadow
+                   @(isMenuOpen ? "bg-surface-container-high text-on-surface" : "bg-primary text-white")">
+
+        @if (isMenuOpen)
+        {
+            <span class="material-symbols-outlined text-3xl transition-transform duration-300 rotate-90">close</span>
+        }
+        else
+        {
+            <span class="material-symbols-outlined text-3xl">support_agent</span>
+        }
+    </button>
 </div>
 
 @code {
+    // Estado del componente
+    private bool isMenuOpen = false;
+
+    // Método para alternar la visibilidad del menú
+    private void ToggleMenu()
+    {
+        isMenuOpen = !isMenuOpen;
+    }
+
+    // Generador del enlace
     private string GetWhatsAppLink()
     {
         var number = Config["SupportSettings:WhatsAppNumber"] ?? "5493434577593";
-        var message = Uri.EscapeDataString(Config["SupportSettings:DefaultMessage"] ?? "Hola, necesito ayuda con ZendaApp.");
+        var message = Uri.EscapeDataString(Config["SupportSettings:DefaultMessage"] ?? "Hola, necesito ayuda con Zendy.");
         return $"https://wa.me/{number}?text={message}";
     }
 }
