@@ -95,7 +95,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(
             "https://localhost:7258",
             "https://app.zendy.com.ar",
-            "https://zendy.com.ar"
+            "https://zendy.com.ar",
+            "https://www.zendy.com.ar"
         ).AllowAnyMethod().AllowAnyHeader();
     });
 });
@@ -118,7 +119,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 // 4. Redirección HTTPS
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // 5. CORS (Siempre antes de la autenticación)
 app.UseCors("BlazorPolicy");
