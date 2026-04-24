@@ -3,6 +3,7 @@
 @using Zenda.Client.Components
 @using Zenda.Core.DTOs
 @using Zenda.Client.Services
+@using Zenda.Core.Enums
 @attribute [Authorize]
 
 @inject ClienteClient ClienteService
@@ -176,16 +177,33 @@
                     <div class="space-y-3">
                         @foreach (var turno in historial.OrderByDescending(t => t.FechaHoraInicioUtc))
                         {
-                            bool esFuturo = turno.FechaHoraInicioUtc > DateTime.UtcNow;
+                            // 1. Analizamos el estado real
+                            bool esCancelado = turno.Estado == EstadoTurnoEnum.Cancelado;
+                            bool esCompletado = turno.Estado == EstadoTurnoEnum.Completado;
+                            bool esActivo = !esCancelado && !esCompletado;
 
-                            <div class="bg-white p-4 rounded-xl border @(esFuturo ? "border-primary/30 shadow-sm" : "border-surface-container-high opacity-70") flex justify-between items-center">
+                            // 2. Asignamos colores según el estado
+                            string badgeClases = turno.Estado switch
+                            {
+                                EstadoTurnoEnum.Cancelado => "text-red-600 bg-red-50",
+                                EstadoTurnoEnum.Completado => "text-on-surface-variant bg-surface-container-high",
+                                EstadoTurnoEnum.Confirmado => "text-green-600 bg-green-50",
+                                _ => "text-orange-600 bg-orange-50" // Pendiente
+                            };
+
+                            string borderClases = esActivo ? "border-primary/30 shadow-sm" : "border-surface-container-high opacity-70";
+
+                            <div class="bg-white p-4 rounded-xl border @borderClases flex justify-between items-center transition-all">
                                 <div>
-                                    <p class="font-bold text-sm text-primary">@turno.ServicioNombre</p>
+                                    @* Si está cancelado, tachamos el nombre del servicio sutilmente *@
+                                    <p class="font-bold text-sm @(esCancelado ? "text-on-surface-variant line-through" : "text-primary")">
+                                        @turno.ServicioNombre
+                                    </p>
                                     <p class="text-xs text-on-surface-variant mt-1">@turno.FechaHoraInicioUtc.ToLocalTime().ToString("dd MMM yyyy - HH:mm")</p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="text-[10px] font-bold uppercase tracking-widest @(esFuturo ? "text-green-600 bg-green-50 px-2 py-1 rounded-md" : "text-on-surface-variant")">
-                                        @(esFuturo ? "Próximo" : "Completado")
+                                    <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md @badgeClases">
+                                        @turno.Estado
                                     </span>
                                 </div>
                             </div>
