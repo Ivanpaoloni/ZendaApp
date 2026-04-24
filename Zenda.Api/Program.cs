@@ -3,6 +3,7 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Zenda.Api.Middlewares;
@@ -135,5 +136,23 @@ app.MapControllers();
 // 9. Endpoints de Health Checks
 app.UseHealthChecks("/health", new HealthCheckOptions { ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
 app.UseHealthChecksUI(config => config.UIPath = "/health-dash");
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ZendaDbContext>();
+
+        // Aplica cualquier migración pendiente en la base de datos al arrancar
+        // Si no existe la base o las tablas, las crea.
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocurrió un error ejecutando las migraciones de la base de datos.");
+    }
+}
 
 app.Run();
