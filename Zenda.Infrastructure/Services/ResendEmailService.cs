@@ -72,7 +72,7 @@ public class ResendEmailService : IEmailService
                     <h2 style='color: #4f46e5; margin-top: 0;'>¡Hola {nombreCliente}! 👋</h2>
                     <p>Te escribimos para recordarte que tenés un turno reservado en <strong>{nombreNegocio}</strong> muy pronto.</p>
                     
-                    <<div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
                         <p style='margin: 0; font-size: 16px;'>📅 <strong>Fecha:</strong> {fechaTurno:dd/MM/yyyy}</p>
                         <p style='margin: 5px 0 0 0; font-size: 16px;'>⏰ <strong>Hora:</strong> {fechaTurno:HH:mm} hs</p>
                     </div>
