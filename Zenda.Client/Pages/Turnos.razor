@@ -226,7 +226,7 @@
                                                 <i class="fa-brands fa-whatsapp text-[16px]"></i>
                                             </a>
 
-                                            <button @onclick="() => CambiarEstado(turno.Id, EstadoTurnoEnum.Completado)"
+                                            <button @onclick="() => MostrarModalCobro(turno)"
                                                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-500/10 text-green-700 hover:bg-green-500 hover:text-white transition-colors" title="Cobrar">
                                                 <span class="material-symbols-outlined text-[16px]">task_alt</span>
                                             </button>
@@ -286,6 +286,58 @@
                     else
                     {
                         <span>Sí, cancelar</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ========================================== *@
+@* 4. MODAL DE CONFIRMACIÓN DE COBRO          *@
+@* ========================================== *@
+@if (mostrarModalCobro)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-200">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-sm border border-surface-container-high shadow-xl animate-in zoom-in-95 duration-200">
+            <div class="flex items-center gap-3 mb-2 text-primary">
+                <span class="material-symbols-outlined text-3xl text-green-500">payments</span>
+                <h3 class="font-headline font-bold text-xl">Cobrar Turno</h3>
+            </div>
+
+            <p class="text-sm text-on-surface-variant mb-4">
+                ¿Cómo pagó <strong class="text-primary">@turnoACobrar?.ClienteNombre</strong>?
+            </p>
+
+            @if (!string.IsNullOrEmpty(errorCobro))
+            {
+                <div class="bg-red-50 text-red-600 text-[10px] font-bold p-3 rounded-xl mb-4 text-center uppercase tracking-wider">
+                    @errorCobro
+                </div>
+            }
+
+            <div class="flex flex-col gap-2 mb-6">
+                <select @bind="medioPagoSeleccionado" class="w-full p-4 bg-surface-container-low rounded-2xl border border-surface-container-high outline-none focus:ring-2 focus:ring-primary font-body text-primary font-bold cursor-pointer">
+                    <option value="@MedioPagoEnum.Efectivo">💵 Efectivo</option>
+                    <option value="@MedioPagoEnum.Transferencia">🏦 Transferencia</option>
+                    <option value="@MedioPagoEnum.MercadoPago">📱 MercadoPago</option>
+                    <option value="@MedioPagoEnum.TarjetaDebito">💳 Tarjeta de Débito</option>
+                    <option value="@MedioPagoEnum.TarjetaCredito">💳 Tarjeta de Crédito</option>
+                </select>
+            </div>
+
+            <div class="flex gap-3">
+                <button @onclick="CerrarModalCobro" class="flex-1 py-3 bg-white border border-surface-container-high text-on-surface-variant rounded-xl font-bold hover:bg-surface-container-lowest transition-colors">
+                    Cancelar
+                </button>
+                <button @onclick="ConfirmarCobro" disabled="@procesandoCobro" class="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-50 flex justify-center items-center gap-2">
+                    @if (procesandoCobro)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                    }
+                    else
+                    {
+                        <span>Confirmar</span>
                     }
                 </button>
             </div>

@@ -101,4 +101,26 @@ public class TurnosController : ControllerBase
         var resumen = await _turnosService.GetDashboardResumenAsync();
         return Ok(resumen);
     }
+    [Authorize]
+    [HttpPost("{id}/cobrar")]
+    public async Task<IActionResult> CobrarTurno(Guid id, [FromBody] CobrarTurnoRequest request)
+    {
+        try
+        {
+            var exito = await _turnosService.FinalizarYCobrarTurnoAsync(id, request.MedioPago);
+            if (exito) return Ok();
+
+            return BadRequest("No se pudo procesar el cobro.");
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    // Agrega esta clase auxiliar al final del archivo (fuera del controlador)
+    public class CobrarTurnoRequest
+    {
+        public Zenda.Core.Enums.MedioPagoEnum MedioPago { get; set; }
+    }
 }

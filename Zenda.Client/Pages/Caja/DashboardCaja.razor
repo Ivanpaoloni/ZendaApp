@@ -1,0 +1,176 @@
+﻿@page "/caja"
+@attribute [Authorize]
+@inject CajaClient CajaClient
+@inject SedeClient SedeClient
+@using Microsoft.AspNetCore.Authorization
+@using Zenda.Client.Services
+@using Zenda.Core.DTOs
+@using Zenda.Core.Enums
+
+<div class="space-y-8 animate-in fade-in duration-500 pb-20">
+
+    @* Encabezado *@
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Caja Diaria</h1>
+            <p class="text-on-surface-variant text-sm">Controlá los ingresos y egresos del día.</p>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="flex justify-center p-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary"></div>
+        </div>
+    }
+    else if (cajaActual == null)
+    {
+        @* ESTADO: CAJA CERRADA *@
+        <div class="bg-white rounded-3xl p-6 md:p-10 editorial-shadow text-center max-w-xl w-full mx-auto flex flex-col items-center">
+            <span class="material-symbols-outlined text-6xl text-on-surface-variant/50 mb-4">point_of_sale</span>
+            <h2 class="font-headline font-bold text-2xl text-primary mb-2">La caja está cerrada</h2>
+            <p class="text-on-surface-variant text-sm mb-8">Ingresá el dinero de cambio inicial para comenzar a operar hoy.</p>
+
+            <div class="w-full relative mb-6">
+                <span class="absolute left-4 top-4 text-on-surface-variant font-bold">$</span>
+                <input type="number" @bind="montoApertura" placeholder="0.00" class="w-full bg-surface-container-low border-transparent focus:ring-2 focus:ring-primary focus:bg-white rounded-xl pl-10 pr-4 py-4 font-headline text-lg text-primary font-bold transition-all duration-300 outline-none" />
+            </div>
+
+            <button @onclick="AbrirCaja" disabled="@isSubmitting" class="w-full py-4 bg-primary text-white font-bold rounded-2xl hover:-translate-y-0.5 hover:shadow-lg active:scale-95 transition-all duration-200">
+                Aperturar Caja
+            </button>
+        </div>
+    }
+    else
+    {
+        @* ESTADO: CAJA ABIERTA - DASHBOARD *@
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            @* Tarjeta: Ingresos *@
+            <div class="bg-white rounded-3xl p-6 editorial-shadow border border-surface-container-high hover:-translate-y-1 transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">arrow_upward</span>
+                    </div>
+                    <span class="font-bold text-on-surface-variant text-sm">Ingresos</span>
+                </div>
+                <h3 class="font-headline text-3xl font-extrabold text-primary">$ @cajaActual.TotalIngresos.ToString("N2")</h3>
+            </div>
+
+            @* Tarjeta: Egresos *@
+            <div class="bg-white rounded-3xl p-6 editorial-shadow border border-surface-container-high hover:-translate-y-1 transition-all">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">arrow_downward</span>
+                    </div>
+                    <span class="font-bold text-on-surface-variant text-sm">Egresos / Gastos</span>
+                </div>
+                <h3 class="font-headline text-3xl font-extrabold text-primary">$ @cajaActual.TotalEgresos.ToString("N2")</h3>
+            </div>
+
+            @* Tarjeta: Saldo Final *@
+            <div class="bg-primary rounded-3xl p-6 editorial-shadow text-white hover:-translate-y-1 transition-all relative overflow-hidden">
+                <span class="material-symbols-outlined absolute -right-4 -bottom-4 text-7xl opacity-10">account_balance_wallet</span>
+                <div class="relative z-10">
+                    <span class="font-bold text-white/80 text-sm mb-2 block">Saldo Total en Caja</span>
+                    <h3 class="font-headline text-4xl font-extrabold">$ @cajaActual.SaldoActual.ToString("N2")</h3>
+                    <p class="text-xs text-white/60 mt-2">+ $ @cajaActual.MontoInicial.ToString("N2") de Apertura</p>
+                </div>
+            </div>
+        </div>
+
+        @* Historial de Movimientos *@
+        <div class="mt-10 bg-white rounded-3xl editorial-shadow border border-surface-container-high w-full flex flex-col overflow-hidden">
+            <div class="p-4 md:p-6 border-b border-surface-container-high flex justify-between items-center bg-surface-container-low/50">
+                <h3 class="font-headline font-bold text-lg text-primary">Historial del Día</h3>
+            </div>
+
+            @* CONTENEDOR CON SCROLL HORIZONTAL AISLADO *@
+            <div class="w-full overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-sm whitespace-nowrap min-w-[600px]">
+                    <thead class="bg-surface-container-low text-on-surface-variant uppercase text-[10px] font-bold tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4">Hora</th>
+                            <th class="px-6 py-4">Detalle</th>
+                            <th class="px-6 py-4">Medio de Pago</th>
+                            <th class="px-6 py-4 text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-surface-container-high">
+                        @foreach (var mov in cajaActual.Movimientos)
+                        {
+                            <tr class="hover:bg-surface-container-low/30 transition-colors">
+                                <td class="px-6 py-4 font-medium text-on-surface-variant">@mov.CreatedAtUtc.ToLocalTime().ToString("HH:mm")</td>
+                                <td class="px-6 py-4 text-primary font-bold">@mov.Detalle</td>
+                                <td class="px-6 py-4">
+                                    <span class="px-3 py-1 bg-secondary-container/50 text-primary rounded-xl text-xs font-bold">
+                                        @mov.MedioPago.ToString()
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-right font-headline font-bold @(mov.Tipo == TipoMovimientoEnum.Ingreso ? "text-green-600" : "text-red-600")">
+                                    @(mov.Tipo == TipoMovimientoEnum.Ingreso ? "+" : "-") $ @mov.Monto.ToString("N2")
+                                </td>
+                            </tr>
+                        }
+                        @if (!cajaActual.Movimientos.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="px-6 py-12 text-center text-on-surface-variant italic">No hay movimientos registrados aún.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private CajaDiariaDto? cajaActual;
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private decimal montoApertura = 0;
+    private Guid sedePrincipalId; // Asumiremos por ahora que usamos la primera sede
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Usamos GetAll() que es el método real de tu SedeClient
+        var sedes = await SedeClient.GetAll();
+
+        if (sedes != null && sedes.Any())
+        {
+            sedePrincipalId = sedes.First().Id;
+            await CargarCaja();
+        }
+        else
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CargarCaja()
+    {
+        isLoading = true;
+        cajaActual = await CajaClient.GetCajaHoyAsync(sedePrincipalId);
+        isLoading = false;
+    }
+
+    private async Task AbrirCaja()
+    {
+        isSubmitting = true;
+        try
+        {
+            await CajaClient.AbrirCajaAsync(sedePrincipalId, montoApertura);
+            await CargarCaja(); // Recarga la UI mostrando el dashboard
+        }
+        catch (Exception ex)
+        {
+            // Mostrar error (puedes usar tu componente AlertDialog)
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

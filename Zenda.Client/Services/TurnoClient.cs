@@ -60,4 +60,16 @@ public class TurnoClient : BaseClient
     {
         return await _http.GetFromJsonAsync<DashboardResumenDto>("api/Turnos/dashboard/resumen");
     }
+
+    public async Task<bool> CobrarTurno(Guid id, Zenda.Core.Enums.MedioPagoEnum medioPago)
+    {
+        var response = await _http.PostAsJsonAsync($"api/turnos/{id}/cobrar", new { MedioPago = medioPago });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            throw new Exception(error); // Lanzamos el error para atajarlo en la UI
+        }
+        return true;
+    }
 }

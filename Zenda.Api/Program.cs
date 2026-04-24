@@ -11,6 +11,7 @@ using Zenda.API.Services;
 using Zenda.Application.Services;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
+using Zenda.Core.Sevices;
 using Zenda.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,6 +77,7 @@ builder.Services.AddScoped<ITurnosService, TurnosService>();
 builder.Services.AddScoped<IServicioService, ServicioService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<ICajaService, CajaService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 #endregion
 
