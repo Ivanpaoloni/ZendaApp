@@ -94,8 +94,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "https://localhost:7258",
-            "https://app.zenda-app.com.ar",
-            "https://zenda-app.com.ar"
+            "https://app.zendy.com.ar",
+            "https://zendy.com.ar"
         ).AllowAnyMethod().AllowAnyHeader();
     });
 });

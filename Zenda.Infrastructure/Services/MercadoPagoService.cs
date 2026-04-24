@@ -30,14 +30,13 @@ public class MercadoPagoService : IMercadoPagoService
     }
     public async Task<string> GenerarLinkDePagoAsync(Guid negocioId, Guid planId, string nombrePlan, decimal precio)
     {
-        // ... (Este método queda EXACTAMENTE IGUAL, está perfecto) ...
         var request = new PreferenceRequest
         {
             Items = new List<PreferenceItemRequest>
             {
                 new PreferenceItemRequest
                 {
-                    Title = $"Suscripción ZendaApp - Plan {nombrePlan}",
+                    Title = $"Suscripción Zendy - Plan {nombrePlan}",
                     Quantity = 1,
                     CurrencyId = "ARS",
                     UnitPrice = precio,
@@ -46,9 +45,9 @@ public class MercadoPagoService : IMercadoPagoService
             ExternalReference = $"{negocioId}|{planId}",
             BackUrls = new PreferenceBackUrlsRequest
             {
-                Success = "https://app.zenda-app.com.ar/configuracion/plan?pago=exitoso",
-                Failure = "https://app.zenda-app.com.ar/configuracion/plan?pago=fallido",
-                Pending = "https://app.zenda-app.com.ar/configuracion/plan?pago=pendiente"
+                Success = "https://app.zendy.com.ar/configuracion/plan?pago=exitoso",
+                Failure = "https://app.zendy.com.ar/configuracion/plan?pago=fallido",
+                Pending = "https://app.zendy.com.ar/configuracion/plan?pago=pendiente"
             },
             AutoReturn = "approved"
         };

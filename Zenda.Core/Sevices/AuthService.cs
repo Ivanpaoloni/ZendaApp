@@ -256,7 +256,7 @@ public class AuthService : IAuthService
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
         // CORRECCIÓN: Usamos _config en lugar de _configuration
-        var frontendUrl = _config["FrontendUrl"] ?? "https://app.zenda-app.com.ar";
+        var frontendUrl = _config["FrontendUrl"] ?? "https://app.zendy.com.ar";
         var resetLink = $"{frontendUrl}/restablecer-contrasena?email={request.Email}&token={encodedToken}";
 
         await _emailService.EnviarRecuperacionClaveAsync(request.Email, resetLink);

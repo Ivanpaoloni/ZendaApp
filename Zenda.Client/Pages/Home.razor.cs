@@ -39,7 +39,7 @@ public partial class Home : ComponentBase
     protected string iconoBotonCopiar = "content_copy";
     protected string linkReserva = "";
     protected string nombreUsuario = "Admin";
-    protected string nombreNegocio = "ZendaApp";
+    protected string nombreNegocio = "Zendy";
     protected string ocupacion = "0%";
 
     protected DashboardResumenDto dashboardResumen = default!;

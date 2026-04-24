@@ -6,8 +6,8 @@ namespace Zenda.Infrastructure.Services;
 public class ResendEmailService : IEmailService
 {
     private readonly IResend _resend;
-    private readonly string _fromEmail = "turnos@zenda-app.com.ar"; // Tu mail de salida
-    private readonly string _adminEmail = "ivanpaoloni@gmail.com"; // 👈 PONÉ TU MAIL ACÁ
+    private readonly string _fromEmail = "no-reply@zendy.com.ar";
+    private readonly string _adminEmail = "ivanpaoloni@gmail.com";
 
     public ResendEmailService(IResend resend)
     {
@@ -19,11 +19,11 @@ public class ResendEmailService : IEmailService
     string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId,
     string servicioNombre, string profesionalNombre, string sedeNombre, string sedeDireccion)
     {
-        var baseUrl = "https://app.zenda-app.com.ar";
+        var baseUrl = "https://app.zendy.com.ar";
 
         var message = new EmailMessage
         {
-            From = $"Zenda App <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { emailDestino },
             Subject = $"✅ Turno confirmado en {nombreNegocio}",
             HtmlBody = $@"
@@ -51,7 +51,7 @@ public class ResendEmailService : IEmailService
             
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        Notificación automática de <strong>Zenda App</strong>
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
@@ -64,7 +64,7 @@ public class ResendEmailService : IEmailService
     {
         var message = new EmailMessage
         {
-            From = $"Zenda App <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { emailDestino },
             Subject = $"⏰ Recordatorio: Tu turno en {nombreNegocio} es en breve",
             HtmlBody = $@"
@@ -78,7 +78,7 @@ public class ResendEmailService : IEmailService
                     </div>
 
                     <div style='text-align: center; margin: 30px 0;'>
-                        <a href='https://app.zenda-app.com.ar/gestionar-turno?id={turnoId}' style='background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>
+                        <a href='https://app.zendy.com.ar/gestionar-turno?id={turnoId}' style='background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;'>
                             Gestionar o Cancelar Turno
                         </a>
                     </div>
@@ -86,7 +86,7 @@ public class ResendEmailService : IEmailService
                     <p style='font-size: 14px; color: #555;'>Si necesitás cancelar o modificar tu turno, por favor hacelo lo antes posible usando el botón de arriba.</p>
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        Reservas gestionadas de forma inteligente con <strong>Zenda App</strong>
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
@@ -100,13 +100,13 @@ public class ResendEmailService : IEmailService
     {
         var message = new EmailMessage
         {
-            From = $"Equipo Zenda <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { emailDestino },
-            Subject = $"🚀 ¡Bienvenido a Zenda, {nombreUsuario}! Activá tu cuenta",
+            Subject = $"🚀 ¡Bienvenido a Zendy, {nombreUsuario}! Activá tu cuenta",
             HtmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
                     <h2 style='color: #166534; margin-top: 0;'>¡Bienvenido a bordo! 🚀</h2>
-                    <p>Hola <strong>{nombreUsuario}</strong>, estamos muy felices de que hayas elegido Zenda para llevar la gestión de <strong>{nombreNegocio}</strong> al siguiente nivel.</p>
+                    <p>Hola <strong>{nombreUsuario}</strong>, estamos muy felices de que hayas elegido Zendy para llevar la gestión de <strong>{nombreNegocio}</strong> al siguiente nivel.</p>
                     
                     <div style='background-color: #f7faf6; padding: 20px; border-radius: 8px; margin: 25px 0; border: 1px solid #dcfce7; text-align: center;'>
                         <p style='margin: 0 0 15px 0; font-size: 15px; color: #166534;'><strong>Para proteger tu cuenta y habilitar todas las funciones, necesitamos que confirmes tu correo electrónico.</strong></p>
@@ -122,7 +122,7 @@ public class ResendEmailService : IEmailService
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        <strong>Zenda App</strong> - Creciendo junto a tu negocio
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
@@ -164,11 +164,11 @@ public class ResendEmailService : IEmailService
     // 5. CONFIRMACIÓN DE CANCELACIÓN
     public async Task<bool> EnviarCancelacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurnoLocal, string negocioSlug)
     {
-        var baseUrl = "https://app.zenda-app.com.ar"; // Cambiar por localhost en dev
+        var baseUrl = "https://app.zendy.com.ar";
 
         var message = new EmailMessage
         {
-            From = $"Zenda App <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { emailDestino },
             Subject = $"🚫 Turno cancelado en {nombreNegocio}",
             HtmlBody = $@"
@@ -191,7 +191,7 @@ public class ResendEmailService : IEmailService
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        Notificación automática de <strong>Zenda App</strong>
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
@@ -203,14 +203,14 @@ public class ResendEmailService : IEmailService
     {
         var message = new EmailMessage
         {
-            From = $"Seguridad Zenda <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { emailDestino },
-            Subject = $"🔒 Zenda: Verificá tu correo electrónico",
+            Subject = $"🔒 Zendy: Verificá tu correo electrónico",
             HtmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
                     <h2 style='color: #166534; margin-top: 0;'>Verificación de cuenta</h2>
                     <p>Hola <strong>{nombreUsuario}</strong>,</p>
-                    <p>Recibimos una solicitud para verificar tu dirección de correo electrónico en Zenda App. Por favor, hacé clic en el botón de abajo para confirmar que este correo te pertenece.</p>
+                    <p>Recibimos una solicitud para verificar tu dirección de correo electrónico en Zendy. Por favor, hacé clic en el botón de abajo para confirmar que este correo te pertenece.</p>
                     
                     <div style='text-align: center; margin: 35px 0;'>
                         <a href='{confirmLink}' style='background-color: #166534; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);'>
@@ -218,12 +218,12 @@ public class ResendEmailService : IEmailService
                         </a>
                     </div>
 
-                    <p style='font-size: 14px; color: #555;'>Si no solicitaste esto o no tenés una cuenta en Zenda, podés ignorar este mensaje.</p>
+                    <p style='font-size: 14px; color: #555;'>Si no solicitaste esto o no tenés una cuenta en Zendy, podés ignorar este mensaje.</p>
                     <p style='font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 20px;'>Link alternativo: <br>{confirmLink}</p>
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        <strong>Zenda App</strong>
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
@@ -235,14 +235,14 @@ public class ResendEmailService : IEmailService
     {
         var message = new EmailMessage
         {
-            From = $"Seguridad Zenda <{_fromEmail}>",
+            From = $"Zendy <{_fromEmail}>",
             To = { email },
-            Subject = "🔒 Zenda: Recuperá tu contraseña",
+            Subject = "🔒 Zendy: Recuperá tu contraseña",
             HtmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
                     <h2 style='color: #166534; margin-top: 0; text-align: center;'>Recuperá tu acceso</h2>
                     <p>Hola,</p>
-                    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en Zenda. Hacé clic en el botón de abajo para crear una nueva.</p>
+                    <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en Zendy. Hacé clic en el botón de abajo para crear una nueva.</p>
                     
                     <div style='text-align: center; margin: 35px 0;'>
                         <a href='{resetLink}' style='background-color: #166534; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 101, 52, 0.2);'>
@@ -255,8 +255,7 @@ public class ResendEmailService : IEmailService
                     
                     <hr style='border: none; border-top: 1px solid #eaeaea; margin: 20px 0;' />
                     <p style='font-size: 12px; color: #9ca3af; text-align: center; margin-bottom: 0;'>
-                        El enlace expira en 24 horas.<br>
-                        <strong>Zenda App</strong>
+                        Notificación automática de <strong>Zendy</strong>
                     </p>
                 </div>"
         };
