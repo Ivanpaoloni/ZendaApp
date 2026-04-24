@@ -168,54 +168,79 @@
     @* ========================================== *@
     @* BARRA INFERIOR (Solo visible en Celulares) *@
     @* ========================================== *@
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-t border-surface-container-high pb-safe">
-        <div class="flex justify-around items-center h-16">
-            <NavLink href="" Match="NavLinkMatch.All" class="nav-mobile">
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 pb-safe">
+
+        @* MENÚ DESPLEGABLE "MÁS" (Fondo oscuro + Lista) *@
+        @if (mostrarMenuMovil)
+        {
+            @* Backdrop para cerrar al hacer clic afuera *@
+            <div class="fixed inset-0 bg-black/20 backdrop-blur-sm -z-10" @onclick="CerrarMenuMovil"></div>
+
+            @* Lista de opciones flotante *@
+            <div class="absolute bottom-[72px] right-4 left-4 bg-white rounded-3xl p-2 shadow-xl border border-surface-container-high animate-in slide-in-from-bottom-4 fade-in duration-200">
+                <AuthorizeView>
+                    <Authorized>
+                        <NavLink href="clientes" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">groups</span>
+                            <span>Clientes</span>
+                        </NavLink>
+
+                        <NavLink href="prestadores" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">content_cut</span>
+                            <span>Equipo</span>
+                        </NavLink>
+
+                        <NavLink href="sedes" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">location_on</span>
+                            <span>Sedes</span>
+                        </NavLink>
+
+                        <NavLink href="servicios" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+                            <span>Servicios</span>
+                        </NavLink>
+                    </Authorized>
+                    <NotAuthorized>
+                        <NavLink href="reserva" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">add_circle</span>
+                            <span>Reservar</span>
+                        </NavLink>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        }
+
+        @* BARRA PRINCIPAL FLOTANTE (Estilo Isla) *@
+        <div class="mx-3 mb-3 bg-white/90 backdrop-blur-lg border border-surface-container-high rounded-[2rem] shadow-lg flex justify-around items-center h-16 px-2 relative z-10">
+
+            <NavLink href="" Match="NavLinkMatch.All" class="nav-mobile" @onclick="CerrarMenuMovil">
                 <span class="material-symbols-outlined text-[24px]">dashboard</span>
                 <span class="text-[10px] font-bold">Inicio</span>
             </NavLink>
 
             <AuthorizeView>
                 <Authorized>
-                    <NavLink href="prestadores" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">content_cut</span>
-                        <span class="text-[10px] font-bold">Equipo</span>
-                    </NavLink>
-
-                    <NavLink href="turnos" class="nav-mobile">
+                    <NavLink href="turnos" class="nav-mobile" @onclick="CerrarMenuMovil">
                         <span class="material-symbols-outlined text-[24px]">calendar_month</span>
                         <span class="text-[10px] font-bold">Agenda</span>
                     </NavLink>
 
-                    <NavLink href="clientes" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">groups</span>
-                        <span class="text-[10px] font-bold">Clientes</span>
-                    </NavLink>
-
-                    <NavLink href="sedes" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">location_on</span>
-                        <span class="text-[10px] font-bold">Sedes</span>
-                    </NavLink>
-
-                    <NavLink href="servicios" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">inventory_2</span>
-                        <span class="text-[10px] font-bold">Servicios</span>
-                    </NavLink>
-
-                    <NavLink href="caja" class="nav-mobile">
+                    <NavLink href="caja" class="nav-mobile" @onclick="CerrarMenuMovil">
                         <span class="material-symbols-outlined text-[24px]">point_of_sale</span>
                         <span class="text-[10px] font-bold">Caja</span>
                     </NavLink>
                 </Authorized>
-                <NotAuthorized>
-                    <NavLink href="reserva" class="nav-mobile">
-                        <span class="material-symbols-outlined text-[24px]">add_circle</span>
-                        <span class="text-[10px] font-bold">Reservar</span>
-                    </NavLink>
-                </NotAuthorized>
             </AuthorizeView>
+
+            @* BOTÓN "MÁS" *@
+            <button @onclick="ToggleMenuMovil" class="flex flex-col items-center justify-center gap-[0.25rem] w-full h-full transition-colors @(mostrarMenuMovil ? "text-primary" : "text-[#9ca3af]")">
+                <span class="material-symbols-outlined text-[24px]">more_horiz</span>
+                <span class="text-[10px] font-bold">Más</span>
+            </button>
+
         </div>
     </nav>
+
 </div>
 <SupportWidget />
 
@@ -270,6 +295,7 @@
 @code {
     private bool reenviandoEmail = false;
     private bool refrescando = false;
+    private bool mostrarMenuMovil = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -391,5 +417,15 @@
             refrescando = false;
             StateHasChanged();
         }
+    }
+
+    private void ToggleMenuMovil()
+    {
+        mostrarMenuMovil = !mostrarMenuMovil;
+    }
+
+    private void CerrarMenuMovil()
+    {
+        mostrarMenuMovil = false;
     }
 }
