@@ -117,8 +117,8 @@ namespace Zenda.Infrastructure
                 new PlanSuscripcion
                 {
                     Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                    Nombre = "Business",
-                    Slug = "business",
+                    Nombre = "Pro",
+                    Slug = "pro",
                     MaxSedes = 2,
                     MaxProfesionales = 5,
                     HabilitaRecordatoriosHangfire = true
@@ -126,8 +126,8 @@ namespace Zenda.Infrastructure
                 new PlanSuscripcion
                 {
                     Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
-                    Nombre = "Pro",
-                    Slug = "pro",
+                    Nombre = "Business",
+                    Slug = "business",
                     MaxSedes = 10,
                     MaxProfesionales = 50,
                     HabilitaRecordatoriosHangfire = true
