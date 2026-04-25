@@ -5,5 +5,6 @@ namespace Zenda.Core.Interfaces;
 public interface IClienteService
 {
     Task<IEnumerable<ClienteReadDto>> GetAllAsync();
-    Task<IEnumerable<TurnoReadDto>> GetHistorialTurnosAsync(Guid clienteId);
+    Task<IEnumerable<TurnoReadDto>> GetHistorialTurnosAsync(Guid clienteId); 
+    Task<byte[]> GenerarReporteExcelAsync();
 }

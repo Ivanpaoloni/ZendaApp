@@ -21,4 +21,15 @@ public class ClienteClient
     {
         return await _http.GetFromJsonAsync<List<TurnoReadDto>>($"api/clientes/{clienteId}/turnos") ?? new();
     }
+    public async Task<Stream?> GetExcelStreamAsync()
+    {
+        var response = await _http.GetAsync("api/clientes/exportar");
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadAsStreamAsync();
+        }
+
+        return null;
+    }
 }

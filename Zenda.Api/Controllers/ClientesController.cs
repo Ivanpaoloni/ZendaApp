@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using ClosedXML.Excel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
@@ -40,5 +41,15 @@ public class ClientesController : ControllerBase
         {
             return BadRequest(ex.Message);
         }
+    }
+
+    [HttpGet("exportar")]
+    public async Task<IActionResult> ExportarClientes()
+    {
+        var excelBytes = await _clienteService.GenerarReporteExcelAsync();
+
+        return File(excelBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Clientes_{DateTime.Now:yyyyMMdd}.xlsx");
     }
 }
