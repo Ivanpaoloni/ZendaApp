@@ -5,160 +5,196 @@
 
 <PageTitle>Reportes y Métricas - Zenda</PageTitle>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-    <h2 class="text-2xl font-bold text-primary tracking-tight">Métricas del Negocio</h2>
+<div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 relative">
 
-    <div class="flex flex-wrap items-center gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-surface-container-high shadow-sm">
-        <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaInicio" />
-        <span class="text-on-surface-variant font-bold">-</span>
-        <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaFin" />
+    @* 1. ENCABEZADO *@
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Métricas</h1>
+            <p class="text-on-surface-variant text-sm">Análisis del rendimiento y facturación de tu negocio.</p>
+        </div>
 
-        <button class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-sm" @onclick="CargarDatos">
-            <span class="material-symbols-outlined text-[18px]">search</span> Filtrar
-        </button>
+        @* CONTENEDOR DE ACCIONES (Filtros y Excel) *@
+        <div class="flex flex-wrap items-center gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-surface-container-high shadow-sm">
+            <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaInicio" />
+            <span class="text-on-surface-variant font-bold">-</span>
+            <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaFin" />
 
-        @* BOTÓN DE EXPORTAR EXCEL (Estilo Cliente) *@
-        @if (Metricas != null)
-        {
-            <button @onclick="ExportarExcel" disabled="@exportando"
-                    class="flex items-center justify-center gap-2 px-4 py-2 bg-white text-green-700 border border-surface-container-high rounded-xl font-bold hover:bg-green-50 hover:border-green-200 transition-all disabled:opacity-50 shadow-sm group ml-auto md:ml-0">
-                @if (exportando)
-                {
-                    <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-700"></div>
-                    <span class="text-sm hidden sm:inline text-on-surface-variant">Generando...</span>
-                }
-                else
-                {
-                    <svg class="w-4 h-4 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="8" y1="13" x2="16" y2="13"></line>
-                        <line x1="8" y1="17" x2="16" y2="17"></line>
-                        <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                    <span class="text-sm hidden sm:inline">Exportar</span>
-                }
+            <button class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-sm" @onclick="CargarDatos">
+                <span class="material-symbols-outlined text-[18px]">search</span> Filtrar
             </button>
-        }
+
+            @* BOTÓN DE EXPORTAR EXCEL (Estilo Cliente) *@
+            @if (Metricas != null)
+            {
+                <button @onclick="ExportarExcel" disabled="@exportando"
+                        class="flex items-center justify-center gap-2 px-4 py-2 bg-white text-green-700 border border-surface-container-high rounded-xl font-bold hover:bg-green-50 hover:border-green-200 transition-all disabled:opacity-50 shadow-sm group ml-auto md:ml-0">
+                    @if (exportando)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-700"></div>
+                        <span class="text-sm hidden sm:inline text-on-surface-variant">Generando...</span>
+                    }
+                    else
+                    {
+                        <svg class="w-4 h-4 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="8" y1="13" x2="16" y2="13"></line>
+                            <line x1="8" y1="17" x2="16" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <span class="text-sm hidden sm:inline">Exportar</span>
+                    }
+                </button>
+            }
+        </div>
     </div>
+    @if (Cargando)
+    {
+        <div class="flex justify-center items-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+    }
+    else if (Metricas != null)
+    {
+        @* 2. KPI CARDS (Exactas al Home) *@
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+
+            @* Card: Ingresos *@
+            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                <div class="mb-4">
+                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Ingresos Totales</h6>
+                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Periodo seleccionado</p>
+                </div>
+                <div>
+                    <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                        $@Metricas.IngresosTotales.ToString("N0")
+                    </p>
+                    <div class="flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
+                        <span class="material-symbols-outlined text-[14px] mr-1">payments</span>
+                        FACTURADO
+                    </div>
+                </div>
+            </div>
+
+            @* Card: Ticket Promedio *@
+            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-green-600/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                <div class="mb-4">
+                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-green-600 transition-colors">Ticket Promedio</h6>
+                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Venta por cliente</p>
+                </div>
+                <div>
+                    <p class="text-4xl font-headline font-black text-green-600 mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                        $@Metricas.TicketPromedio.ToString("N0")
+                    </p>
+                    <div class="flex items-center text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
+                        <span class="material-symbols-outlined text-[14px] mr-1">analytics</span>
+                        PROMEDIO
+                    </div>
+                </div>
+            </div>
+
+            @* Card: Completados *@
+            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                <div class="mb-4">
+                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Completados</h6>
+                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Turnos atendidos</p>
+                </div>
+                <div>
+                    <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                        @Metricas.TurnosCompletados
+                    </p>
+                    <div class="flex items-center text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-lg w-fit">
+                        <span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
+                        SERVICIOS
+                    </div>
+                </div>
+            </div>
+
+            @* Card: Cancelados *@
+            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-error/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                <div class="mb-4">
+                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-error transition-colors">Cancelados</h6>
+                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Citas no realizadas</p>
+                </div>
+                <div>
+                    <p class="text-4xl font-headline font-black text-error mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                        @Metricas.TurnosCancelados
+                    </p>
+                    <div class="flex items-center text-[10px] font-bold text-error bg-error/5 px-2 py-0.5 rounded-lg w-fit">
+                        <span class="material-symbols-outlined text-[14px] mr-1">event_busy</span>
+                        BAJAS
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* 3. SECCIONES DE DETALLE (Ranking Profesionales y Servicios) *@
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-200">
+
+            <div class="space-y-4">
+                <h2 class="text-2xl font-headline font-bold text-primary px-2">Facturación por Equipo</h2>
+                <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
+                    @if (!Metricas.IngresosPorPrestador.Any())
+                    {
+                        <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
+                    }
+                    @foreach (var p in Metricas.IngresosPorPrestador)
+                    {
+                        var max = Metricas.IngresosPorPrestador.Max(x => x.Valor);
+                        var pct = max > 0 ? (p.Valor / max) * 100 : 0;
+
+                        <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
+                            <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-headline font-black text-xl transition-all group-hover:bg-primary group-hover:text-white shadow-sm">
+                                @(p.Etiqueta.FirstOrDefault())
+                            </div>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-end mb-2">
+                                    <span class="font-bold text-primary">@p.Etiqueta</span>
+                                    <span class="font-black text-primary">$@p.Valor.ToString("N0")</span>
+                                </div>
+                                <div class="w-full bg-surface-container-low h-2 rounded-full overflow-hidden shadow-inner">
+                                    <div class="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style="width: @pct.ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h2 class="text-2xl font-headline font-bold text-primary px-2">Servicios más solicitados</h2>
+                <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
+                    @if (!Metricas.TopServicios.Any())
+                    {
+                        <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
+                    }
+                    @foreach (var s in Metricas.TopServicios)
+                    {
+                        var maxS = Metricas.TopServicios.Max(x => x.Valor);
+                        var pctS = maxS > 0 ? (s.Valor / maxS) * 100 : 0;
+
+                        <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
+                            <div class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-sm">
+                                <span class="material-symbols-outlined text-[24px]">content_cut</span>
+                            </div>
+                            <div class="flex-grow">
+                                <div class="flex justify-between items-end mb-2">
+                                    <span class="font-bold text-primary">@s.Etiqueta</span>
+                                    <span class="font-black text-orange-600">@s.Valor</span>
+                                </div>
+                                <div class="w-full bg-orange-50 h-2 rounded-full overflow-hidden shadow-inner">
+                                    <div class="bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: @pctS.ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+        </div>
+    }
 </div>
-
-@if (Cargando)
-{
-    <div class="flex flex-col items-center justify-center py-20">
-        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
-        <p class="text-on-surface-variant font-medium text-sm animate-pulse">Calculando métricas en tiempo real...</p>
-    </div>
-}
-else if (Metricas != null)
-{
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-        <div class="bg-primary text-white rounded-[2rem] p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-            <div class="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined text-[100px]">payments</span>
-            </div>
-            <h6 class="text-[10px] uppercase tracking-widest font-bold opacity-80 mb-2 relative z-10">Ingresos Totales</h6>
-            <h3 class="text-3xl md:text-4xl font-black truncate relative z-10">$@Metricas.IngresosTotales.ToString("N0")</h3>
-        </div>
-
-        <div class="bg-[#059669] text-white rounded-[2rem] p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-            <div class="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined text-[100px]">receipt_long</span>
-            </div>
-            <h6 class="text-[10px] uppercase tracking-widest font-bold opacity-80 mb-2 relative z-10">Ticket Promedio</h6>
-            <h3 class="text-3xl md:text-4xl font-black truncate relative z-10">$@Metricas.TicketPromedio.ToString("N0")</h3>
-        </div>
-
-        <div class="bg-[#0284c7] text-white rounded-[2rem] p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-            <div class="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined text-[100px]">check_circle</span>
-            </div>
-            <h6 class="text-[10px] uppercase tracking-widest font-bold opacity-80 mb-2 relative z-10">Turnos Completados</h6>
-            <h3 class="text-3xl md:text-4xl font-black truncate relative z-10">@Metricas.TurnosCompletados</h3>
-        </div>
-
-        <div class="bg-[#f59e0b] text-white rounded-[2rem] p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
-            <div class="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
-                <span class="material-symbols-outlined text-[100px]">event_busy</span>
-            </div>
-            <h6 class="text-[10px] uppercase tracking-widest font-bold opacity-80 mb-2 relative z-10">Turnos Cancelados</h6>
-            <h3 class="text-3xl md:text-4xl font-black truncate relative z-10">@Metricas.TurnosCancelados</h3>
-            <small class="text-xs opacity-90 mt-1 relative z-10 font-medium">Reservas dadas de baja en el periodo</small>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <div class="bg-white/80 backdrop-blur-xl border border-surface-container-high rounded-[2rem] p-6 shadow-sm flex flex-col">
-            <div class="flex items-center gap-2 mb-6">
-                <span class="material-symbols-outlined text-primary text-[24px]">inventory_2</span>
-                <h5 class="text-lg font-bold text-primary mb-0">Servicios más solicitados</h5>
-            </div>
-
-            <div class="flex-1">
-                @if (!Metricas.TopServicios.Any())
-                {
-                    <div class="h-full flex flex-col items-center justify-center text-on-surface-variant opacity-60">
-                        <span class="material-symbols-outlined text-[40px] mb-2">query_stats</span>
-                        <p class="text-sm font-medium">No hay datos en este periodo.</p>
-                    </div>
-                }
-                else
-                {
-                    var maxServicios = Metricas.TopServicios.Max(x => x.Valor);
-                    foreach (var item in Metricas.TopServicios)
-                    {
-                        var porcentaje = maxServicios > 0 ? (item.Valor / maxServicios) * 100 : 0;
-                        <div class="mb-4">
-                            <div class="flex justify-between items-end mb-1 text-sm">
-                                <span class="font-bold text-gray-700">@item.Etiqueta</span>
-                                <span class="font-black text-primary">@item.Valor</span>
-                            </div>
-                            <div class="w-full bg-surface-container-high rounded-full h-2.5 overflow-hidden">
-                                <div class="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style="width: @porcentaje.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        </div>
-
-        <div class="bg-white/80 backdrop-blur-xl border border-surface-container-high rounded-[2rem] p-6 shadow-sm flex flex-col">
-            <div class="flex items-center gap-2 mb-6">
-                <span class="material-symbols-outlined text-[#059669] text-[24px]">content_cut</span>
-                <h5 class="text-lg font-bold text-primary mb-0">Facturación por Profesional</h5>
-            </div>
-
-            <div class="flex-1">
-                @if (!Metricas.IngresosPorPrestador.Any())
-                {
-                    <div class="h-full flex flex-col items-center justify-center text-on-surface-variant opacity-60">
-                        <span class="material-symbols-outlined text-[40px] mb-2">query_stats</span>
-                        <p class="text-sm font-medium">No hay datos en este periodo.</p>
-                    </div>
-                }
-                else
-                {
-                    var maxIngreso = Metricas.IngresosPorPrestador.Max(x => x.Valor);
-                    foreach (var item in Metricas.IngresosPorPrestador)
-                    {
-                        var porcentaje = maxIngreso > 0 ? (item.Valor / maxIngreso) * 100 : 0;
-                        <div class="mb-4">
-                            <div class="flex justify-between items-end mb-1 text-sm">
-                                <span class="font-bold text-gray-700">@item.Etiqueta</span>
-                                <span class="font-black text-[#059669]">$@item.Valor.ToString("N0")</span>
-                            </div>
-                            <div class="w-full bg-surface-container-high rounded-full h-2.5 overflow-hidden">
-                                <div class="bg-[#059669] h-full rounded-full transition-all duration-1000 ease-out" style="width: @porcentaje.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        </div>
-    </div>
-}
 
 @code {
     [Inject] private IJSRuntime JS { get; set; } = default!;
