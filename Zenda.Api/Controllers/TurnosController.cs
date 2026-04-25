@@ -118,7 +118,18 @@ public class TurnosController : ControllerBase
         }
     }
 
-    // Agrega esta clase auxiliar al final del archivo (fuera del controlador)
+    [Authorize]
+    [HttpGet("exportar")]
+    public async Task<IActionResult> ExportarTurnos([FromQuery] DateTime desde, [FromQuery] DateTime hasta)
+    {
+        var excelBytes = await _turnosService.GenerarReporteExcelAsync(desde, hasta);
+
+        return File(excelBytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
+    }
+
+
     public class CobrarTurnoRequest
     {
         public Zenda.Core.Enums.MedioPagoEnum MedioPago { get; set; }

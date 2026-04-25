@@ -1,5 +1,4 @@
-﻿using System.Net.Http;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 
@@ -9,7 +8,6 @@ public class TurnoClient : BaseClient
 {
     private readonly HttpClient _http;
     public TurnoClient(HttpClient http) => _http = http;
-
     public async Task<DisponibilidadFechaDto?> GetDisponibilidad(Guid? prestadorId, Guid sedeId, DateTime fecha, Guid servicioId)
     {
         var fechaStr = fecha.ToString("yyyy-MM-dd");
@@ -71,5 +69,20 @@ public class TurnoClient : BaseClient
             throw new Exception(error); // Lanzamos el error para atajarlo en la UI
         }
         return true;
+    }
+    public async Task<Stream?> GetExcelStreamAsync(DateTime desde, DateTime hasta)
+    {
+        // Formateamos en ISO para evitar problemas en la URL
+        var desdeStr = desde.ToString("yyyy-MM-dd");
+        var hastaStr = hasta.ToString("yyyy-MM-dd");
+
+        var response = await _http.GetAsync($"api/turnos/exportar?desde={desdeStr}&hasta={hastaStr}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadAsStreamAsync();
+        }
+
+        return null;
     }
 }

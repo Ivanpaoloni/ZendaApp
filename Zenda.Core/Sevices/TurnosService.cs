@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
@@ -657,5 +658,84 @@ public class TurnosService : ITurnosService
 
         // Ejecutamos la transacción en base de datos
         return await _context.SaveChangesAsync() > 0;
+    }
+    public async Task<byte[]> GenerarReporteExcelAsync(DateTime desde, DateTime hasta)
+    {
+        var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) throw new UnauthorizedAccessException("No se encontró el negocio.");
+
+        // 1. SOLUCIÓN POSTGRESQL: Ajuste de Zonas Horarias
+        // Obtenemos la zona horaria de la sede (usamos la misma lógica que en tu GetTurnosByFechaAsync)
+        var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+        var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
+
+        // Nos aseguramos de que las fechas entrantes se traten como locales
+        var desdeLocal = DateTime.SpecifyKind(desde, DateTimeKind.Unspecified);
+        var hastaLocal = DateTime.SpecifyKind(hasta, DateTimeKind.Unspecified);
+
+        // Las convertimos a UTC estricto para que PostgreSQL no se queje
+        var desdeUtc = TimeZoneInfo.ConvertTimeToUtc(desdeLocal, zonaSede);
+        var hastaUtc = TimeZoneInfo.ConvertTimeToUtc(hastaLocal, zonaSede);
+
+        // 2. Buscamos los turnos usando las fechas UTC
+        var turnos = await _context.Turnos
+            .AsNoTracking()
+            .Include(t => t.Cliente)
+            .Include(t => t.Prestador)
+            .Include(t => t.Servicio)
+            .Where(t => t.NegocioId == negocioId &&
+                        t.FechaHoraInicioUtc >= desdeUtc && // <-- Usamos desdeUtc
+                        t.FechaHoraInicioUtc <= hastaUtc)   // <-- Usamos hastaUtc
+            .OrderBy(t => t.FechaHoraInicioUtc)
+            .ToListAsync();
+
+        // 2. Armamos el Excel
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Turnos");
+
+        // Estilos de la cabecera
+        var headerRow = worksheet.Row(1);
+        headerRow.Style.Font.Bold = true;
+        headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+        worksheet.Cell(1, 1).Value = "Fecha";
+        worksheet.Cell(1, 2).Value = "Hora";
+        worksheet.Cell(1, 3).Value = "Cliente";
+        worksheet.Cell(1, 4).Value = "Teléfono";
+        worksheet.Cell(1, 5).Value = "Profesional";
+        worksheet.Cell(1, 6).Value = "Servicio";
+        worksheet.Cell(1, 7).Value = "Estado";
+        worksheet.Cell(1, 8).Value = "Precio";
+
+        // Llenamos las filas
+        var currentRow = 2;
+        foreach (var t in turnos)
+        {
+            // Convertimos la hora UTC a la hora local para que el Excel tenga sentido
+            var fechaLocal = t.FechaHoraInicioUtc.ToLocalTime();
+
+            worksheet.Cell(currentRow, 1).Value = fechaLocal.ToString("dd/MM/yyyy");
+            worksheet.Cell(currentRow, 2).Value = fechaLocal.ToString("HH:mm");
+            worksheet.Cell(currentRow, 3).Value = t.Cliente.Nombre;
+            worksheet.Cell(currentRow, 4).Value = t.Cliente.Telefono ?? "";
+            worksheet.Cell(currentRow, 5).Value = t.Prestador?.Nombre ?? "";
+            worksheet.Cell(currentRow, 6).Value = t.Servicio.Nombre;
+            worksheet.Cell(currentRow, 7).Value = t.Estado.ToString();
+
+            // Asignamos el precio y le damos formato de moneda (opcional)
+            var cellPrecio = worksheet.Cell(currentRow, 8);
+            cellPrecio.Value = t.Servicio.Precio;
+            cellPrecio.Style.NumberFormat.Format = "$ #,##0.00";
+
+            currentRow++;
+        }
+
+        worksheet.Columns().AdjustToContents();
+
+        // 3. Devolvemos los bytes para liberar memoria
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
     }
 }

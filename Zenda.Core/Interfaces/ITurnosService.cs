@@ -14,5 +14,6 @@ public interface ITurnosService
     Task<bool> CancelarPorClienteAsync(Guid turnoId);
     Task<TurnoReadDto> GetResumenPublicoAsync(Guid turnoId);
     Task<DashboardResumenDto> GetDashboardResumenAsync();
-    Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, MedioPagoEnum medioPago);
+    Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, MedioPagoEnum medioPago); 
+    Task<byte[]> GenerarReporteExcelAsync(DateTime desde, DateTime hasta);
 }

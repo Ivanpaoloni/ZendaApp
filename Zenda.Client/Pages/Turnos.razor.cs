@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Zenda.Client.Services; // Ajusta este namespace según la ubicación de tu AppState y NegocioClient
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
@@ -10,6 +11,7 @@ public partial class Turnos : ComponentBase
     [Inject] private NegocioClient _negocioService { get; set; } = default!;
     [Inject] private AppState State { get; set; } = default!;
     [Inject] private TurnoClient TurnoService { get; set; } = default!;
+    [Inject] public IJSRuntime JS { get; set; } = default!;
 
     protected DateTime fechaFiltro = DateTime.Today;
     protected bool cargando = true;
@@ -40,7 +42,7 @@ public partial class Turnos : ComponentBase
     protected bool procesandoCobro = false;
     protected MedioPagoEnum medioPagoSeleccionado = MedioPagoEnum.Efectivo;
     protected string errorCobro = "";
-
+    private bool exportando = false;
     // Propiedad calculada que cuenta cuántos filtros están en uso
     protected int CantidadFiltrosActivos =>
         (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
@@ -78,7 +80,7 @@ public partial class Turnos : ComponentBase
         try
         {
             await CambiarEstado(turnoAEliminar.Id, EstadoTurnoEnum.Cancelado);
-            CerrarModal(); // Si tiene éxito, cierra el modal
+            CerrarModal();
         }
         finally
         {
@@ -86,8 +88,6 @@ public partial class Turnos : ComponentBase
             StateHasChanged();
         }
     }
-
-    // --- RESTO DE MÉTODOS EXISTENTES ---
 
     protected void ToggleFiltros() => mostrarFiltros = !mostrarFiltros;
 
@@ -203,8 +203,6 @@ public partial class Turnos : ComponentBase
                 if (turnoModificado != null)
                 {
                     turnoModificado.Estado = nuevoEstado;
-                    // No hace falta llamar a StateHasChanged acá si viene de ConfirmarCancelacion, 
-                    // porque el bloque finally de ese método ya lo hace, pero dejarlo no hace daño.
                     StateHasChanged();
                 }
             }
@@ -226,7 +224,7 @@ public partial class Turnos : ComponentBase
     protected void MostrarModalCobro(TurnoReadDto turno)
     {
         errorCobro = "";
-        medioPagoSeleccionado = MedioPagoEnum.Efectivo; // Reseteamos por defecto
+        medioPagoSeleccionado = MedioPagoEnum.Efectivo;
         turnoACobrar = turno;
         mostrarModalCobro = true;
     }
@@ -247,10 +245,8 @@ public partial class Turnos : ComponentBase
 
         try
         {
-            // 1. Llamamos a nuestra API
             await TurnoService.CobrarTurno(turnoACobrar.Id, medioPagoSeleccionado);
 
-            // 2. Si fue exitoso, actualizamos la vista localmente
             turnoACobrar.Estado = EstadoTurnoEnum.Completado;
             CerrarModalCobro();
         }
@@ -262,6 +258,38 @@ public partial class Turnos : ComponentBase
         {
             procesandoCobro = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task ExportarExcelMes()
+    {
+        exportando = true;
+        StateHasChanged();
+
+        try
+        {
+            // Calculamos el mes en base a la fecha que el usuario está mirando en pantalla
+            var primerDiaMes = new DateTime(fechaFiltro.Year, fechaFiltro.Month, 1);
+
+            // Calculamos el último día de ese mismo mes a las 23:59:59 para no perder turnos de última hora
+            var ultimoDiaMes = primerDiaMes.AddMonths(1).AddTicks(-1);
+
+            var stream = await TurnoService.GetExcelStreamAsync(primerDiaMes, ultimoDiaMes);
+            if (stream != null)
+            {
+                using var streamRef = new DotNetStreamReference(stream);
+
+                // Usamos el formato Zendy_YYYYMMDD_HHmm que me pediste antes
+                await JS.InvokeVoidAsync("downloadFileFromStream", $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx", streamRef);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exportando turnos: {ex.Message}");
+        }
+        finally
+        {
+            exportando = false;
         }
     }
 }
