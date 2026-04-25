@@ -68,6 +68,9 @@
                     <NavLink href="caja" class="nav-sidebar">
                         <span class="material-symbols-outlined text-[20px]">point_of_sale</span> Caja Diaria
                     </NavLink>
+                    <NavLink href="reportes" class="nav-sidebar">
+                        <span class="material-symbols-outlined text-[20px]">bar_chart</span> Reportes
+                    </NavLink>
                 </Authorized>
             </AuthorizeView>
         </nav>
@@ -198,6 +201,10 @@
                         <NavLink href="servicios" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
                             <span class="material-symbols-outlined text-[24px]">inventory_2</span>
                             <span>Servicios</span>
+                        </NavLink>
+                        <NavLink href="reportes" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                            <span class="material-symbols-outlined text-[24px]">bar_chart</span>
+                            <span>Reportes</span>
                         </NavLink>
                     </Authorized>
                     <NotAuthorized>
