@@ -11,6 +11,7 @@ using Zenda.API.Services;
 using Zenda.Application.Services;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
+using Zenda.Core.Services;
 using Zenda.Core.Sevices;
 using Zenda.Infrastructure;
 
@@ -79,6 +80,7 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<ICajaService, CajaService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
+builder.Services.AddScoped<IReporteService, ReporteService>();
 #endregion
 
 #region Health Checks

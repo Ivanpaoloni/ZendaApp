@@ -64,6 +64,10 @@ builder.Services.AddHttpClient<CajaClient>(client => client.BaseAddress = new Ur
     .AddHttpMessageHandler<AuthMessageHandler>()
     .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
 
+builder.Services.AddHttpClient<ReporteClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
+
 // 4. Configuración de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
