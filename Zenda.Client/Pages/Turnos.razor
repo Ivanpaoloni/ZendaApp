@@ -201,7 +201,7 @@
                     @* CABECERA DEL PROFESIONAL *@
                     <div class="bg-white p-3 rounded-2xl flex items-center justify-between border border-surface-container-high shadow-sm sticky top-0 z-10">
                         <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-black">
+                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
                                 @(grupo.Key.FirstOrDefault())
                             </div>
                             <span class="font-bold text-primary">@grupo.Key</span>
@@ -227,7 +227,7 @@
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex flex-col">
                                         <div class="flex gap-1.5 items-center">
-                                            <span class="font-black text-primary text-lg leading-none">@horaInicio.ToString("HH:mm")</span>
+                                            <span class="font-bold text-primary text-lg leading-none">@horaInicio.ToString("HH:mm")</span>
 
                                             @* Restaurado: Fondo suave para la duración, sin borde *@
                                             <span class="text-[9px] bg-surface-container-low px-1 py-0.5 rounded text-on-surface-variant font-bold leading-none">
@@ -236,7 +236,7 @@
                                         </div>
 
                                         @* Restaurado: Vuelve a usar tu extensión para los colores pastel de fondo *@
-                                        <span class="text-[9px] font-black uppercase tracking-tighter @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) mt-1 px-1 py-0.5 rounded-sm inline-block w-fit">
+                                        <span class="text-[9px] font-bold uppercase tracking-tighter @EstadoTurnoExtensions.ObtenerColorEstado(turno.Estado) mt-1 px-1 py-0.5 rounded-sm inline-block w-fit">
                                             @turno.Estado
                                         </span>
                                     </div>
