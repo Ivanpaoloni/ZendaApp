@@ -261,32 +261,57 @@
     </div>
 
     <div class="space-y-6">
-        <h2 class="text-2xl font-headline font-bold text-primary">Acciones Rápidas</h2>
+        <h2 class="text-2xl font-headline font-bold text-primary px-2">Atajos Rápidos</h2>
+        @* 1. EL LINK DE RESERVAS (Ahora más compacto para ahorrar espacio) *@
+        <div class="bg-primary p-5 rounded-[2.5rem] editorial-shadow text-on-primary relative overflow-hidden group">
+            <div class="absolute -right-6 -top-6 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
-        <div class="bg-primary p-8 rounded-4xl editorial-shadow text-on-primary relative overflow-hidden group">
-            <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
-
-            <h3 class="font-headline font-bold text-xl mb-2 relative z-10">Tu link de reservas</h3>
-            <p class="text-sm text-on-primary/80 mb-6 relative z-10">Compartí este enlace en tu Instagram o WhatsApp para recibir turnos.</p>
-
-            <button @onclick="CopiarLink" class="w-full py-4 bg-white text-primary rounded-2xl font-headline font-bold text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2 relative z-10">
-                <span class="material-symbols-outlined text-sm">@iconoBotonCopiar</span>
-                @textoBotonCopiar
-            </button>
+            <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-headline font-bold text-base text-white">Link de Reservas</h3>
+                    <p class="text-[10px] text-white/70 tracking-tight">Compartí este enlace en tu Instagram o WhatsApp para recibir turnos.</p>
+                </div>
+                <button @onclick="CopiarLink" class="px-4 py-2 bg-white text-primary rounded-xl font-bold text-[11px] hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2 whitespace-nowrap">
+                    <span class="material-symbols-outlined text-sm">@iconoBotonCopiar</span>
+                    @textoBotonCopiar
+                </button>
+            </div>
         </div>
 
-        <button @onclick='() => Nav.NavigateTo("/sedes")' class="w-full bg-white p-6 rounded-3xl editorial-shadow flex items-center justify-between group hover:border-primary/20 border border-transparent transition-all">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-surface-container-low text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
-                    <span class="material-symbols-outlined">storefront</span>
+        @* 2. FILA DE 3 BOTONES BREVES (QUICK ACTIONS) *@
+        <div class="flex items-center gap-3">
+
+            @* Nuevo Turno *@
+            <button @onclick='() => Nav.NavigateTo("/turnos")'
+                    class="flex-1 flex flex-col items-center justify-center p-4 bg-white rounded-3xl editorial-shadow border border-transparent hover:border-primary/20 transition-all group hover:-translate-y-1">
+                <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2 group-hover:bg-primary group-hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[20px]">add_circle</span>
                 </div>
-                <div class="text-left">
-                    <h4 class="font-headline font-bold text-primary">Gestionar Sedes</h4>
-                    <p class="text-xs text-on-surface-variant">Configurar sucursales</p>
+                <span class="text-[10px] font-black uppercase tracking-tighter text-primary">Turno</span>
+            </button>
+
+            @* Caja *@
+            <button @onclick='() => Nav.NavigateTo("/caja")'
+                    class="flex-1 flex flex-col items-center justify-center p-4 bg-white rounded-3xl editorial-shadow border border-transparent hover:border-orange-200 transition-all group hover:-translate-y-1">
+                <div class="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center mb-2 group-hover:bg-orange-600 group-hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[20px]">point_of_sale</span>
                 </div>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">chevron_right</span>
-        </button>
+                <span class="text-[10px] font-black uppercase tracking-tighter text-primary">Caja</span>
+            </button>
+
+            @* Métricas *@
+            <button @onclick='() => Nav.NavigateTo("/reportes")'
+                    class="flex-1 flex flex-col items-center justify-center p-4 bg-white rounded-3xl editorial-shadow border border-transparent hover:border-purple-200 transition-all group hover:-translate-y-1">
+                <div class="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-2 group-hover:bg-purple-600 group-hover:text-white transition-all">
+                    <span class="material-symbols-outlined text-[20px]">bar_chart</span>
+                </div>
+                <span class="text-[10px] font-black uppercase tracking-tighter text-primary">Métricas</span>
+            </button>
+
+        </div>
+
+        @* 3. ESPACIO EXTRA (OPCIONAL) *@
+        @* Acá podrías poner un mini resumen de la caja o el día más fuerte si te queda mucho aire abajo *@
     </div>
 
 </div>
