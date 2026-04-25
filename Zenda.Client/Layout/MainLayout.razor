@@ -68,9 +68,22 @@
                     <NavLink href="caja" class="nav-sidebar">
                         <span class="material-symbols-outlined text-[20px]">point_of_sale</span> Caja Diaria
                     </NavLink>
-                    <NavLink href="reportes" class="nav-sidebar">
-                        <span class="material-symbols-outlined text-[20px]">bar_chart</span> Reportes
-                    </NavLink>
+                    @if (State.CurrentNegocio?.PlanNombre == "Single")
+                    {
+                        <NavLink href="reportes" class="nav-sidebar opacity-60 grayscale hover:opacity-100 hover:grayscale-0 group relative flex justify-between">
+                            <div class="flex items-center gap-[0.75rem]">
+                                <span class="material-symbols-outlined text-[20px]">bar_chart</span>
+                                <span>Reportes</span>
+                            </div>
+                            <span class="material-symbols-outlined text-[14px] text-orange-500 group-hover:scale-110 transition-transform">lock</span>
+                        </NavLink>
+                    }
+                    else
+                    {
+                        <NavLink href="reportes" class="nav-sidebar">
+                            <span class="material-symbols-outlined text-[20px]">bar_chart</span> Reportes
+                        </NavLink>
+                    }
                 </Authorized>
             </AuthorizeView>
         </nav>
@@ -202,10 +215,23 @@
                             <span class="material-symbols-outlined text-[24px]">inventory_2</span>
                             <span>Servicios</span>
                         </NavLink>
-                        <NavLink href="reportes" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
-                            <span class="material-symbols-outlined text-[24px]">bar_chart</span>
-                            <span>Reportes</span>
-                        </NavLink>
+                        @if (State.CurrentNegocio?.PlanNombre == "Single")
+                        {
+                            <NavLink href="reportes" @onclick="CerrarMenuMovil" class="flex items-center justify-between p-4 rounded-2xl hover:bg-surface-container-low transition-all text-primary font-bold opacity-60 grayscale group">
+                                <div class="flex items-center gap-3">
+                                    <span class="material-symbols-outlined text-[24px]">bar_chart</span>
+                                    <span>Reportes</span>
+                                </div>
+                                <span class="material-symbols-outlined text-[16px] text-orange-500">lock</span>
+                            </NavLink>
+                        }
+                        else
+                        {
+                            <NavLink href="reportes" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">
+                                <span class="material-symbols-outlined text-[24px]">bar_chart</span>
+                                <span>Reportes</span>
+                            </NavLink>
+                        }
                     </Authorized>
                     <NotAuthorized>
                         <NavLink href="reserva" @onclick="CerrarMenuMovil" class="flex items-center gap-3 p-4 rounded-2xl hover:bg-surface-container-low transition-colors text-primary font-bold">

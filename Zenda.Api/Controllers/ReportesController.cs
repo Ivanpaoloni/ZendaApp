@@ -10,34 +10,37 @@ namespace Zenda.Api.Controllers;
 public class ReportesController : ControllerBase
 {
     private readonly IReporteService _reporteService;
-
-    public ReportesController(IReporteService reporteService)
+    private readonly INegocioService _negocioService;
+    private readonly ITenantService _tenantService;
+    public ReportesController(IReporteService reporteService, INegocioService negocioService, ITenantService tenantService)
     {
         _reporteService = reporteService;
+        _negocioService = negocioService;
+        _tenantService = tenantService;
     }
 
     [HttpGet("dashboard")]
     public async Task<IActionResult> GetDashboardMetrics([FromQuery] DateTime inicio, [FromQuery] DateTime fin)
     {
-        // Validación básica de fechas
-        if (inicio > fin)
-            return BadRequest("La fecha de inicio no puede ser mayor a la fecha de fin.");
+        // 1. Obtenemos el ID del Tenant (Guid?)
+        var negocioId = _tenantService.GetCurrentTenantId();
 
-        // Aseguramos que las fechas se traten como UTC en la base de datos
-        var inicioUtc = DateTime.SpecifyKind(inicio, DateTimeKind.Utc);
-
-        // Extendemos el fin al último segundo del día para abarcar el día completo
-        var finUtc = DateTime.SpecifyKind(fin, DateTimeKind.Utc).Date.AddDays(1).AddTicks(-1);
-
-        try
+        // 2. Validamos si el ID es nulo antes de continuar
+        if (!negocioId.HasValue)
         {
-            var metricas = await _reporteService.GetDashboardMetricsAsync(inicioUtc, finUtc);
-            return Ok(metricas);
+            return Unauthorized("No se pudo identificar el negocio del usuario.");
         }
-        catch (UnauthorizedAccessException ex)
+
+        // 3. Pasamos negocioId.Value (que ya es Guid) al servicio
+        var negocio = await _negocioService.GetByIdAsync(negocioId.Value);
+
+        if (negocio?.PlanNombre == "Single")
         {
-            return Unauthorized(new { message = ex.Message });
+            return StatusCode(403, "Módulo no disponible para el plan actual.");
         }
+
+        var metricas = await _reporteService.GetDashboardMetricsAsync(inicio, fin);
+        return Ok(metricas);
     }
 
     [HttpGet("exportar")]

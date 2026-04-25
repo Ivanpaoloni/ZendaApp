@@ -2,214 +2,270 @@
 @using Zenda.Core.DTOs
 @using Zenda.Client.Services
 @inject ReporteClient ReporteClient
+@inject AppState State
+@inject NavigationManager Nav
 
-<PageTitle>Reportes y Métricas - Zenda</PageTitle>
+<PageTitle>Métricas - Zenda</PageTitle>
 
-<div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 relative">
+@if (State.CurrentNegocio?.PlanNombre == "Single")
+{
+    <div class="min-h-[70vh] flex flex-col items-center justify-center">
 
-    @* 1. ENCABEZADO *@
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-            <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Métricas</h1>
-            <p class="text-on-surface-variant text-sm">Análisis del rendimiento y facturación de tu negocio.</p>
-        </div>
+        <UpgradeModal Visible="mostrarModalUpgrade"
+                      VisibleChanged="OnModalCerrado"
+                      Titulo="Métricas Avanzadas"
+                      Icono="bar_chart">
 
-        @* CONTENEDOR DE ACCIONES (Filtros y Excel) *@
-        <div class="flex flex-wrap items-center gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-surface-container-high shadow-sm">
-            <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaInicio" />
-            <span class="text-on-surface-variant font-bold">-</span>
-            <input type="date" class="bg-transparent px-3 py-2 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all border border-transparent hover:border-surface-container-high" @bind="FechaFin" />
+            <p class="mb-6">El análisis de datos está reservado para los planes <strong>Pro</strong> y <strong>Business</strong>. Conocé a fondo tu facturación, el rendimiento de tu equipo y exportá todo a Excel para escalar tu negocio.</p>
 
-            <button class="bg-primary text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-sm" @onclick="CargarDatos">
-                <span class="material-symbols-outlined text-[18px]">search</span> Filtrar
+            @* ESTE BOTÓN LLAMA AL MÉTODO *@
+            <button @onclick="IrAFacturacion" class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 transition-all flex justify-center items-center gap-2">
+                <span class="material-symbols-outlined">arrow_forward</span>
+                Ir a ver Planes
             </button>
 
-            @* BOTÓN DE EXPORTAR EXCEL (Estilo Cliente) *@
-            @if (Metricas != null)
-            {
-                <button @onclick="ExportarExcel" disabled="@exportando"
-                        class="flex items-center justify-center gap-2 px-4 py-2 bg-white text-green-700 border border-surface-container-high rounded-xl font-bold hover:bg-green-50 hover:border-green-200 transition-all disabled:opacity-50 shadow-sm group ml-auto md:ml-0">
-                    @if (exportando)
-                    {
-                        <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-700"></div>
-                        <span class="text-sm hidden sm:inline text-on-surface-variant">Generando...</span>
-                    }
-                    else
-                    {
-                        <svg class="w-4 h-4 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="8" y1="13" x2="16" y2="13"></line>
-                            <line x1="8" y1="17" x2="16" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
-                        </svg>
-                        <span class="text-sm hidden sm:inline">Exportar</span>
-                    }
-                </button>
-            }
-        </div>
+        </UpgradeModal>
+
     </div>
-    @if (Cargando)
-    {
-        <div class="flex justify-center items-center py-20">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-    }
-    else if (Metricas != null)
-    {
-        @* 2. KPI CARDS (Exactas al Home) *@
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+}
+else
+{
+    <div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 relative">
 
-            @* Card: Ingresos *@
-            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
-                <div class="mb-4">
-                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Ingresos Totales</h6>
-                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Periodo seleccionado</p>
-                </div>
-                <div>
-                    <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
-                        $@Metricas.IngresosTotales.ToString("N0")
-                    </p>
-                    <div class="flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
-                        <span class="material-symbols-outlined text-[14px] mr-1">payments</span>
-                        FACTURADO
-                    </div>
-                </div>
+        @* 1. ENCABEZADO (Estilo Home/Clientes) *@
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
+                    Métricas
+                </h1>
+                <p class="text-on-surface-variant mt-2 font-body">Análisis del rendimiento y facturación de tu negocio.</p>
             </div>
 
-            @* Card: Ticket Promedio *@
-            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-green-600/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
-                <div class="mb-4">
-                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-green-600 transition-colors">Ticket Promedio</h6>
-                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Venta por cliente</p>
-                </div>
-                <div>
-                    <p class="text-4xl font-headline font-black text-green-600 mb-2 group-hover:scale-[1.02] origin-left transition-transform">
-                        $@Metricas.TicketPromedio.ToString("N0")
-                    </p>
-                    <div class="flex items-center text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
-                        <span class="material-symbols-outlined text-[14px] mr-1">analytics</span>
-                        PROMEDIO
-                    </div>
-                </div>
-            </div>
+            @* CONTENEDOR DE ACCIONES (Filtros y Excel) *@
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
 
-            @* Card: Completados *@
-            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
-                <div class="mb-4">
-                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Completados</h6>
-                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Turnos atendidos</p>
-                </div>
-                <div>
-                    <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
-                        @Metricas.TurnosCompletados
-                    </p>
-                    <div class="flex items-center text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-lg w-fit">
-                        <span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
-                        SERVICIOS
-                    </div>
-                </div>
-            </div>
+                @* Botón de Excel *@
+                @if (Metricas != null)
+                {
+                    <button @onclick="ExportarExcel" disabled="@exportando"
+                            class="flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-green-700 border border-surface-container-high rounded-3xl font-bold hover:bg-green-50 transition-all disabled:opacity-50 shadow-sm editorial-shadow group shrink-0">
+                        @if (exportando)
+                        {
+                            <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-700"></div>
+                        }
+                        else
+                        {
+                            <svg class="w-5 h-5 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span class="text-sm hidden sm:inline">Exportar</span>
+                        }
+                    </button>
+                }
 
-            @* Card: Cancelados *@
-            <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-error/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
-                <div class="mb-4">
-                    <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-error transition-colors">Cancelados</h6>
-                    <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Citas no realizadas</p>
-                </div>
-                <div>
-                    <p class="text-4xl font-headline font-black text-error mb-2 group-hover:scale-[1.02] origin-left transition-transform">
-                        @Metricas.TurnosCancelados
-                    </p>
-                    <div class="flex items-center text-[10px] font-bold text-error bg-error/5 px-2 py-0.5 rounded-lg w-fit">
-                        <span class="material-symbols-outlined text-[14px] mr-1">event_busy</span>
-                        BAJAS
-                    </div>
+                @* Filtro de Fecha (Estilo Dashboard) *@
+                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-3xl editorial-shadow border border-surface-container-high">
+                    <input type="date" class="bg-transparent py-1.5 text-sm font-bold text-primary outline-none" @bind="FechaInicio" />
+                    <span class="text-on-surface-variant font-black">/</span>
+                    <input type="date" class="bg-transparent py-1.5 text-sm font-bold text-primary outline-none" @bind="FechaFin" />
+                    <button @onclick="CargarDatos" class="ml-2 w-10 h-10 bg-primary text-white rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg shadow-primary/20">
+                        <span class="material-symbols-outlined text-[20px]">search</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        @* 3. SECCIONES DE DETALLE (Ranking Profesionales y Servicios) *@
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-200">
+        @if (Cargando)
+        {
+            <div class="flex justify-center items-center py-20">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }
+        else if (Metricas != null)
+        {
+            @* 2. KPI CARDS (Estilo Home con hover e iconos) *@
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-100">
 
-            <div class="space-y-4">
-                <h2 class="text-2xl font-headline font-bold text-primary px-2">Facturación por Equipo</h2>
-                <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
-                    @if (!Metricas.IngresosPorPrestador.Any())
-                    {
-                        <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
-                    }
-                    @foreach (var p in Metricas.IngresosPorPrestador)
-                    {
-                        var max = Metricas.IngresosPorPrestador.Max(x => x.Valor);
-                        var pct = max > 0 ? (p.Valor / max) * 100 : 0;
-
-                        <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
-                            <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-headline font-black text-xl transition-all group-hover:bg-primary group-hover:text-white shadow-sm">
-                                @(p.Etiqueta.FirstOrDefault())
-                            </div>
-                            <div class="flex-grow">
-                                <div class="flex justify-between items-end mb-2">
-                                    <span class="font-bold text-primary">@p.Etiqueta</span>
-                                    <span class="font-black text-primary">$@p.Valor.ToString("N0")</span>
-                                </div>
-                                <div class="w-full bg-surface-container-low h-2 rounded-full overflow-hidden shadow-inner">
-                                    <div class="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style="width: @pct.ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                                </div>
-                            </div>
+                @* Ingresos *@
+                <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                    <div class="mb-4">
+                        <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Ingresos Totales</h6>
+                        <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Periodo seleccionado</p>
+                    </div>
+                    <div>
+                        <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                            $@Metricas.IngresosTotales.ToString("N0")
+                        </p>
+                        <div class="flex items-center text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
+                            <span class="material-symbols-outlined text-[14px] mr-1">payments</span>
+                            FACTURADO
                         </div>
-                    }
+                    </div>
                 </div>
-            </div>
 
-            <div class="space-y-4">
-                <h2 class="text-2xl font-headline font-bold text-primary px-2">Servicios más solicitados</h2>
-                <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
-                    @if (!Metricas.TopServicios.Any())
-                    {
-                        <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
-                    }
-                    @foreach (var s in Metricas.TopServicios)
-                    {
-                        var maxS = Metricas.TopServicios.Max(x => x.Valor);
-                        var pctS = maxS > 0 ? (s.Valor / maxS) * 100 : 0;
-
-                        <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
-                            <div class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-sm">
-                                <span class="material-symbols-outlined text-[24px]">content_cut</span>
-                            </div>
-                            <div class="flex-grow">
-                                <div class="flex justify-between items-end mb-2">
-                                    <span class="font-bold text-primary">@s.Etiqueta</span>
-                                    <span class="font-black text-orange-600">@s.Valor</span>
-                                </div>
-                                <div class="w-full bg-orange-50 h-2 rounded-full overflow-hidden shadow-inner">
-                                    <div class="bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: @pctS.ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
-                                </div>
-                            </div>
+                @* Ticket Promedio *@
+                <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-green-600/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                    <div class="mb-4">
+                        <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-green-600 transition-colors">Ticket Promedio</h6>
+                        <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Venta por cliente</p>
+                    </div>
+                    <div>
+                        <p class="text-4xl font-headline font-black text-green-600 mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                            $@Metricas.TicketPromedio.ToString("N0")
+                        </p>
+                        <div class="flex items-center text-[10px] font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded-lg w-fit">
+                            <span class="material-symbols-outlined text-[14px] mr-1">analytics</span>
+                            PROMEDIO
                         </div>
-                    }
+                    </div>
+                </div>
+
+                @* Completados *@
+                <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-primary/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                    <div class="mb-4">
+                        <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">Completados</h6>
+                        <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Turnos atendidos</p>
+                    </div>
+                    <div>
+                        <p class="text-4xl font-headline font-black text-primary mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                            @Metricas.TurnosCompletados
+                        </p>
+                        <div class="flex items-center text-[10px] font-bold text-primary bg-primary/5 px-2 py-0.5 rounded-lg w-fit">
+                            <span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
+                            SERVICIOS
+                        </div>
+                    </div>
+                </div>
+
+                @* Cancelados *@
+                <div class="bg-white p-7 rounded-3xl editorial-shadow border border-transparent hover:border-error/30 transition-all flex flex-col justify-between group relative hover:-translate-y-1">
+                    <div class="mb-4">
+                        <h6 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant group-hover:text-error transition-colors">Cancelados</h6>
+                        <p class="text-[10px] font-medium text-on-surface-variant/70 uppercase">Citas no realizadas</p>
+                    </div>
+                    <div>
+                        <p class="text-4xl font-headline font-black text-error mb-2 group-hover:scale-[1.02] origin-left transition-transform">
+                            @Metricas.TurnosCancelados
+                        </p>
+                        <div class="flex items-center text-[10px] font-bold text-error bg-error/5 px-2 py-0.5 rounded-lg w-fit">
+                            <span class="material-symbols-outlined text-[14px] mr-1">event_busy</span>
+                            BAJAS
+                        </div>
+                    </div>
                 </div>
             </div>
 
-        </div>
-    }
-</div>
+            @* 3. RANKINGS (Estilo "Próximos en llegar") *@
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-200">
+
+                @* Por Equipo *@
+                <div class="space-y-4">
+                    <h2 class="text-2xl font-headline font-bold text-primary px-2">Facturación por Equipo</h2>
+                    <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
+                        @if (!Metricas.IngresosPorPrestador.Any())
+                        {
+                            <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
+                        }
+                        @foreach (var p in Metricas.IngresosPorPrestador)
+                        {
+                            var max = Metricas.IngresosPorPrestador.Max(x => x.Valor);
+                            var pct = max > 0 ? (p.Valor / max) * 100 : 0;
+
+                            <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
+                                <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-headline font-black text-xl transition-all group-hover:bg-primary group-hover:text-white shadow-sm">
+                                    @(p.Etiqueta.FirstOrDefault())
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-end mb-2">
+                                        <span class="font-bold text-primary">@p.Etiqueta</span>
+                                        <span class="font-black text-primary">$@p.Valor.ToString("N0")</span>
+                                    </div>
+                                    <div class="w-full bg-surface-container-low h-2 rounded-full overflow-hidden shadow-inner">
+                                        <div class="bg-primary h-full rounded-full transition-all duration-1000 ease-out" style="width: @($"{pct.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%")"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Por Servicio *@
+                <div class="space-y-4">
+                    <h2 class="text-2xl font-headline font-bold text-primary px-2">Servicios más solicitados</h2>
+                    <div class="bg-white rounded-4xl editorial-shadow p-2 border border-surface-container-high">
+                        @if (!Metricas.TopServicios.Any())
+                        {
+                            <div class="p-12 text-center text-on-surface-variant opacity-50 italic">Sin datos registrados.</div>
+                        }
+                        @foreach (var s in Metricas.TopServicios)
+                        {
+                            var maxS = Metricas.TopServicios.Max(x => x.Valor);
+                            var pctS = maxS > 0 ? (s.Valor / maxS) * 100 : 0;
+
+                            <div class="p-5 flex items-center gap-5 border-b border-surface-container last:border-b-0 group">
+                                <div class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-all shadow-sm">
+                                    <span class="material-symbols-outlined text-[24px]">content_cut</span>
+                                </div>
+                                <div class="flex-grow">
+                                    <div class="flex justify-between items-end mb-2">
+                                        <span class="font-bold text-primary">@s.Etiqueta</span>
+                                        <span class="font-black text-orange-600">@s.Valor</span>
+                                    </div>
+                                    <div class="w-full bg-orange-50 h-2 rounded-full overflow-hidden shadow-inner">
+                                        <div class="bg-orange-500 h-full rounded-full transition-all duration-1000 ease-out" style="width: @($"{pctS.ToString("0", System.Globalization.CultureInfo.InvariantCulture)}%")"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </div>
+        }
+    </div>
+}
 
 @code {
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
-    private DateTime FechaInicio { get; set; } = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1); // Por defecto inicio de mes
+    private DateTime FechaInicio { get; set; } = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateTime FechaFin { get; set; } = DateTime.Today;
     private bool Cargando { get; set; } = true;
     private bool exportando = false;
     private ReporteDashboardDto? Metricas;
+    private bool mostrarModalUpgrade = false;
 
     protected override async Task OnInitializedAsync()
     {
-        await CargarDatos();
+        // Si el plan es Single, activamos el modal y cortamos la carga
+        if (State.CurrentNegocio?.PlanNombre == "Single")
+        {
+            mostrarModalUpgrade = true;
+            Cargando = false;
+        }
+        else
+        {
+            await CargarDatos();
+        }
     }
 
+    // MÉTODO QUE MANEJA EL CIERRE DEL MODAL
+    private void OnModalCerrado(bool val)
+    {
+        mostrarModalUpgrade = val;
+
+        // Si el modal se cierra (val es false), lo mandamos al inicio
+        if (!val)
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+    private void IrAFacturacion()
+    {
+        mostrarModalUpgrade = false;
+        Nav.NavigateTo("/configuracion?tab=facturacion");
+    }
     private async Task CargarDatos()
     {
         Cargando = true;
@@ -229,6 +285,8 @@
 
     private async Task ExportarExcel()
     {
+        if (exportando) return;
+
         exportando = true;
         StateHasChanged();
 
@@ -238,7 +296,6 @@
             if (stream != null)
             {
                 using var streamRef = new DotNetStreamReference(stream);
-                // Tu script global se encarga de la magia
                 await JS.InvokeVoidAsync("downloadFileFromStream", $"Metricas_Zendy_{DateTime.Now:yyyyMMdd}.xlsx", streamRef);
             }
         }
