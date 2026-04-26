@@ -14,16 +14,18 @@ public class ReporteClient
 
     public async Task<ReporteDashboardDto?> GetDashboardMetricsAsync(DateTime inicio, DateTime fin)
     {
-        // Pasamos las fechas en formato ISO 8601 (O) para que el backend las parsee correctamente
-        var url = $"api/reportes/dashboard?inicio={inicio:O}&fin={fin:O}";
+        // Forzamos el formato yyyy-MM-dd para evitar problemas de Model Binding en el Backend
+        var url = $"api/reportes/dashboard?inicio={inicio:yyyy-MM-dd}&fin={fin:yyyy-MM-dd}";
+
         return await _httpClient.GetFromJsonAsync<ReporteDashboardDto>(url);
     }
 
     public async Task<Stream?> GetExcelStreamAsync(DateTime inicio, DateTime fin)
     {
-        var url = $"api/reportes/exportar?inicio={inicio:O}&fin={fin:O}";
-        var response = await _httpClient.GetAsync(url);
+        // Aplicamos la misma limpieza acá por las dudas
+        var url = $"api/reportes/exportar?inicio={inicio:yyyy-MM-dd}&fin={fin:yyyy-MM-dd}";
 
+        var response = await _httpClient.GetAsync(url);
         if (response.IsSuccessStatusCode)
         {
             return await response.Content.ReadAsStreamAsync();

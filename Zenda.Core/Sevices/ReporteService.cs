@@ -22,13 +22,19 @@ public class ReporteService : IReporteService
         var negocioId = _tenantService.GetCurrentTenantId();
         if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
 
+        // =========================================================
+        // 🔥 FIX: Re-asegurar que las fechas son UTC (Doble protección)
+        // =========================================================
+        var inicio = DateTime.SpecifyKind(fechaInicioUtc, DateTimeKind.Utc);
+        var fin = DateTime.SpecifyKind(fechaFinUtc, DateTimeKind.Utc);
+
         var reporte = new ReporteDashboardDto();
 
         // ==========================================
         // 1. MÉTRICAS DE TURNOS (Directo a SQL)
         // ==========================================
         var turnosAgrupados = await _context.Turnos
-            .Where(t => t.FechaHoraInicioUtc >= fechaInicioUtc && t.FechaHoraInicioUtc <= fechaFinUtc)
+            .Where(t => t.FechaHoraInicioUtc >= inicio && t.FechaHoraInicioUtc <= fin) // Usar las nuevas variables
             .GroupBy(t => t.Estado)
             .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
             .ToListAsync();
@@ -41,13 +47,11 @@ public class ReporteService : IReporteService
         // ==========================================
         // 2. MÉTRICAS DE CAJA Y FINANZAS
         // ==========================================
-        // Filtramos solo los ingresos del periodo. Utilizamos CreatedAtUtc heredado de BaseEntity.
         var queryIngresos = _context.MovimientosCaja
-            .Where(m => m.CreatedAtUtc >= fechaInicioUtc
-                     && m.CreatedAtUtc <= fechaFinUtc
+            .Where(m => m.CreatedAtUtc >= inicio // Usar las nuevas variables
+                     && m.CreatedAtUtc <= fin
                      && m.Tipo == TipoMovimientoEnum.Ingreso);
 
-        // Proyectamos a un objeto anónimo muy liviano. EF Core hará los JOINs necesarios sin cargar entidades completas.
         var datosIngresos = await queryIngresos
             .Select(m => new
             {
