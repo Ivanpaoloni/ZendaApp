@@ -130,11 +130,38 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
+
+        // 1. Validamos que el usuario exista y la clave sea correcta
         if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
         {
             return new AuthResponseDto { Success = false, Message = "Credenciales inválidas." };
         }
 
+        // ==========================================
+        // 🔥 2. EL CANDADO: CHEQUEO DE SUSPENSIÓN
+        // ==========================================
+        if (user.NegocioId != null)
+        {
+            // Buscamos si el negocio está activo. Usamos Select para no cargar todo el objeto en memoria.
+            var negocioActivo = await _context.Negocios
+                .IgnoreQueryFilters()
+                .Where(n => n.Id == user.NegocioId)
+                .Select(n => n.IsActive)
+                .FirstOrDefaultAsync();
+
+            // Si dio false, lo rebotamos antes de darle el token
+            if (!negocioActivo)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Message = "Tu cuenta ha sido suspendida. Contactate con soporte."
+                };
+            }
+        }
+        // ==========================================
+
+        // 3. Si pasó todo, le damos el token
         var token = await GenerateJwtToken(user);
 
         return new AuthResponseDto
@@ -144,7 +171,6 @@ public class AuthService : IAuthService
             Token = token
         };
     }
-
     private async Task<string> GenerateJwtToken(ApplicationUser user)
     {
         // 1. Definimos los Claims (los datos que viajan dentro del token)

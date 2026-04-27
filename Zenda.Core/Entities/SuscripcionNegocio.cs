@@ -14,4 +14,5 @@ public class SuscripcionNegocio : BaseEntity
     public EstadoSuscripcionEnum Estado { get; set; } // Enum: Activa, Vencida, Cancelada, Pendiente
 
     public string? MercadoPagoPreapprovalId { get; set; } // Si aplica
+    public decimal? PrecioMensualPersonalizado { get; set; }
 }

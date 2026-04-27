@@ -8,7 +8,7 @@ public class HistorialPago : BaseEntity
     public decimal MontoCobrado { get; set; }
     public DateTime FechaPago { get; set; }
     public string MercadoPagoPaymentId { get; set; } = string.Empty;
-
-    // Podrías guardar un JSON con el response de MP por si necesitas debuggear
+    public string? MetodoPago { get; set; }
+    public string? ComprobanteUrl { get; set; }
     public string? DetalleRecibo { get; set; }
 }

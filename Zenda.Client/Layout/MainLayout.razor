@@ -338,14 +338,60 @@
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true && State.CurrentNegocio == null)
+
+            if (authState.User.Identity?.IsAuthenticated == true)
             {
-                State.CurrentNegocio = await NegocioService.GetPerfilAsync();
-                State.NotifyStateChanged();
+                // 🔥 BÚSQUEDA IMPLACABLE DEL ROL:
+                // Buscamos si la palabra "SuperAdmin" existe en CUALQUIER claim del token
+                var esSuperAdmin = authState.User.Claims.Any(c => c.Value == "SuperAdmin");
+
+                Console.WriteLine($"¿Es SuperAdmin?: {esSuperAdmin}");
+
+                if (esSuperAdmin)
+                {
+                    var rutaActual = Nav.ToBaseRelativePath(Nav.Uri);
+                    Console.WriteLine($"Ruta actual: '{rutaActual}'");
+
+                    // Si está en la raíz (Home), lo pateamos al panel de Admin
+                    if (string.IsNullOrEmpty(rutaActual))
+                    {
+                        Console.WriteLine("Redirigiendo a /admin...");
+                        Nav.NavigateTo("admin"); // Sin la barra inicial a veces funciona mejor
+                    }
+
+                    return; // Cortamos para que no busque el perfil de negocio
+                }
+
+                // Lógica normal para dueños de peluquerías
+                // 2. Lógica normal para dueños de peluquerías
+                if (State.CurrentNegocio == null)
+                {
+                    try
+                    {
+                        State.CurrentNegocio = await NegocioService.GetPerfilAsync();
+
+                        // Si por algún motivo devuelve null, también lo pateamos
+                        if (State.CurrentNegocio == null)
+                        {
+                            await ForzarCierreSesion();
+                            return;
+                        }
+
+                        State.NotifyStateChanged();
+                    }
+                    catch (Exception ex)
+                    {
+                        // 🔥 SI SALTA EL ERROR DE "CUENTA_SUSPENDIDA" O CUALQUIER 401
+                        Console.WriteLine($"Error de sesión: {ex.Message}");
+                        await ForzarCierreSesion();
+                        return;
+                    }
+                }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error en Layout: {ex.Message}");
         }
     }
 
@@ -460,5 +506,17 @@
     private void CerrarMenuMovil()
     {
         mostrarMenuMovil = false;
+    }
+
+    private async Task ForzarCierreSesion()
+    {
+        await LocalStorage.RemoveItemAsync("authToken"); // Borramos el token
+
+        if (AuthStateProvider is Zenda.Client.Auth.CustomAuthStateProvider customProvider)
+        {
+            customProvider.NotifyUserLogout();
+        }
+
+        Nav.NavigateTo("/login", forceLoad: true); // Lo pateamos al login
     }
 }

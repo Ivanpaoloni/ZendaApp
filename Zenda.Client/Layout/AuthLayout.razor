@@ -1,0 +1,36 @@
+﻿@inherits LayoutComponentBase
+@using Zenda.Client.Components
+
+<div class="min-h-screen bg-slate-50 flex flex-col relative font-body">
+
+    @* 🔥 HEADER MINIMALISTA (Branding + Escape) *@
+    <header class="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 max-w-7xl mx-auto w-full">
+        @* Logo de Zendy *@
+        <div class="flex items-center gap-2">
+            @* Si tenés un logo en imagen, cambialo por un <img src="..." /> *@
+            <div class="w-8 h-8 bg-primary text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md">
+                Z
+            </div>
+            <span class="text-xl font-bold text-primary tracking-tighter font-headline">
+                Zendy
+            </span>
+        </div>
+
+        @* Link de escape (opcional, apuntalo a tu landing page si tenés) *@
+        <a href="https://zendy.com.ar/" class="text-sm font-bold text-slate-400 hover:text-primary transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+            <span class="hidden sm:inline">Volver a la web</span>
+        </a>
+    </header>
+
+    @* FORMULARIO CENTRADO *@
+    <div class="flex-1 flex items-center justify-center py-20 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-md">
+            @Body
+        </div>
+    </div>
+
+    @* COMPONENTE GLOBAL DE SOPORTE *@
+    <SupportWidget />
+
+</div>

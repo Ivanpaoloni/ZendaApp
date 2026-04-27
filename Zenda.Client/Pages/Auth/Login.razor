@@ -1,5 +1,5 @@
 ﻿@page "/login"
-@layout EmptyLayout
+@layout AuthLayout
 @using Microsoft.AspNetCore.Components.Authorization
 @using Zenda.Application.DTOs.Auth
 @using Zenda.Client.Auth
@@ -8,7 +8,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
-<div class="max-w-md mx-auto mt-12 p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm">
+<div class="max-w-md mx-auto p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm">
     <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Bienvenido a Zendy</h2>
         <p class="text-on-surface-variant text-sm">Ingresá tus credenciales para gestionar tu negocio</p>
@@ -61,7 +61,7 @@
     <div class="mt-8 text-center">
         <p class="text-sm text-on-surface-variant">
             ¿Aún no tenés tu cuenta?
-            <NavLink href="register" class="text-primary font-bold hover:underline">Registrar mi negocio</NavLink>
+            <NavLink href="register" class="text-primary font-bold hover:underline">Creá tu cuenta gratis</NavLink>
         </p>
     </div>
 </div>

@@ -1,10 +1,10 @@
 ﻿@page "/olvide-contrasena"
-@layout EmptyLayout
+@layout AuthLayout
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using Zenda.Application.DTOs.Auth
 @inject HttpClient Http
 
-<div class="max-w-md mx-auto mt-16 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
+<div class="max-w-md mx-auto p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
     <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Recuperá tu acceso</h2>
         <p class="text-on-surface-variant text-sm px-4">Ingresá tu email y te enviaremos un enlace para crear una nueva contraseña.</p>

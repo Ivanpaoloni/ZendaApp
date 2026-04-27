@@ -1,5 +1,5 @@
 ﻿@page "/register"
-@layout EmptyLayout
+@layout AuthLayout
 @attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
 @using System.Timers
 @using Microsoft.AspNetCore.Components.Authorization
@@ -11,7 +11,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
-<div class="max-w-xl mx-auto mt-8 mb-12 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
+<div class="max-w-xl mx-auto mb-12 p-8 bg-white rounded-[2.5rem] border border-surface-container-high shadow-sm">
     <div class="text-center mb-8">
         <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Empezá con Zenda</h2>
         <p class="text-on-surface-variant text-sm px-4">Creá tu cuenta de administrador y configurá tu primer negocio en segundos.</p>
@@ -119,6 +119,13 @@
                 <span>Registrar mi negocio</span>
             }
         </button>
+        
+        <div class="mt-8 text-center">
+            <p class="text-sm text-on-surface-variant">
+                ¿Ya tenés una cuenta?
+                <NavLink href="login" class="text-primary font-bold hover:underline">Iniciá sesion acá</NavLink>
+            </p>
+        </div>
     </EditForm>
 </div>
 

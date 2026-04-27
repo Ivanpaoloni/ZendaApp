@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Zenda.Api.Data;
 using Zenda.Api.Middlewares;
 using Zenda.API.Services;
 using Zenda.Application.Services;
@@ -108,6 +109,21 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// ==========================================
+// SEMBRADO DE DATOS INICIALES (Usuario SuperAdmin yo)
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        await RoleSeeder.SeedSuperAdminAsync(services);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocurrió un error al sembrar el rol de SuperAdmin.");
+    }
+}
 // ==========================================
 // PIPELINE DE MIDDLEWARES (El orden importa)
 // ==========================================

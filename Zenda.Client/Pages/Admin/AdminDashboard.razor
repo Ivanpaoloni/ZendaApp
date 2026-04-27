@@ -1,0 +1,266 @@
+﻿@page "/admin"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Zenda.Core.DTOs.Admin
+@using Zenda.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject AdminClient AdminClient
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<PageTitle>Zendy Admin - Negocios</PageTitle>
+
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-white font-headline">Negocios Registrados</h1>
+        <p class="text-slate-400 mt-1">Gestión integral de clientes y suscripciones.</p>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2 flex items-center gap-3">
+        <span class="material-symbols-outlined text-slate-400">search</span>
+        <input type="text" placeholder="Buscar negocio..." @bind="filtroBusqueda" @bind:event="oninput"
+               class="bg-transparent border-none text-white focus:outline-none focus:ring-0 text-sm w-48 placeholder-slate-600" />
+    </div>
+</div>
+
+@if (Cargando)
+{
+    <div class="flex justify-center py-20">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+}
+else if (NegociosFiltrados == null || !NegociosFiltrados.Any())
+{
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center">
+        <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">sentiment_dissatisfied</span>
+        <h3 class="text-lg font-bold text-white">No se encontraron negocios</h3>
+        <p class="text-slate-400">Aún no hay clientes registrados o tu búsqueda no dio resultados.</p>
+    </div>
+}
+else
+{
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-950/50 border-b border-slate-800 text-xs uppercase tracking-widest text-slate-400 font-bold">
+                        <th class="p-5 font-medium">Negocio</th>
+                        <th class="p-5 font-medium">Plan</th>
+                        <th class="p-5 font-medium">Estado</th>
+                        <th class="p-5 font-medium">Vencimiento</th>
+                        <th class="p-5 font-medium text-right">Facturación</th>
+                        <th class="p-5 font-medium text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/50 text-sm">
+                    @foreach (var n in NegociosFiltrados)
+                    {
+                        <tr class="hover:bg-slate-800/50 transition-colors group">
+                            <td class="p-5 font-bold text-white flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-blue-500 text-xs">
+                                    @(n.NombreNegocio.FirstOrDefault())
+                                </div>
+                                @n.NombreNegocio
+                            </td>
+                            <td class="p-5">
+                                <span class="bg-slate-800 text-slate-300 px-3 py-1 rounded-lg text-xs font-bold border border-slate-700">
+                                    @n.PlanNombre
+                                </span>
+                            </td>
+                            <td class="p-5">
+                                @if (n.IsActive)
+                                {
+                                    <span class="text-emerald-400 flex items-center gap-1 text-xs font-bold bg-emerald-400/10 w-fit px-2 py-1 rounded-md">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Activo
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-red-400 flex items-center gap-1 text-xs font-bold bg-red-400/10 w-fit px-2 py-1 rounded-md">
+                                        <span class="w-2 h-2 rounded-full bg-red-400"></span> Suspendido
+                                    </span>
+                                }
+                            </td>
+                            <td class="p-5 text-slate-400">
+                                @n.FechaVencimiento.ToString("dd/MM/yyyy")
+                            </td>
+                            <td class="p-5 text-right font-mono text-emerald-400 font-bold">
+                                $@n.MontoMensual.ToString("N0")
+                            </td>
+                            <td class="p-5 text-center">
+                                <button @onclick="() => AbrirModal(n)" class="text-slate-500 hover:text-blue-400 transition-colors" title="Gestionar Cliente">
+                                    <span class="material-symbols-outlined">settings</span>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+@if (mostrarModal)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-6">Gestionar Cliente</h3>
+
+            @if (negocioEnEdicion != null)
+            {
+                <div class="space-y-5">
+                    @* Toggle Activo / Suspendido *@
+                    <div class="flex items-center justify-between bg-slate-800 p-4 rounded-xl">
+                        <div>
+                            <p class="text-white font-bold text-sm">Estado de la cuenta</p>
+                            <p class="text-slate-400 text-xs">Si se suspende, se cierra su sesión.</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" @bind="negocioEnEdicion.IsActive">
+                            <div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:bg-blue-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+
+                    @* Select de Plan *@
+                    <div class="bg-slate-800 p-4 rounded-xl">
+                        <label class="block text-slate-400 text-xs font-bold mb-2">Plan Suscripción</label>
+                        <select @bind="negocioEnEdicion.PlanSuscripcionId" class="bg-slate-900 border border-slate-700 text-white rounded-lg block w-full p-2.5 focus:border-blue-500 focus:ring-blue-500">
+                            @if (PlanesDisponibles != null)
+                            {
+                                @foreach (var plan in PlanesDisponibles)
+                                {
+                                    <option value="@plan.Id">@plan.Nombre</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    @* Fecha de Vencimiento *@
+                    <div class="bg-slate-800 p-4 rounded-xl">
+                        <label class="block text-slate-400 text-xs font-bold mb-2">Fecha de Vencimiento</label>
+                        <input type="date" @bind="negocioEnEdicion.FechaVencimiento" @bind:format="yyyy-MM-dd"
+                               class="bg-slate-900 border border-slate-700 text-white rounded-lg block w-full p-2.5 focus:border-blue-500 focus:ring-blue-500" />
+                    </div>
+
+                    @* Precio Personalizado *@
+                    <div class="bg-slate-800 p-4 rounded-xl">
+                        <label class="block text-slate-400 text-xs font-bold mb-2">Precio Mensual Personalizado</label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400">$</span>
+                            <input type="number" @bind="negocioEnEdicion.PrecioMensualPersonalizado" class="bg-transparent border-b border-slate-600 text-white focus:outline-none focus:border-blue-500 w-full p-1" placeholder="Ej: 5000 (Dejar vacío para tarifa normal)" />
+                        </div>
+                    </div>
+                </div>
+
+                @* Botones *@
+                <div class="flex gap-3 mt-8">
+                    <button @onclick="CerrarModal" class="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors">Cancelar</button>
+                    <button @onclick="GuardarCambios" disabled="@guardando" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
+                        @(guardando ? "Guardando..." : "Guardar Cambios")
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool Cargando = true;
+    private List<NegocioAdminListDto>? TodosLosNegocios;
+    private string filtroBusqueda = "";
+    private bool mostrarModal = false;
+    private bool guardando = false;
+
+    // Un DTO temporal para editar sin afectar la tabla hasta que se guarde
+    private AdminUpdateNegocioDto? negocioEnEdicion;
+    private Guid negocioIdEditando;
+    private NegocioAdminListDto? itemOriginal;
+    private List<PlanAdminDto>? PlanesDisponibles;
+
+
+    private IEnumerable<NegocioAdminListDto>? NegociosFiltrados =>
+        string.IsNullOrWhiteSpace(filtroBusqueda)
+        ? TodosLosNegocios
+        : TodosLosNegocios?.Where(n => n.NombreNegocio.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 🔥 Validación manual "a prueba de Blazor"
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var esSuperAdmin = authState.User.Claims.Any(c => c.Value == "SuperAdmin");
+
+            if (!esSuperAdmin)
+            {
+                // Si un cliente normal escribe /admin en la URL, lo pateamos a su panel
+                Nav.NavigateTo("/");
+                return;
+            }
+
+            // Si pasa la prueba, cargamos los datos
+            TodosLosNegocios = await AdminClient.GetNegociosAsync();
+            PlanesDisponibles = await AdminClient.GetPlanesAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error cargando admin: {ex.Message}");
+        }
+        finally
+        {
+            Cargando = false;
+        }
+    }
+    private void AbrirModal(NegocioAdminListDto n)
+    {
+        itemOriginal = n;
+        negocioIdEditando = n.NegocioId;
+
+        negocioEnEdicion = new AdminUpdateNegocioDto
+        {
+            IsActive = n.IsActive,
+            PrecioMensualPersonalizado = n.MontoMensual,
+            PlanSuscripcionId = n.PlanSuscripcionId, // Ahora sabe qué plan tiene
+            FechaVencimiento = n.FechaVencimiento
+        };
+
+        mostrarModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+        negocioEnEdicion = null;
+    }
+
+    private async Task GuardarCambios()
+    {
+        if (negocioEnEdicion == null || itemOriginal == null) return;
+
+        guardando = true;
+        try
+        {
+            // Opcional: Si el monto es 0, lo mandamos como null para que tome el precio de lista
+            if (negocioEnEdicion.PrecioMensualPersonalizado <= 0)
+                negocioEnEdicion.PrecioMensualPersonalizado = null;
+
+            var exito = await AdminClient.UpdateNegocioAsync(negocioIdEditando, negocioEnEdicion);
+
+            if (exito)
+            {
+                // Actualizamos la tabla visualmente sin tener que recargar la página
+                itemOriginal.IsActive = negocioEnEdicion.IsActive;
+                itemOriginal.MontoMensual = negocioEnEdicion.PrecioMensualPersonalizado ?? itemOriginal.MontoMensual; // Reflejaría el precio normal si es null, ideal recargar la lista
+
+                // Recargar toda la lista para estar 100% sincronizados
+                TodosLosNegocios = await AdminClient.GetNegociosAsync();
+
+                CerrarModal();
+            }
+        }
+        finally
+        {
+            guardando = false;
+        }
+    }
+}

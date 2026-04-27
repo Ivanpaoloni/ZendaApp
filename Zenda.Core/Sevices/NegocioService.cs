@@ -19,20 +19,26 @@ public class NegocioService : INegocioService
 
     public async Task<NegocioReadDto?> GetPerfilAsync()
     {
-        // 2. Le preguntamos al token "che, ¿de qué negocio es este usuario?"
         var tenantId = _tenantService.GetCurrentTenantId();
 
+        // 🔥 EL FIX: En lugar de tirar un throw, simplemente devolvemos null.
+        // Esto es mucho más seguro y evita que el backend explote.
         if (tenantId == null)
-            throw new UnauthorizedAccessException("El usuario no tiene un negocio asignado.");
+            return null;
 
-        // 3. Buscamos EXACTAMENTE ese ID en la base de datos
         var negocio = await _context.Negocios
             .Include(n => n.Sedes)
             .Include(n => n.PlanSuscripcion)
             .FirstOrDefaultAsync(n => n.Id == tenantId);
 
+        // Acá también, si no existe, devolvemos null en vez de explotar
         if (negocio == null)
-            throw new InvalidOperationException("El negocio del usuario no existe.");
+            return null;
+
+        if (!negocio.IsActive)
+        {
+            throw new UnauthorizedAccessException("CUENTA_SUSPENDIDA");
+        }
 
         var dto = _mapper.Map<NegocioReadDto>(negocio);
 
