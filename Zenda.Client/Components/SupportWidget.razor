@@ -32,17 +32,27 @@
             class="group relative flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all duration-300 editorial-shadow
                    @(isMenuOpen ? "bg-surface-container-high text-on-surface" : "bg-primary text-white")">
 
+        @if (!isMenuOpen)
+        {
+            <span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-25"></span>
+        }
+
         @if (isMenuOpen)
         {
-            <span class="material-symbols-outlined text-3xl transition-transform duration-300 rotate-90">close</span>
+            <span class="relative material-symbols-outlined text-3xl transition-transform duration-300 rotate-90">close</span>
         }
         else
         {
-            <span class="material-symbols-outlined text-3xl">support_agent</span>
+            <span class="relative material-symbols-outlined text-3xl">support_agent</span>
         }
     </button>
 </div>
-
+<style>
+    /* Opcional: Pulso más lento y elegante */
+    .animate-ping {
+        animation-duration: 2s;
+    }
+</style>
 @code {
     // Estado del componente
     private bool isMenuOpen = false;
