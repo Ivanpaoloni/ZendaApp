@@ -32,47 +32,64 @@ else
 {
     <div class="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20 relative">
 
-        @* 1. ENCABEZADO (Estilo Home/Clientes) *@
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        @* 1. ENCABEZADO (Estilo Normalizado con Turnos) *@
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+
+            @* Título y Subtítulo *@
             <div>
-                <h1 class="text-4xl md:text-5xl font-headline font-extrabold text-primary tracking-tight">
-                    Métricas
-                </h1>
-                <p class="text-on-surface-variant mt-2 font-body">Análisis del rendimiento y facturación de tu negocio.</p>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-3xl font-bold text-primary tracking-tighter font-headline">Métricas</h1>
+                </div>
+                <p class="text-on-surface-variant text-sm mt-1">Análisis del rendimiento y facturación de tu negocio.</p>
             </div>
 
             @* CONTENEDOR DE ACCIONES (Filtros y Excel) *@
-            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div class="flex flex-col xl:flex-row items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
 
-                @* Botón de Excel *@
+                @* Botón Exportar Excel (Idéntico a Turnos) *@
                 @if (Metricas != null)
                 {
                     <button @onclick="ExportarExcel" disabled="@exportando"
-                            class="flex items-center justify-center gap-2 px-6 py-3.5 bg-white text-green-700 border border-surface-container-high rounded-3xl font-bold hover:bg-green-50 transition-all disabled:opacity-50 shadow-sm editorial-shadow group shrink-0">
+                            class="flex items-center justify-center gap-2 w-full xl:w-auto px-4 py-4 bg-white text-green-700 border border-surface-container-high rounded-2xl font-bold hover:bg-green-50 hover:border-green-200 transition-all disabled:opacity-50 shrink-0 shadow-sm editorial-shadow group"
+                            title="Exportar métricas a Excel">
                         @if (exportando)
                         {
                             <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-green-700"></div>
                         }
                         else
                         {
-                            <svg class="w-5 h-5 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg class="w-5 h-5 text-green-600 group-hover:text-green-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="8" y1="13" x2="16" y2="13"></line>
+                                <line x1="8" y1="17" x2="16" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
                             </svg>
-                            <span class="text-sm hidden sm:inline">Exportar</span>
+                            <span class="text-sm capitalize">Exportar</span>
                         }
                     </button>
                 }
 
-                @* Filtro de Fecha (Estilo Dashboard) *@
-                <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-3xl editorial-shadow border border-surface-container-high">
-                    <input type="date" class="bg-transparent py-1.5 text-sm font-bold text-primary outline-none" @bind="FechaInicio" />
-                    <span class="text-on-surface-variant font-black">/</span>
-                    <input type="date" class="bg-transparent py-1.5 text-sm font-bold text-primary outline-none" @bind="FechaFin" />
-                    <button @onclick="CargarDatos" class="ml-2 w-10 h-10 bg-primary text-white rounded-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-lg shadow-primary/20">
-                        <span class="material-symbols-outlined text-[20px]">search</span>
+                @* Buscador de Fechas (Optimizado para Móvil y PC) *@
+                <div class="grid grid-cols-2 sm:flex sm:flex-row items-stretch sm:items-center gap-2 w-full xl:w-auto">
+
+                    @* Fecha Inicio *@
+                    <input type="date" @bind="FechaInicio"
+                           class="w-full p-4 bg-white rounded-2xl border border-surface-container-high shadow-sm font-headline text-[11px] sm:text-sm font-bold text-primary focus:ring-2 focus:ring-primary outline-none cursor-pointer" />
+
+                    @* Fecha Fin *@
+                    <input type="date" @bind="FechaFin"
+                           class="w-full p-4 bg-white rounded-2xl border border-surface-container-high shadow-sm font-headline text-[11px] sm:text-sm font-bold text-primary focus:ring-2 focus:ring-primary outline-none cursor-pointer" />
+
+                    @* Botón Buscar *@
+                    <button @onclick="CargarDatos" title="Buscar fechas"
+                            class="col-span-2 sm:col-span-1 w-full sm:w-auto p-4 bg-primary text-white rounded-2xl flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all shadow-md shrink-0">
+                        <span class="material-symbols-outlined text-[24px] leading-none">search</span>
+                        @* Este texto solo aparece en celulares para que el botón no quede como una línea finita y vacía *@
+                        <span class="ml-2 font-bold sm:hidden tracking-wide text-sm">Buscar</span>
                     </button>
                 </div>
+
             </div>
         </div>
 
