@@ -317,43 +317,59 @@
                             </div>
                         </div>
 
-                        @* En la sección de Tarjetas *@
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 pt-4">
                             @foreach (var plan in planesDisponibles)
                             {
                                 bool esPlanActual = plan.Nombre == resumenFacturacion.PlanActualNombre;
-                                bool esRecomendado = plan.Nombre == "Business";
+                                // Solo marcamos como recomendado el Business si NO es el plan actual
+                                bool esRecomendado = plan.Nombre == "Business" && !esPlanActual;
 
-                                <div class="flex flex-col relative bg-white rounded-[2rem] p-6 border transition-all hover:shadow-lg @(esRecomendado ? "border-primary shadow-md" : "border-surface-container-high") @(esPlanActual ? "opacity-80" : "")">
+                                <div class="flex flex-col relative bg-white rounded-[2rem] p-6 transition-all hover:shadow-lg
+                                                        @(esPlanActual ? "border-[3px] border-primary shadow-xl ring-4 ring-primary/5 scale-[1.02]" :
+                                                                                                                                     esRecomendado ? "border-2 border-primary/40 shadow-md" : "border border-surface-container-high")">
 
-                                    <h3 class="text-xl font-bold text-primary mb-2">@plan.Nombre</h3>
-                                    <div class="mb-4">
-                                        <span class="text-3xl font-black font-headline">@plan.PrecioTexto</span>
-                                    </div>
+                        @* BADGE FLOTANTE *@
+                        @if (esPlanActual)
+                                    {
+                                        <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg border-2 border-white">Plan Actual</div>
+                                    }
+                                    else if (esRecomendado)
+                                    {
+                                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-400 to-orange-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
+                                            Recomendado
+                                        </div>
+                                    }
 
-                                    <ul class="space-y-3 mb-8 text-sm text-on-surface-variant flex-grow">
-                                        <li class="flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
-                                            Hasta <strong>@plan.MaxSedes</strong> sede@(plan.MaxSedes > 1 ? "s" : "")
-                                        </li>
-                                        <li class="flex items-center gap-2">
-                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
-                                            Hasta <strong>@plan.MaxProfesionales</strong> profesional@(plan.MaxProfesionales > 1 ? "es" : "")
-                                        </li>
-                                        <li class="flex items-center gap-2 @(plan.HabilitaRecordatorios ? "" : "opacity-40")">
-                                            <span class="material-symbols-outlined text-[18px] @(plan.HabilitaRecordatorios ? "text-green-600" : "text-on-surface-variant")">
-                                                @(plan.HabilitaRecordatorios ? "check_circle" : "cancel")
-                                            </span>
-                                            Recordatorios WhatsApp
-                                        </li>
-                                    </ul>
-
-                                    <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual"
-                                            class="w-full mt-auto py-3 rounded-xl font-bold transition-all @(esPlanActual ? "bg-surface-container-low text-on-surface-variant cursor-not-allowed" : esRecomendado ? "bg-primary text-white hover:brightness-110" : "bg-primary/10 text-primary hover:bg-primary/20")">
-                                        @(esPlanActual ? "Plan Actual" : (plan.PrecioMensual > 0 ? "Mejorar Plan" : "Cambiar Plan"))
-                                    </button>
+                                <h3 class="text-xl font-bold text-primary mb-2 mt-2">@plan.Nombre</h3>
+                                <div class="mb-4">
+                                    <span class="text-3xl font-black font-headline">@plan.PrecioTexto</span>
                                 </div>
-                            }
+
+                                <ul class="space-y-3 mb-8 text-sm text-on-surface-variant flex-grow">
+                                    <li class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                        Hasta <strong>@plan.MaxSedes</strong> sede@(plan.MaxSedes > 1 ? "s" : "")
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                        Hasta <strong>@plan.MaxProfesionales</strong> profesional@(plan.MaxProfesionales > 1 ? "es" : "")
+                                    </li>
+                                    <li class="flex items-center gap-2 @(plan.HabilitaRecordatorios ? "" : "opacity-40")">
+                                        <span class="material-symbols-outlined text-[18px] @(plan.HabilitaRecordatorios ? "text-green-600" : "text-on-surface-variant")">
+                                            @(plan.HabilitaRecordatorios ? "check_circle" : "cancel")
+                                        </span>
+                                        Recordatorios WhatsApp
+                                    </li>
+                                </ul>
+
+                                <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual"
+                                        class="w-full mt-auto py-3 rounded-xl font-bold transition-all
+                                                                       @(esPlanActual ? "bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed" :
+                                                                                                                                                                         esRecomendado ? "bg-primary text-white hover:brightness-110 shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20")">
+                            @(esPlanActual ? "Plan Actual" : (plan.PrecioMensual > 0 ? "Mejorar Plan" : "Cambiar Plan"))
+                        </button>
+                    </div>
+                                        }
                         </div>
 
                         <hr class="border-surface-container-high my-8" />
