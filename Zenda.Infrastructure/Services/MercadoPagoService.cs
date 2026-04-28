@@ -55,7 +55,7 @@ public class MercadoPagoService : IMercadoPagoService
         var client = new PreferenceClient();
         Preference preference = await client.CreateAsync(request);
 
-        return preference.SandboxInitPoint; // Recordá cambiar a InitPoint en producción
+        return preference.InitPoint; // Recordá cambiar a InitPoint en producción
     }
     public async Task ProcesarPagoRecibidoAsync(long paymentId)
     {
