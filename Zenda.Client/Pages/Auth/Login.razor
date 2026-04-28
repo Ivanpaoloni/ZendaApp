@@ -8,64 +8,72 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
-<div class="max-w-md mx-auto p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm">
-    <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Bienvenido a Zendy</h2>
-        <p class="text-on-surface-variant text-sm">Ingresá tus credenciales para gestionar tu negocio</p>
+@if (verificandoSesion)
+{
+    <div class="flex justify-center py-12">
+        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
     </div>
-
-    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
-        <DataAnnotationsValidator />
-
-        <div class="space-y-6">
-            @* Email *@
-            <div class="flex flex-col gap-2">
-                <label class="text-xs font-bold text-primary px-1">EMAIL</label>
-                <input type="email" @bind-value="loginModel.Email"
-                       class="w-full px-4 py-3 rounded-2xl bg-secondary-container/30 border-none focus:ring-2 focus:ring-primary transition-all outline-none"
-                       placeholder="ejemplo@correo.com" required />
-            </div>
-
-            @* Password *@
-            <div class="flex flex-col gap-2">
-                <label class="text-xs font-bold text-primary px-1">CONTRASEÑA</label>
-                <input type="password" @bind-value="loginModel.Password"
-                       class="w-full px-4 py-3 rounded-2xl bg-secondary-container/30 border-none focus:ring-2 focus:ring-primary transition-all outline-none"
-                       placeholder="••••••••" required />
-            </div>
-            <div class="flex justify-end mt-1 mb-4">
-                <a href="/olvide-contrasena" class="text-xs text-primary font-bold hover:underline">¿Olvidaste tu contraseña?</a>
-            </div>
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="p-3 rounded-xl bg-error/10 text-error text-xs font-bold flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">error</span>
-                    @errorMessage
-                </div>
-            }
-
-            <button type="submit" disabled="@isSubmitting"
-                    class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50">
-                @if (isSubmitting)
-                {
-                    <span class="animate-pulse">Iniciando sesión...</span>
-                }
-                else
-                {
-                    <span>Entrar al Panel</span>
-                }
-            </button>
+}
+else
+{
+    <div class="max-w-md mx-auto p-8 bg-white rounded-[2rem] border border-surface-container-high shadow-sm">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-primary tracking-tighter font-headline mb-2">Bienvenido a Zendy</h2>
+            <p class="text-on-surface-variant text-sm">Ingresá tus credenciales para gestionar tu negocio</p>
         </div>
-    </EditForm>
 
-    <div class="mt-8 text-center">
-        <p class="text-sm text-on-surface-variant">
-            ¿Aún no tenés tu cuenta?
-            <NavLink href="register" class="text-primary font-bold hover:underline">Creá tu cuenta gratis</NavLink>
-        </p>
+        <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="space-y-6">
+                @* Email *@
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold text-primary px-1">EMAIL</label>
+                    <input type="email" @bind-value="loginModel.Email"
+                           class="w-full px-4 py-3 rounded-2xl bg-secondary-container/30 border-none focus:ring-2 focus:ring-primary transition-all outline-none"
+                           placeholder="ejemplo@correo.com" required />
+                </div>
+
+                @* Password *@
+                <div class="flex flex-col gap-2">
+                    <label class="text-xs font-bold text-primary px-1">CONTRASEÑA</label>
+                    <input type="password" @bind-value="loginModel.Password"
+                           class="w-full px-4 py-3 rounded-2xl bg-secondary-container/30 border-none focus:ring-2 focus:ring-primary transition-all outline-none"
+                           placeholder="••••••••" required />
+                </div>
+                <div class="flex justify-end mt-1 mb-4">
+                    <a href="/olvide-contrasena" class="text-xs text-primary font-bold hover:underline">¿Olvidaste tu contraseña?</a>
+                </div>
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="p-3 rounded-xl bg-error/10 text-error text-xs font-bold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">error</span>
+                        @errorMessage
+                    </div>
+                }
+
+                <button type="submit" disabled="@isSubmitting"
+                        class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50">
+                    @if (isSubmitting)
+                    {
+                        <span class="animate-pulse">Iniciando sesión...</span>
+                    }
+                    else
+                    {
+                        <span>Entrar al Panel</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+
+        <div class="mt-8 text-center">
+            <p class="text-sm text-on-surface-variant">
+                ¿Aún no tenés tu cuenta?
+                <NavLink href="register" class="text-primary font-bold hover:underline">Creá tu cuenta gratis</NavLink>
+            </p>
+        </div>
     </div>
-</div>
-
+}
 @code {
     private LoginDto loginModel = new();
     private string errorMessage = "";
