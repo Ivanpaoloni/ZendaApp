@@ -12,6 +12,13 @@ public class NegocioAdminListDto
     public bool IsActive { get; set; }
     public DateTime FechaVencimiento { get; set; }
     public decimal MontoMensual { get; set; }
+
+    // DATOS DEL DUEÑO Y NEGOCIO
+    public string OwnerName { get; set; } = string.Empty;
+    public string OwnerEmail { get; set; } = string.Empty;
+    public string OwnerPhone { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; }
 }
 
 public class AdminUpdateNegocioDto

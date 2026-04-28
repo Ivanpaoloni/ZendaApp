@@ -22,23 +22,37 @@ public class AdminController : ControllerBase
     [HttpGet("negocios")]
     public async Task<IActionResult> GetNegociosAdmin()
     {
-        var lista = await _context.SuscripcionesNegocio
-            .Include(s => s.Negocio)
-            .Include(s => s.PlanSuscripcion)
-            .IgnoreQueryFilters()
-            .Select(s => new NegocioAdminListDto
-            {
-                SuscripcionId = s.Id,
-                NegocioId = s.NegocioId,
-                NombreNegocio = s.Negocio.Nombre,
-                PlanNombre = s.PlanSuscripcion.Nombre,
-                PlanSuscripcionId = s.PlanSuscripcionId,
-                IsActive = s.Negocio.IsActive,
-                FechaVencimiento = s.FechaVencimiento,
-                MontoMensual = s.PrecioMensualPersonalizado ?? s.PlanSuscripcion.PrecioMensual
-            })
-            .OrderBy(s => s.NombreNegocio)
-            .ToListAsync();
+        var lista = await (from n in _context.Negocios.IgnoreQueryFilters()
+                           join s in _context.SuscripcionesNegocio.IgnoreQueryFilters()
+                                on n.Id equals s.NegocioId into suscripciones
+                           from s in suscripciones.DefaultIfEmpty()
+
+                               // 🔥 BUSCAMOS AL DUEÑO (El usuario asociado a este negocio)
+                           let owner = _context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.NegocioId == n.Id)
+
+                           select new NegocioAdminListDto
+                           {
+                               NegocioId = n.Id,
+                               NombreNegocio = n.Nombre,
+                               IsActive = n.IsActive,
+                               Slug = n.Slug,
+                               CreatedAtUtc = n.CreatedAtUtc,
+
+                               SuscripcionId = s != null ? s.Id : Guid.Empty,
+                               FechaVencimiento = s != null ? s.FechaVencimiento : DateTime.MinValue,
+                               PlanSuscripcionId = n.PlanSuscripcionId,
+                               PlanNombre = n.PlanSuscripcion != null ? n.PlanSuscripcion.Nombre : "Sin Plan",
+
+                               MontoMensual = s != null && s.PrecioMensualPersonalizado.HasValue
+                                   ? s.PrecioMensualPersonalizado.Value
+                                   : (n.PlanSuscripcion != null ? n.PlanSuscripcion.PrecioMensual : 0),
+
+                               // 🔥 DATOS DEL DUEÑO
+                               OwnerName = owner != null ? owner.Nombre + " " + owner.Apellido : "Sin dueño",
+                               OwnerEmail = owner != null ? owner.Email : "Sin email",
+                               OwnerPhone = owner != null ? owner.PhoneNumber : ""
+                           })
+                           .ToListAsync(); // Quitamos el OrderBy de acá porque lo haremos en Blazor
 
         return Ok(lista);
     }
@@ -57,20 +71,38 @@ public class AdminController : ControllerBase
     [HttpPut("negocios/{negocioId}")]
     public async Task<IActionResult> UpdateNegocio(Guid negocioId, [FromBody] AdminUpdateNegocioDto dto)
     {
+        // 1. Buscamos el negocio (este siempre debería existir)
+        var negocio = await _context.Negocios
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(n => n.Id == negocioId);
+
+        if (negocio == null) return NotFound("Negocio no encontrado.");
+
+        // 2. Buscamos si ya tiene un registro de suscripción
         var suscripcion = await _context.SuscripcionesNegocio
-            .Include(s => s.Negocio)
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(s => s.NegocioId == negocioId);
 
-        if (suscripcion == null) return NotFound();
+        //  SI NO EXISTE, LA CREAMOS EN ESTE MOMENTO
+        if (suscripcion == null)
+        {
+            suscripcion = new SuscripcionNegocio
+            {
+                Id = Guid.NewGuid(),
+                NegocioId = negocioId,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _context.SuscripcionesNegocio.Add(suscripcion);
+        }
 
-        suscripcion.Negocio.IsActive = dto.IsActive;
-        suscripcion.PrecioMensualPersonalizado = dto.PrecioMensualPersonalizado;
+        // 3. Actualizamos los datos (tanto del negocio como de la suscripción)
+        negocio.IsActive = dto.IsActive;
+        negocio.PlanSuscripcionId = dto.PlanSuscripcionId;
 
-        // 🔥 AHORA SÍ actualizamos plan y fecha:
         suscripcion.PlanSuscripcionId = dto.PlanSuscripcionId;
-        suscripcion.Negocio.PlanSuscripcionId = dto.PlanSuscripcionId;
-        suscripcion.FechaVencimiento = dto.FechaVencimiento.ToUniversalTime(); // Siempre a UTC para Postgres
+        suscripcion.PrecioMensualPersonalizado = dto.PrecioMensualPersonalizado;
+        suscripcion.FechaVencimiento = dto.FechaVencimiento.ToUniversalTime();
+        suscripcion.Estado = EstadoSuscripcionEnum.Activa;
 
         await _context.SaveChangesAsync();
         return Ok();

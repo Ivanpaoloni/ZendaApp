@@ -43,55 +43,90 @@ else
     <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-slate-950/50 border-b border-slate-800 text-xs uppercase tracking-widest text-slate-400 font-bold">
-                        <th class="p-5 font-medium">Negocio</th>
-                        <th class="p-5 font-medium">Plan</th>
-                        <th class="p-5 font-medium">Estado</th>
-                        <th class="p-5 font-medium">Vencimiento</th>
-                        <th class="p-5 font-medium text-right">Facturación</th>
-                        <th class="p-5 font-medium text-center">Acciones</th>
+                <thead class="bg-slate-800/50">
+                    <tr>
+                        <th @onclick='() => OrdenarPor("Nombre")' class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                            <div class="flex items-center gap-1">Negocio @(columnaOrden == "Nombre" ? (ordenAscendente ? "↑" : "↓") : "")</div>
+                        </th>
+                        <th @onclick='() => OrdenarPor("Plan")' class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                            <div class="flex items-center gap-1">Plan @(columnaOrden == "Plan" ? (ordenAscendente ? "↑" : "↓") : "")</div>
+                        </th>
+                        <th @onclick='() => OrdenarPor("Monto")' class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                            <div class="flex items-center gap-1">Mensualidad @(columnaOrden == "Monto" ? (ordenAscendente ? "↑" : "↓") : "")</div>
+                        </th>
+                        <th @onclick='() => OrdenarPor("Vencimiento")' class="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                            <div class="flex items-center gap-1">Vencimiento @(columnaOrden == "Vencimiento" ? (ordenAscendente ? "↑" : "↓") : "")</div>
+                        </th>
+                        <th @onclick='() => OrdenarPor("Estado")' class="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors">
+                            <div class="flex items-center justify-center gap-1">Estado @(columnaOrden == "Estado" ? (ordenAscendente ? "↑" : "↓") : "")</div>
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Acciones</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/50 text-sm">
                     @foreach (var n in NegociosFiltrados)
                     {
                         <tr class="hover:bg-slate-800/50 transition-colors group">
+                            @* 1. Negocio *@
                             <td class="p-5 font-bold text-white flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-blue-500 text-xs">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-blue-500 text-xs shadow-inner">
                                     @(n.NombreNegocio.FirstOrDefault())
                                 </div>
                                 @n.NombreNegocio
                             </td>
+
+                            @* 2. Plan *@
                             <td class="p-5">
                                 <span class="bg-slate-800 text-slate-300 px-3 py-1 rounded-lg text-xs font-bold border border-slate-700">
                                     @n.PlanNombre
                                 </span>
                             </td>
-                            <td class="p-5">
-                                @if (n.IsActive)
+
+                            @* 3. Mensualidad (Corregido: ahora es la 3era columna) *@
+                            <td class="p-5 font-mono text-emerald-400 font-bold">
+                                $@n.MontoMensual.ToString("N0")
+                            </td>
+
+                            @* 4. Vencimiento *@
+                            <td class="p-5 text-slate-300">
+                                @if (n.FechaVencimiento == DateTime.MinValue)
                                 {
-                                    <span class="text-emerald-400 flex items-center gap-1 text-xs font-bold bg-emerald-400/10 w-fit px-2 py-1 rounded-md">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> Activo
-                                    </span>
+                                    <span class="text-slate-500 italic">Sin suscripción</span>
                                 }
                                 else
                                 {
-                                    <span class="text-red-400 flex items-center gap-1 text-xs font-bold bg-red-400/10 w-fit px-2 py-1 rounded-md">
-                                        <span class="w-2 h-2 rounded-full bg-red-400"></span> Suspendido
-                                    </span>
+                                    @n.FechaVencimiento.ToShortDateString()
                                 }
                             </td>
-                            <td class="p-5 text-slate-400">
-                                @n.FechaVencimiento.ToString("dd/MM/yyyy")
+
+                            @* 5. Estado (Corregido: ahora es la 5ta columna) *@
+                            <td class="p-5">
+                                <div class="flex justify-center">
+                                    @if (n.IsActive)
+                                    {
+                                        <span class="text-emerald-400 flex items-center gap-1 text-xs font-bold bg-emerald-400/10 w-fit px-2 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-red-400 flex items-center gap-1 text-xs font-bold bg-red-400/10 w-fit px-2 py-1 rounded-md">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Suspendido
+                                        </span>
+                                    }
+                                </div>
                             </td>
-                            <td class="p-5 text-right font-mono text-emerald-400 font-bold">
-                                $@n.MontoMensual.ToString("N0")
-                            </td>
-                            <td class="p-5 text-center">
-                                <button @onclick="() => AbrirModal(n)" class="text-slate-500 hover:text-blue-400 transition-colors" title="Gestionar Cliente">
-                                    <span class="material-symbols-outlined">settings</span>
-                                </button>
+
+                            @* 6. Acciones *@
+                            <td class="p-5 text-right">
+                                <div class="flex justify-end gap-2">
+                                    <button @onclick="() => AbrirModal(n)" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-blue-400 hover:bg-slate-700 transition-all" title="Gestionar Cliente">
+                                        <span class="material-symbols-outlined text-[20px]">settings</span>
+                                    </button>
+                                    <button @onclick="() => AbrirModalInfo(n)" class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-emerald-400 hover:bg-slate-700 transition-all" title="Ver Info del Cliente">
+                                        <span class="material-symbols-outlined text-[20px]">info</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -164,12 +199,74 @@ else
     </div>
 }
 
+@* MODAL DE INFORMACIÓN DEL CLIENTE *@
+@if (mostrarModalInfo && negocioInfoSeleccionado != null)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+
+            <button @onclick="CerrarModalInfo" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <h3 class="text-xl font-bold text-white mb-1">@negocioInfoSeleccionado.NombreNegocio</h3>
+            <a target="_blank"
+               href="@($"https://app.zendy.com.ar/{negocioInfoSeleccionado.Slug}")"
+               class="text-sm text-slate-400 mb-6 hover:text-blue-400 transition-colors">
+                app.zendy.com.ar/@negocioInfoSeleccionado.Slug
+            </a>
+            <div class="space-y-4">
+                @* Info del Dueño *@
+                <div class="bg-slate-800 p-4 rounded-xl">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Datos del Dueño</p>
+
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">person</span>
+                        <span class="text-white font-medium">@negocioInfoSeleccionado.OwnerName</span>
+                    </div>
+
+                    <div class="flex items-center gap-3 mb-3">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">mail</span>
+                        <a href="mailto:@negocioInfoSeleccionado.OwnerEmail" class="text-blue-400 hover:underline">@negocioInfoSeleccionado.OwnerEmail</a>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-slate-400 text-[20px]">call</span>
+                        <span class="text-white">@(string.IsNullOrEmpty(negocioInfoSeleccionado.OwnerPhone) ? "No registrado" : negocioInfoSeleccionado.OwnerPhone)</span>
+                    </div>
+                </div>
+
+                @* Botón de WhatsApp *@
+                @if (!string.IsNullOrEmpty(negocioInfoSeleccionado.OwnerPhone))
+                {
+                    <a href="@GetWhatsAppLink(negocioInfoSeleccionado.OwnerPhone)" target="_blank"
+                       class="w-full flex items-center justify-center gap-2 py-3 bg-[#25D366] hover:bg-[#20b858] text-white rounded-xl font-bold transition-all shadow-lg">
+                        <i class="fa-brands fa-whatsapp text-xl"></i>
+                        Contactar por WhatsApp
+                    </a>
+                }
+                else
+                {
+                    <div class="w-full text-center py-3 bg-slate-800 text-slate-500 rounded-xl text-sm italic">
+                        El dueño no registró un número telefónico.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 @code {
     private bool Cargando = true;
     private List<NegocioAdminListDto>? TodosLosNegocios;
     private string filtroBusqueda = "";
     private bool mostrarModal = false;
     private bool guardando = false;
+    private bool mostrarModalInfo = false;
+    private NegocioAdminListDto? negocioInfoSeleccionado;
+
+    // Variables de Ordenamiento
+    private string columnaOrden = "Nombre";
+    private bool ordenAscendente = true;
 
     // Un DTO temporal para editar sin afectar la tabla hasta que se guarde
     private AdminUpdateNegocioDto? negocioEnEdicion;
@@ -178,11 +275,29 @@ else
     private List<PlanAdminDto>? PlanesDisponibles;
 
 
-    private IEnumerable<NegocioAdminListDto>? NegociosFiltrados =>
-        string.IsNullOrWhiteSpace(filtroBusqueda)
-        ? TodosLosNegocios
-        : TodosLosNegocios?.Where(n => n.NombreNegocio.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<NegocioAdminListDto>? NegociosFiltrados
+    {
+        get
+        {
+            var query = string.IsNullOrWhiteSpace(filtroBusqueda)
+                ? TodosLosNegocios
+                : TodosLosNegocios?.Where(n => n.NombreNegocio.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ||
+                                               n.OwnerName.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
 
+            if (query == null) return null;
+
+            // Aplicamos el ordenamiento dinámico
+            return columnaOrden switch
+            {
+                "Nombre" => ordenAscendente ? query.OrderBy(x => x.NombreNegocio) : query.OrderByDescending(x => x.NombreNegocio),
+                "Plan" => ordenAscendente ? query.OrderBy(x => x.PlanNombre) : query.OrderByDescending(x => x.PlanNombre),
+                "Monto" => ordenAscendente ? query.OrderBy(x => x.MontoMensual) : query.OrderByDescending(x => x.MontoMensual),
+                "Vencimiento" => ordenAscendente ? query.OrderBy(x => x.FechaVencimiento) : query.OrderByDescending(x => x.FechaVencimiento),
+                "Estado" => ordenAscendente ? query.OrderByDescending(x => x.IsActive) : query.OrderBy(x => x.IsActive),
+                _ => query
+            };
+        }
+    }
     protected override async Task OnInitializedAsync()
     {
         try
@@ -220,8 +335,12 @@ else
         {
             IsActive = n.IsActive,
             PrecioMensualPersonalizado = n.MontoMensual,
-            PlanSuscripcionId = n.PlanSuscripcionId, // Ahora sabe qué plan tiene
-            FechaVencimiento = n.FechaVencimiento
+            PlanSuscripcionId = n.PlanSuscripcionId,
+
+            // SI ES FECHA CERO, SUGERIMOS HOY + 1 MES
+            FechaVencimiento = n.FechaVencimiento == DateTime.MinValue
+                               ? DateTime.Today.AddMonths(1)
+                               : n.FechaVencimiento
         };
 
         mostrarModal = true;
@@ -262,5 +381,33 @@ else
         {
             guardando = false;
         }
+    }
+
+    // modal de info negocio
+    private void OrdenarPor(string columna)
+    {
+        if (columnaOrden == columna)
+            ordenAscendente = !ordenAscendente;
+        else
+        {
+            columnaOrden = columna;
+            ordenAscendente = true;
+        }
+    }
+
+    private void AbrirModalInfo(NegocioAdminListDto n)
+    {
+        negocioInfoSeleccionado = n;
+        mostrarModalInfo = true;
+    }
+
+    private void CerrarModalInfo() => mostrarModalInfo = false;
+
+    // Limpia el número para el link de WhatsApp
+    private string GetWhatsAppLink(string telefono)
+    {
+        if (string.IsNullOrWhiteSpace(telefono)) return "";
+        var numeroLimpio = new string(telefono.Where(char.IsDigit).ToArray());
+        return $"https://wa.me/{numeroLimpio}";
     }
 }
