@@ -70,7 +70,25 @@
     private LoginDto loginModel = new();
     private string errorMessage = "";
     private bool isSubmitting = false;
+    private bool verificandoSesion = true;
 
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Preguntamos el estado actual
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+
+        // 2. Si ya tiene un token válido y está logueado...
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            // Lo pateamos directo al inicio de la app.
+            // (Recordá que tu MainLayout ya se encarga de enviarlo a /admin si es SuperAdmin)
+            Nav.NavigateTo("/");
+            return;
+        }
+
+        // 3. Si no está logueado, apagamos la carga y mostramos el form
+        verificandoSesion = false;
+    }
     private async Task HandleLogin()
     {
         isSubmitting = true;
