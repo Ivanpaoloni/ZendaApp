@@ -8,6 +8,8 @@ namespace Zenda.Client.Pages; // Ajusta al namespace de tu proyecto cliente
 
 public partial class Turnos : ComponentBase
 {
+    [SupplyParameterFromQuery(Name = "nuevo")]
+    public string? AbrirNuevoTurno { get; set; }
     [Inject] private NegocioClient _negocioService { get; set; } = default!;
     [Inject] private AppState State { get; set; } = default!;
     [Inject] private TurnoClient TurnoService { get; set; } = default!;
@@ -36,7 +38,7 @@ public partial class Turnos : ComponentBase
     protected bool mostrarModal = false;
     protected TurnoReadDto? turnoAEliminar;
     protected bool procesandoCancelacion = false;
-
+    private bool mostrarDrawerTurno = false;
     protected bool mostrarModalCobro = false;
     protected TurnoReadDto? turnoACobrar;
     protected bool procesandoCobro = false;
@@ -54,6 +56,11 @@ public partial class Turnos : ComponentBase
     protected override async Task OnInitializedAsync()
     {
         await CargarTurnos(mantenerFiltros: false);
+
+        if (AbrirNuevoTurno == "true")
+        {
+            mostrarDrawerTurno = true;
+        }
     }
 
     // --- MÉTODOS DEL MODAL ---

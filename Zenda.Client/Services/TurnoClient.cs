@@ -1,4 +1,6 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 
@@ -84,5 +86,37 @@ public class TurnoClient : BaseClient
         }
 
         return null;
+    }
+
+    public async Task<TurnoReadDto?> CrearTurnoAdmin(TurnoAdminCreateDto dto)
+    {
+        var response = await _http.PostAsJsonAsync("api/turnos/admin", dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            return await response.Content.ReadFromJsonAsync<TurnoReadDto>();
+        }
+
+        // 🎯 Si falla (ej. choca con otro turno), extraemos el mensaje de error del BadRequest
+        var errorContent = await response.Content.ReadAsStringAsync();
+        var errorMessage = "Error desconocido al procesar la reserva.";
+
+        try
+        {
+            // Intentamos parsear el JSON { "message": "Este horario choca..." }
+            var errorObj = JsonSerializer.Deserialize<JsonElement>(errorContent);
+            if (errorObj.TryGetProperty("message", out var msgProp))
+            {
+                errorMessage = msgProp.GetString() ?? errorMessage;
+            }
+        }
+        catch
+        {
+            // Si no es un JSON válido, mostramos el texto crudo
+            errorMessage = errorContent;
+        }
+
+        // Lanzamos la excepción para que el catch del Drawer la atrape y la muestre en pantalla
+        throw new Exception(errorMessage);
     }
 }

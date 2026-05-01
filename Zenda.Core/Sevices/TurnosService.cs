@@ -768,4 +768,140 @@ public class TurnosService : ITurnosService
         workbook.SaveAs(stream);
         return stream.ToArray();
     }
+    public async Task<TurnoReadDto> CrearTurnoAdminAsync(TurnoAdminCreateDto dto)
+    {
+        var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
+
+        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId && s.NegocioId == negocioId);
+        if (servicio == null) throw new Exception("El servicio seleccionado no existe.");
+
+        var prestador = await _context.Prestadores
+            .Include(p => p.Sede)
+            .Include(p => p.Negocio)
+            .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId && p.NegocioId == negocioId);
+
+        if (prestador?.Sede == null || prestador?.Negocio == null)
+            throw new InvalidOperationException("Prestador o Sede no encontrados.");
+
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
+
+        // Convertimos la fecha local enviada por el admin a UTC
+        var fechaLocalCruda = DateTime.SpecifyKind(dto.FechaHoraInicio, DateTimeKind.Unspecified);
+        var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaLocalCruda, zonaSede);
+        var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(servicio.DuracionMinutos);
+
+        // ==========================================
+        // 🛡️ BARRERAS DE VALIDACIÓN (ADMIN MODE)
+        // Omitimos Anticipación y Horario Laboral. Solo validamos SUPERPOSICIÓN.
+        // ==========================================
+        bool turnoOcupado = await _context.Turnos.AnyAsync(t =>
+            t.PrestadorId == dto.PrestadorId &&
+            t.Estado != EstadoTurnoEnum.Cancelado &&
+            (fechaUtcDefinitiva < t.FechaHoraFinUtc && fechaFinUtcDefinitiva > t.FechaHoraInicioUtc)
+        );
+
+        if (turnoOcupado)
+            throw new InvalidOperationException("Este horario choca con otra reserva existente.");
+
+        bool chocaConBloqueo = await _context.BloqueosAgenda.AnyAsync(b =>
+            b.PrestadorId == dto.PrestadorId &&
+            b.InicioUtc < fechaFinUtcDefinitiva &&
+            fechaUtcDefinitiva < b.FinUtc
+        );
+
+        if (chocaConBloqueo)
+            throw new InvalidOperationException("Este horario pisa un bloqueo de agenda (vacaciones/ausencia).");
+
+        // ==========================================
+        // 👤 GESTIÓN DEL CLIENTE
+        // ==========================================
+        Cliente clienteAsignado;
+
+        if (dto.ClienteId.HasValue && dto.ClienteId.Value != Guid.Empty)
+        {
+            // El admin seleccionó un cliente existente del buscador
+            clienteAsignado = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == dto.ClienteId.Value && c.NegocioId == negocioId);
+            if (clienteAsignado == null) throw new Exception("El cliente seleccionado no existe.");
+        }
+        else
+        {
+            // Es un cliente nuevo creado "al vuelo"
+            if (string.IsNullOrWhiteSpace(dto.NuevoClienteNombre))
+                throw new InvalidOperationException("Debe ingresar el nombre del cliente.");
+
+            clienteAsignado = new Cliente
+            {
+                Id = Guid.CreateVersion7(),
+                NegocioId = negocioId.Value,
+                Nombre = dto.NuevoClienteNombre.Trim(),
+                Email = dto.NuevoClienteEmail?.Trim().ToLower(),
+                Telefono = dto.NuevoClienteTelefono?.Trim()
+            };
+            _context.Clientes.Add(clienteAsignado);
+        }
+
+        // ==========================================
+        // 📅 CREACIÓN DEL TURNO (Unit of Work)
+        // ==========================================
+        var turnoId = Guid.CreateVersion7();
+        var fechaRecordatorioUtc = fechaUtcDefinitiva.AddHours(-1);
+        string? recordatorioJobId = null;
+
+        // Solo programamos Hangfire si hay email y el turno es a futuro
+        if (!string.IsNullOrWhiteSpace(clienteAsignado.Email) && fechaRecordatorioUtc > DateTime.UtcNow)
+        {
+            recordatorioJobId = _jobService.ProgramarRecordatorioEmail(
+                clienteAsignado.Email,
+                clienteAsignado.Nombre,
+                prestador.Negocio.Nombre,
+                fechaLocalCruda, // Pasamos la local para el texto del mail
+                fechaRecordatorioUtc,
+                turnoId
+            );
+        }
+
+        var nuevoTurno = new Turno
+        {
+            Id = turnoId,
+            NegocioId = negocioId.Value,
+            PrestadorId = prestador.Id,
+            FechaHoraInicioUtc = fechaUtcDefinitiva,
+            FechaHoraFinUtc = fechaFinUtcDefinitiva,
+            ClienteId = clienteAsignado.Id,
+            Estado = EstadoTurnoEnum.Confirmado,
+            ServicioId = dto.ServicioId,
+            RecordatorioJobId = recordatorioJobId
+        };
+
+        _context.Turnos.Add(nuevoTurno);
+        await _context.SaveChangesAsync();
+
+        // ==========================================
+        // 📧 ENVÍO DE EMAIL (Con resiliencia)
+        // ==========================================
+        if (!string.IsNullOrWhiteSpace(clienteAsignado.Email))
+        {
+            try
+            {
+                await _emailService.EnviarConfirmacionTurnoAsync(
+                    clienteAsignado.Email,
+                    clienteAsignado.Nombre,
+                    prestador.Negocio.Nombre,
+                    fechaLocalCruda, // Hora local para el correo
+                    nuevoTurno.Id,
+                    servicio.Nombre,
+                    prestador.Nombre,
+                    prestador.Sede.Nombre,
+                    prestador.Sede.Direccion
+                );
+            }
+            catch (Exception)
+            {
+                // El error de email no rompe la reserva manual
+            }
+        }
+
+        return _mapper.Map<TurnoReadDto>(nuevoTurno);
+    }
 }

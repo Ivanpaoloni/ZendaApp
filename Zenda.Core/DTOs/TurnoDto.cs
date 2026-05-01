@@ -48,4 +48,21 @@ namespace Zenda.Core.DTOs
         public string SedeNombre { get; set; } = string.Empty;
         public string NegocioSlug { get; set; } = string.Empty;
     }
+    
+    public class TurnoAdminCreateDto
+    {
+        public Guid PrestadorId { get; set; }
+        public Guid ServicioId { get; set; }
+
+        // Esta fecha debe venir desde el frontend en HORA LOCAL del negocio
+        public DateTime FechaHoraInicio { get; set; }
+
+        // Datos del Cliente (Si elige uno existente)
+        public Guid? ClienteId { get; set; }
+
+        // Datos del Cliente (Si es un "walk-in" nuevo)
+        public string? NuevoClienteNombre { get; set; }
+        public string? NuevoClienteTelefono { get; set; }
+        public string? NuevoClienteEmail { get; set; }
+    }
 }

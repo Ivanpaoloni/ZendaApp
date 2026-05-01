@@ -129,7 +129,26 @@ public class TurnosController : ControllerBase
             $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
     }
 
-
+    [HttpPost("admin")]
+    [Authorize] // Exclusivo para administradores/recepcionistas logueados
+    public async Task<ActionResult<TurnoReadDto>> CrearTurnoAdmin([FromBody] TurnoAdminCreateDto dto)
+    {
+        try
+        {
+            var resultado = await _turnosService.CrearTurnoAdminAsync(dto);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Atrapamos los choques de horario o validaciones de negocio
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            // Errores generales
+            return StatusCode(500, new { message = "Ocurrió un error interno al intentar agendar el turno." });
+        }
+    }
     public class CobrarTurnoRequest
     {
         public Zenda.Core.Enums.MedioPagoEnum MedioPago { get; set; }

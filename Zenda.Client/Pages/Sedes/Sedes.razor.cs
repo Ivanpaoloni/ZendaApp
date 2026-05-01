@@ -53,16 +53,17 @@ public partial class Sedes : ComponentBase
     {
         sedes = await SedeService.GetAll();
     }
-
     protected void ManejarClickNuevo()
     {
+        errorMessage = string.Empty;
         if (puedeAgregarMas)
         {
-            Nav.NavigateTo("nueva-sede"); // O la ruta que uses para crear sede
+            AbrirModalSede();
         }
         else
         {
-            mostrarModalUpgrade = true;
+            // En lugar de redireccionar, simplemente mostramos un mensaje de error rápido en la pantalla
+            errorMessage = "Alcanzaste el límite de sedes permitidas en tu plan actual.";
         }
     }
     protected void LimpiarError() => errorMessage = null;
