@@ -528,36 +528,41 @@ public class TurnosService : ITurnosService
         // 1. Obtener la hora ACTUAL en la zona horaria del negocio
         var ahoraLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
 
-        // 2. Determinar el inicio del mes en HORA LOCAL
+        // 2. Determinar los límites en HORA LOCAL
         var inicioMesActualLocal = new DateTime(ahoraLocal.Year, ahoraLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
         var inicioMesAnteriorLocal = inicioMesActualLocal.AddMonths(-1);
+        // 🎯 NUEVO: Límite superior estricto
+        var inicioMesSiguienteLocal = inicioMesActualLocal.AddMonths(1);
 
-        // 3. Convertir esos límites locales a UTC para consultar la base de datos de forma segura
+        // 3. Convertir esos límites locales a UTC
         var inicioMesActualUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesActualLocal, zonaSede);
         var inicioMesAnteriorUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesAnteriorLocal, zonaSede);
+        var inicioMesSiguienteUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesSiguienteLocal, zonaSede);
 
-        // 4. OBTENEMOS LAS RESERVAS (Usando los límites UTC precisos)
+        // 4. OBTENEMOS LAS RESERVAS 
         var turnos = await _context.Turnos
             .AsNoTracking()
             .Where(t => t.NegocioId == negocioId &&
                         t.FechaHoraInicioUtc >= inicioMesAnteriorUtc &&
+                        t.FechaHoraInicioUtc < inicioMesSiguienteUtc && // 🎯 Cortamos el query en BD
                         t.Estado != EstadoTurnoEnum.Cancelado)
             .Select(t => new {
                 t.FechaHoraInicioUtc
             })
             .ToListAsync();
 
-        var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActualUtc).ToList();
+        // 🎯 Filtramos en memoria asegurando el cajón del mes actual
+        var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActualUtc && t.FechaHoraInicioUtc < inicioMesSiguienteUtc).ToList();
         var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnteriorUtc && t.FechaHoraInicioUtc < inicioMesActualUtc).ToList();
-
+        
         int reservasActual = turnosActual.Count;
         int reservasAnterior = turnosAnterior.Count;
-
-        // 5. OBTENEMOS LOS INGRESOS REALES DE LA CAJA (Con los mismos límites UTC)
+        // 5. HACEMOS LO MISMO CON LA CAJA
         var ingresosCaja = await _context.MovimientosCaja
             .AsNoTracking()
             .Where(m => m.NegocioId == negocioId &&
                         m.CreatedAtUtc >= inicioMesAnteriorUtc &&
+                        m.CreatedAtUtc < inicioMesSiguienteUtc && // 🎯 Acotamos ingresos también
                         m.Tipo == TipoMovimientoEnum.Ingreso)
             .Select(m => new {
                 m.CreatedAtUtc,
@@ -565,7 +570,7 @@ public class TurnosService : ITurnosService
             })
             .ToListAsync();
 
-        var ingresosMesActual = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesActualUtc).ToList();
+        var ingresosMesActual = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesActualUtc && m.CreatedAtUtc < inicioMesSiguienteUtc).ToList();
         var ingresosMesAnterior = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesAnteriorUtc && m.CreatedAtUtc < inicioMesActualUtc).ToList();
 
         decimal ingresosActual = ingresosMesActual.Sum(m => m.Monto);
