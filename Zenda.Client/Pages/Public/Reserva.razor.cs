@@ -187,8 +187,14 @@ public partial class Reserva : ComponentBase
 
     protected async Task ConfirmarReserva()
     {
+        // 1. PATRÓN DE GUARDIA (Early Return): Evita ejecuciones paralelas inmediatas
+        if (enviandoReserva) return;
+
         errorReserva = string.Empty;
         enviandoReserva = true;
+
+        // Forzamos el renderizado para que el botón se deshabilite y muestre el spinner INMEDIATAMENTE
+        StateHasChanged();
 
         try
         {
@@ -197,7 +203,6 @@ public partial class Reserva : ComponentBase
 
             if (prestadorSeleccionado != null)
             {
-                // El usuario eligió específicamente a este profesional
                 idPrestadorFinal = prestadorSeleccionado.Id;
                 nombrePrestadorReserva = prestadorSeleccionado.Nombre;
             }
@@ -250,11 +255,11 @@ public partial class Reserva : ComponentBase
                 var direccionEnc = Uri.EscapeDataString(sedeSeleccionada?.Direccion ?? "");
                 var duracionReal = servicioSeleccionado?.DuracionMinutos ?? 30;
                 var turnoId = resultado.Id;
-
-                // 🎯 NUEVO: Tomamos el teléfono del negocio y lo preparamos para la URL
                 var telefonoNegocioEnc = Uri.EscapeDataString(negocio?.Telefono ?? "");
 
+                // NAVEGACIÓN EXITOSA: NO rehabilitamos el botón. Dejamos que el componente muera con el botón bloqueado.
                 Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}&TurnoId={turnoId}&TelefonoNegocio={telefonoNegocioEnc}");
+                return; // Salimos antes del bloque finally para mantener el estado
             }
             else
             {
@@ -265,9 +270,9 @@ public partial class Reserva : ComponentBase
         {
             errorReserva = "El horario seleccionado ya no está disponible. Por favor, elegí otro.";
         }
-        finally
-        {
-            enviandoReserva = false;
-        }
+
+        // MANEJO DE ERRORES: Solo rehabilitamos la UI si el proceso falló.
+        enviandoReserva = false;
+        StateHasChanged(); // Aseguramos que el usuario vea el mensaje de error y recupere el control del botón
     }
 }

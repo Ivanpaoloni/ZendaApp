@@ -56,7 +56,7 @@ namespace Zenda.Infrastructure
             // CONFIGURACIÓN DE ENTIDADES
             // ==============================================
 
-            // --- NUEVO: Configuración de Cliente ---
+            // --- Configuración de Cliente ---
             modelBuilder.Entity<Cliente>(entity =>
             {
                 entity.HasKey(c => c.Id);
@@ -64,7 +64,9 @@ namespace Zenda.Infrastructure
                 entity.Property(c => c.Email).HasMaxLength(150);
                 entity.Property(c => c.Telefono).HasMaxLength(50);
 
-                // Relación Cliente -> Negocio (Un cliente pertenece a un negocio)
+                // Índice único compuesto para evitar duplicados por concurrencia
+                entity.HasIndex(c => new { c.NegocioId, c.Email }).IsUnique();
+
                 entity.HasOne<Negocio>()
                       .WithMany()
                       .HasForeignKey(c => c.NegocioId)

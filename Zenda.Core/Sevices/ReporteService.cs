@@ -23,10 +23,21 @@ public class ReporteService : IReporteService
         if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
 
         // =========================================================
-        // 🔥 FIX: Re-asegurar que las fechas son UTC (Doble protección)
+        // 🔥 FIX: TimeZone Shift y Date Boundaries (Alinear con el Home)
         // =========================================================
-        var inicio = DateTime.SpecifyKind(fechaInicioUtc, DateTimeKind.Utc);
-        var fin = DateTime.SpecifyKind(fechaFinUtc, DateTimeKind.Utc);
+        var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+        var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
+
+        // 1. Tomamos las fechas puras del frontend y las forzamos a locales
+        var inicioLocal = DateTime.SpecifyKind(fechaInicioUtc.Date, DateTimeKind.Unspecified);
+
+        // 2. MAGIA: Extendemos el límite superior para abarcar todo el último día hasta el último tick
+        var finLocal = DateTime.SpecifyKind(fechaFinUtc.Date.AddDays(1).AddTicks(-1), DateTimeKind.Unspecified);
+
+        // 3. Convertimos a UTC estricto para hacer la consulta segura en BD
+        var inicioUtc = TimeZoneInfo.ConvertTimeToUtc(inicioLocal, zonaSede);
+        var finUtc = TimeZoneInfo.ConvertTimeToUtc(finLocal, zonaSede);
 
         var reporte = new ReporteDashboardDto();
 
@@ -34,7 +45,7 @@ public class ReporteService : IReporteService
         // 1. MÉTRICAS DE TURNOS (Directo a SQL)
         // ==========================================
         var turnosAgrupados = await _context.Turnos
-            .Where(t => t.FechaHoraInicioUtc >= inicio && t.FechaHoraInicioUtc <= fin) // Usar las nuevas variables
+            .Where(t => t.FechaHoraInicioUtc >= inicioUtc && t.FechaHoraInicioUtc <= finUtc) // Usamos las fechas UTC corregidas
             .GroupBy(t => t.Estado)
             .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
             .ToListAsync();
@@ -48,8 +59,8 @@ public class ReporteService : IReporteService
         // 2. MÉTRICAS DE CAJA Y FINANZAS
         // ==========================================
         var queryIngresos = _context.MovimientosCaja
-            .Where(m => m.CreatedAtUtc >= inicio // Usar las nuevas variables
-                     && m.CreatedAtUtc <= fin
+            .Where(m => m.CreatedAtUtc >= inicioUtc
+                     && m.CreatedAtUtc <= finUtc
                      && m.Tipo == TipoMovimientoEnum.Ingreso);
 
         var datosIngresos = await queryIngresos
@@ -70,15 +81,13 @@ public class ReporteService : IReporteService
         // ==========================================
         // 3. ARMADO DE GRÁFICOS (Agrupaciones en memoria)
         // ==========================================
-        // Al ya tener los datos proyectados en memoria (que son strings y decimales básicos), agrupamos rapidísimo
-
         reporte.IngresosPorMedioPago = datosIngresos
             .GroupBy(x => x.MedioPago)
             .Select(g => new DatoGraficoDto { Etiqueta = g.Key.ToString(), Valor = g.Sum(x => x.Monto) })
             .ToList();
 
         reporte.IngresosPorPrestador = datosIngresos
-            .Where(x => x.EsTurno) // Solo filtramos la producción de servicios
+            .Where(x => x.EsTurno)
             .GroupBy(x => x.PrestadorNombre)
             .Select(g => new DatoGraficoDto { Etiqueta = g.Key, Valor = g.Sum(x => x.Monto) })
             .OrderByDescending(x => x.Valor)
@@ -87,9 +96,9 @@ public class ReporteService : IReporteService
         reporte.TopServicios = datosIngresos
             .Where(x => x.EsTurno)
             .GroupBy(x => x.ServicioNombre)
-            .Select(g => new DatoGraficoDto { Etiqueta = g.Key, Valor = g.Count() }) // Queremos saber CANTIDAD, no dinero
+            .Select(g => new DatoGraficoDto { Etiqueta = g.Key, Valor = g.Count() })
             .OrderByDescending(x => x.Valor)
-            .Take(5) // Solo el Top 5
+            .Take(5)
             .ToList();
 
         return reporte;

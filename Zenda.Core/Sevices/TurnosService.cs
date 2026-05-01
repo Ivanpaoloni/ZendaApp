@@ -216,7 +216,6 @@ public class TurnosService : ITurnosService
         // ==========================================
         // SI PASA TODAS LAS BARRERAS, GUARDAMOS
         // ==========================================
-        // Buscamos si ya existe el cliente por email en ESTE negocio
         var emailNormalizado = dto.EmailClienteInvitado.Trim().ToLower();
 
         var cliente = await _context.Clientes
@@ -224,76 +223,82 @@ public class TurnosService : ITurnosService
 
         if (cliente == null)
         {
-            // Es nuevo, lo creamos
             cliente = new Cliente
             {
                 Id = Guid.CreateVersion7(),
                 NegocioId = prestador.NegocioId,
                 Nombre = dto.NombreClienteInvitado.Trim(),
                 Email = emailNormalizado,
-                Telefono = dto.TelefonoClienteInvitado.Trim()
+                Telefono = dto.TelefonoClienteInvitado?.Trim()
             };
             _context.Clientes.Add(cliente);
         }
-        else
+        else if (!string.IsNullOrWhiteSpace(dto.TelefonoClienteInvitado) && cliente.Telefono != dto.TelefonoClienteInvitado)
         {
-            // Ya existe. Pequeña magia: si nos pasa un teléfono nuevo, se lo actualizamos
-            if (!string.IsNullOrWhiteSpace(dto.TelefonoClienteInvitado) && cliente.Telefono != dto.TelefonoClienteInvitado)
-            {
-                cliente.Telefono = dto.TelefonoClienteInvitado.Trim();
-            }
-            // También podríamos actualizar el nombre si quisiéramos
+            cliente.Telefono = dto.TelefonoClienteInvitado.Trim();
         }
-        var nuevoTurno = new Turno
-        {
-            NegocioId = prestador.NegocioId,
-            PrestadorId = dto.PrestadorId,
-            FechaHoraInicioUtc = fechaUtcDefinitiva,
-            FechaHoraFinUtc = fechaFinUtcDefinitiva,
 
-            // ASIGNAMOS EL CLIENTE (Adiós campos sueltos)
-            ClienteId = cliente.Id,
-
-            Estado = EstadoTurnoEnum.Confirmado,
-            ServicioId = dto.ServicioId
-        };
-
-        _context.Turnos.Add(nuevoTurno);
-        await _context.SaveChangesAsync();
-
-        // 2. Mandamos el mail de confirmación inmediato
-
-        await _emailService.EnviarConfirmacionTurnoAsync(
-            dto.EmailClienteInvitado,
-            dto.NombreClienteInvitado,
-            prestador.Negocio.Nombre,
-            dto.Inicio,
-            nuevoTurno.Id,
-            servicio.Nombre,
-            prestador.Nombre,
-            prestador.Sede.Nombre,
-            prestador.Sede.Direccion
-        );
-
+        // 🎯 MEJORA 1: Generamos el ID del turno en memoria ANTES de guardar.
+        // Al usar Guid.CreateVersion7(), no necesitamos ir a la BD para obtener el ID.
+        var turnoId = Guid.CreateVersion7();
         var fechaRecordatorioUtc = fechaUtcDefinitiva.AddHours(-1);
+        string? recordatorioJobId = null;
 
-        // 3. Programamos el recordatorio y atajamos el JobId
+        // 🎯 MEJORA 2: Programamos el Job de Hangfire en memoria.
+        // Si falla, el turno aún no se ha guardado.
         if (fechaRecordatorioUtc > DateTime.UtcNow)
         {
-            var jobId = _jobService.ProgramarRecordatorioEmail(
+            recordatorioJobId = _jobService.ProgramarRecordatorioEmail(
                 dto.EmailClienteInvitado,
                 dto.NombreClienteInvitado,
                 prestador.Negocio.Nombre,
                 dto.Inicio,
                 fechaRecordatorioUtc,
-                nuevoTurno.Id
+                turnoId // Usamos el ID generado arriba
             );
-
-            // 4. Segundo guardado: Le metemos el JobId al turno que ya existe
-            nuevoTurno.RecordatorioJobId = jobId;
-            await _context.SaveChangesAsync();
         }
 
+        var nuevoTurno = new Turno
+        {
+            Id = turnoId,
+            NegocioId = prestador.NegocioId,
+            PrestadorId = dto.PrestadorId,
+            FechaHoraInicioUtc = fechaUtcDefinitiva,
+            FechaHoraFinUtc = fechaFinUtcDefinitiva,
+            ClienteId = cliente.Id,
+            Estado = EstadoTurnoEnum.Confirmado,
+            ServicioId = dto.ServicioId,
+            RecordatorioJobId = recordatorioJobId // Lo asignamos de una sola vez
+        };
+
+        _context.Turnos.Add(nuevoTurno);
+
+        // 🎯 MEJORA 3: Un solo SaveChangesAsync. (Unit of Work real)
+        await _context.SaveChangesAsync();
+
+        // 🎯 MEJORA 4: Resiliencia (Fault Tolerance) con el Email
+        // El correo es un proceso secundario. Si falla, la reserva ya está confirmada.
+        try
+        {
+            await _emailService.EnviarConfirmacionTurnoAsync(
+                dto.EmailClienteInvitado,
+                dto.NombreClienteInvitado,
+                prestador.Negocio.Nombre,
+                dto.Inicio,
+                nuevoTurno.Id,
+                servicio.Nombre,
+                prestador.Nombre,
+                prestador.Sede.Nombre,
+                prestador.Sede.Direccion
+            );
+        }
+        catch (Exception ex)
+        {
+            // Aquí deberías registrar el error con un ILogger<TurnosService>
+            // _logger.LogError(ex, "El turno se guardó, pero falló el envío del email de confirmación para {Email}", dto.EmailClienteInvitado);
+
+            // IMPORTANTE: No lanzamos el throw. El usuario ya tiene su turno asegurado.
+        }
 
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
@@ -351,7 +356,6 @@ public class TurnosService : ITurnosService
     {
         var negocioId = _tenantService.GetCurrentTenantId();
 
-        // 🎯 MEJORA: Traemos Prestador, Sede y Negocio para poder armar el email de cancelación
         var turno = await _context.Turnos
             .Include(t => t.Prestador)
                 .ThenInclude(p => p.Sede)
@@ -367,36 +371,57 @@ public class TurnosService : ITurnosService
             throw new Exception("No se puede reabrir un turno ya finalizado.");
         }
 
-        // 🎯 SI EL RECEPCIONISTA/DUEÑO CANCELA EL TURNO
-        if (nuevoEstado == EstadoTurnoEnum.Cancelado && turno.Estado != EstadoTurnoEnum.Cancelado)
+        // 🎯 1. APLICAMOS EL CAMBIO DE ESTADO PRIMERO
+        turno.Estado = nuevoEstado;
+
+        // 🎯 2. GUARDAMOS EN BASE DE DATOS PARA GARANTIZAR LA REGLA DE NEGOCIO
+        var exito = await _context.SaveChangesAsync() > 0;
+
+        // 🎯 3. PROCESAMOS LOS EFECTOS SECUNDARIOS SOLO SI SE GUARDÓ CON ÉXITO
+        if (exito && nuevoEstado == EstadoTurnoEnum.Cancelado)
         {
-            // 1. Matamos el recordatorio de Hangfire
+            // Matamos el recordatorio de Hangfire
             if (!string.IsNullOrEmpty(turno.RecordatorioJobId))
             {
-                _jobService.CancelarTrabajo(turno.RecordatorioJobId);
-                turno.RecordatorioJobId = null; // Lo limpiamos por prolijidad
+                try
+                {
+                    _jobService.CancelarTrabajo(turno.RecordatorioJobId);
+                    // Si quisieras limpiar el ID en la BD, requeriría otro SaveChangesAsync, 
+                    // pero al estar cancelado el turno, no es estrictamente necesario.
+                }
+                catch (Exception ex)
+                {
+                    // Loguear error de Hangfire
+                }
             }
 
-            // 2. Le avisamos al cliente por correo que el negocio le canceló la reserva
+            // Enviamos el correo protegiendo el flujo principal
             if (!string.IsNullOrEmpty(turno.Cliente.Email) && turno.Prestador?.Sede != null && turno.Prestador?.Negocio != null)
             {
-                // Calculamos la hora local de la sede para el texto del correo
-                var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador.Sede.ZonaHorariaId);
-                var inicioSedeLocal = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, zonaSede);
+                try
+                {
+                    var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador.Sede.ZonaHorariaId);
+                    var inicioSedeLocal = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, zonaSede);
 
-                await _emailService.EnviarCancelacionTurnoAsync(
-                    turno.Cliente.Email,
-                    turno.Cliente.Nombre,
-                    turno.Prestador.Negocio.Nombre,
-                    inicioSedeLocal,
-                    turno.Prestador.Negocio.Slug
-                );
+                    await _emailService.EnviarCancelacionTurnoAsync(
+                        turno.Cliente.Email,
+                        turno.Cliente.Nombre,
+                        turno.Prestador.Negocio.Nombre,
+                        inicioSedeLocal,
+                        turno.Prestador.Negocio.Slug
+                    );
+                }
+                catch (Exception ex)
+                {
+                    // ⚠️ AQUÍ ESTÁ LA MAGIA:
+                    // Si el email falla (dirección inválida, caída del servicio), capturamos el error.
+                    // El turno YA está cancelado en la base de datos, que es lo que realmente importa.
+                    // TODO: _logger.LogWarning(ex, "Falló el envío de correo de cancelación al cliente.");
+                }
             }
         }
 
-        turno.Estado = nuevoEstado;
-
-        return await _context.SaveChangesAsync() > 0;
+        return exito;
     }
 
     // Para la vista pública de gestión
@@ -500,54 +525,59 @@ public class TurnosService : ITurnosService
         var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
 
-        var now = DateTime.UtcNow;
-        var inicioMesActual = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var inicioMesAnterior = inicioMesActual.AddMonths(-1);
+        // 1. Obtener la hora ACTUAL en la zona horaria del negocio
+        var ahoraLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
 
-        // 1. OBTENEMOS LAS RESERVAS (Para las métricas de cantidad y día fuerte)
+        // 2. Determinar el inicio del mes en HORA LOCAL
+        var inicioMesActualLocal = new DateTime(ahoraLocal.Year, ahoraLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        var inicioMesAnteriorLocal = inicioMesActualLocal.AddMonths(-1);
+
+        // 3. Convertir esos límites locales a UTC para consultar la base de datos de forma segura
+        var inicioMesActualUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesActualLocal, zonaSede);
+        var inicioMesAnteriorUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesAnteriorLocal, zonaSede);
+
+        // 4. OBTENEMOS LAS RESERVAS (Usando los límites UTC precisos)
         var turnos = await _context.Turnos
             .AsNoTracking()
             .Where(t => t.NegocioId == negocioId &&
-                        t.FechaHoraInicioUtc >= inicioMesAnterior &&
+                        t.FechaHoraInicioUtc >= inicioMesAnteriorUtc &&
                         t.Estado != EstadoTurnoEnum.Cancelado)
             .Select(t => new {
                 t.FechaHoraInicioUtc
-                // Ya no necesitamos el Precio del servicio aquí
             })
             .ToListAsync();
 
-        var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActual).ToList();
-        var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnterior && t.FechaHoraInicioUtc < inicioMesActual).ToList();
+        var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActualUtc).ToList();
+        var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnteriorUtc && t.FechaHoraInicioUtc < inicioMesActualUtc).ToList();
 
         int reservasActual = turnosActual.Count;
         int reservasAnterior = turnosAnterior.Count;
 
-
-        // 2. NUEVO: OBTENEMOS LOS INGRESOS REALES DE LA CAJA (Dinero que realmente entró)
+        // 5. OBTENEMOS LOS INGRESOS REALES DE LA CAJA (Con los mismos límites UTC)
         var ingresosCaja = await _context.MovimientosCaja
             .AsNoTracking()
             .Where(m => m.NegocioId == negocioId &&
-                        m.CreatedAtUtc >= inicioMesAnterior &&
-                        m.Tipo == TipoMovimientoEnum.Ingreso) // Solo sumamos lo que entró
+                        m.CreatedAtUtc >= inicioMesAnteriorUtc &&
+                        m.Tipo == TipoMovimientoEnum.Ingreso)
             .Select(m => new {
                 m.CreatedAtUtc,
                 m.Monto
             })
             .ToListAsync();
 
-        var ingresosMesActual = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesActual).ToList();
-        var ingresosMesAnterior = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesAnterior && m.CreatedAtUtc < inicioMesActual).ToList();
+        var ingresosMesActual = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesActualUtc).ToList();
+        var ingresosMesAnterior = ingresosCaja.Where(m => m.CreatedAtUtc >= inicioMesAnteriorUtc && m.CreatedAtUtc < inicioMesActualUtc).ToList();
 
         decimal ingresosActual = ingresosMesActual.Sum(m => m.Monto);
         decimal ingresosAnterior = ingresosMesAnterior.Sum(m => m.Monto);
 
-        // --- NUEVO CÁLCULO: DÍA MÁS FUERTE ---
+        // ==========================================
+        // 6. CÁLCULO: DÍA MÁS FUERTE
+        // ==========================================
         var diaPicoAgrupado = turnosActual
-            // 1. Transformamos a hora local
+            // Transformamos a hora local antes de agrupar para que no haya desfasaje de días
             .Select(t => TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede))
-            // 2. Agrupamos por día de la semana (Lunes, Martes, etc.)
             .GroupBy(fechaLocal => fechaLocal.DayOfWeek)
-            // 3. Ordenamos por el que tenga más turnos
             .OrderByDescending(g => g.Count())
             .FirstOrDefault();
 
@@ -571,8 +601,9 @@ public class TurnosService : ITurnosService
 
         return new DashboardResumenDto
         {
-            MesActualNombre = inicioMesActual.ToString("MMMM yyyy", cultura).ToLower(),
-            MesAnteriorNombre = inicioMesAnterior.ToString("MMMM yyyy", cultura).ToLower(),
+            // Usamos la fecha local para generar el nombre del mes correcto (Ej: mayo 2026)
+            MesActualNombre = inicioMesActualLocal.ToString("MMMM yyyy", cultura).ToLower(),
+            MesAnteriorNombre = inicioMesAnteriorLocal.ToString("MMMM yyyy", cultura).ToLower(),
             Ingresos = new MetricaComparativaDto
             {
                 ValorActual = ingresosActual,
@@ -664,37 +695,35 @@ public class TurnosService : ITurnosService
         var negocioId = _tenantService.GetCurrentTenantId();
         if (negocioId == null) throw new UnauthorizedAccessException("No se encontró el negocio.");
 
-        // 1. SOLUCIÓN POSTGRESQL: Ajuste de Zonas Horarias
-        // Obtenemos la zona horaria de la sede (usamos la misma lógica que en tu GetTurnosByFechaAsync)
         var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
         var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
 
-        // Nos aseguramos de que las fechas entrantes se traten como locales
-        var desdeLocal = DateTime.SpecifyKind(desde, DateTimeKind.Unspecified);
-        var hastaLocal = DateTime.SpecifyKind(hasta, DateTimeKind.Unspecified);
+        // 🎯 CORRECCIÓN 1: Aseguramos que 'desde' comience a las 00:00:00
+        var desdeLocal = DateTime.SpecifyKind(desde.Date, DateTimeKind.Unspecified);
 
-        // Las convertimos a UTC estricto para que PostgreSQL no se queje
+        // 🎯 CORRECCIÓN 2: Extendemos 'hasta' para que abarque hasta las 23:59:59 del día seleccionado
+        var hastaLocal = DateTime.SpecifyKind(hasta.Date.AddDays(1).AddTicks(-1), DateTimeKind.Unspecified);
+
+        // Convertimos a UTC estricto con los límites correctos
         var desdeUtc = TimeZoneInfo.ConvertTimeToUtc(desdeLocal, zonaSede);
         var hastaUtc = TimeZoneInfo.ConvertTimeToUtc(hastaLocal, zonaSede);
 
-        // 2. Buscamos los turnos usando las fechas UTC
+        // Buscamos los turnos usando las fechas UTC precisas
         var turnos = await _context.Turnos
-            .AsNoTracking()
+            .AsNoTracking() // Excelente uso de AsNoTracking para reportes de solo lectura
             .Include(t => t.Cliente)
             .Include(t => t.Prestador)
             .Include(t => t.Servicio)
             .Where(t => t.NegocioId == negocioId &&
-                        t.FechaHoraInicioUtc >= desdeUtc && // <-- Usamos desdeUtc
-                        t.FechaHoraInicioUtc <= hastaUtc)   // <-- Usamos hastaUtc
+                        t.FechaHoraInicioUtc >= desdeUtc &&
+                        t.FechaHoraInicioUtc <= hastaUtc)
             .OrderBy(t => t.FechaHoraInicioUtc)
             .ToListAsync();
 
-        // 2. Armamos el Excel
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Turnos");
 
-        // Estilos de la cabecera
         var headerRow = worksheet.Row(1);
         headerRow.Style.Font.Bold = true;
         headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -708,12 +737,10 @@ public class TurnosService : ITurnosService
         worksheet.Cell(1, 7).Value = "Estado";
         worksheet.Cell(1, 8).Value = "Precio";
 
-        // Llenamos las filas
         var currentRow = 2;
         foreach (var t in turnos)
         {
-            // Convertimos la hora UTC a la hora local para que el Excel tenga sentido
-            var fechaLocal = t.FechaHoraInicioUtc.ToLocalTime();
+            var fechaLocal = TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, zonaSede);
 
             worksheet.Cell(currentRow, 1).Value = fechaLocal.ToString("dd/MM/yyyy");
             worksheet.Cell(currentRow, 2).Value = fechaLocal.ToString("HH:mm");
@@ -723,7 +750,6 @@ public class TurnosService : ITurnosService
             worksheet.Cell(currentRow, 6).Value = t.Servicio.Nombre;
             worksheet.Cell(currentRow, 7).Value = t.Estado.ToString();
 
-            // Asignamos el precio y le damos formato de moneda (opcional)
             var cellPrecio = worksheet.Cell(currentRow, 8);
             cellPrecio.Value = t.Servicio.Precio;
             cellPrecio.Style.NumberFormat.Format = "$ #,##0.00";
@@ -733,7 +759,6 @@ public class TurnosService : ITurnosService
 
         worksheet.Columns().AdjustToContents();
 
-        // 3. Devolvemos los bytes para liberar memoria
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();

@@ -67,7 +67,8 @@
     {
         <div class="bg-white border border-surface-container-high rounded-[2rem] overflow-hidden editorial-shadow">
             <div class="divide-y divide-surface-container">
-                @foreach (var c in clientesFiltrados)
+
+                @foreach (var c in clientesPaginados)
                 {
                     <div @onclick="() => AbrirDetalle(c)" class="p-4 sm:p-6 hover:bg-secondary-container/10 transition-colors cursor-pointer flex items-center justify-between group">
                         <div class="flex items-center gap-4">
@@ -97,9 +98,68 @@
                     </div>
                 }
             </div>
+
             @if (!clientesFiltrados.Any())
             {
                 <div class="p-8 text-center text-on-surface-variant text-sm">No se encontraron clientes que coincidan con la búsqueda.</div>
+            }
+
+            @* 🎯 NUEVO: CONTROLES DE PAGINACIÓN (Tailwind) *@
+            @if (totalPaginas > 1)
+            {
+                <div class="flex items-center justify-between px-4 py-4 border-t border-surface-container-high sm:px-6 bg-surface-container-lowest">
+                    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-on-surface-variant">
+                                Mostrando <span class="font-bold text-primary">@(((paginaActual - 1) * elementosPorPagina) + 1)</span> a
+                                <span class="font-bold text-primary">@Math.Min(paginaActual * elementosPorPagina, totalElementos)</span> de
+                                <span class="font-bold text-primary">@totalElementos</span> clientes
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="isolate inline-flex -space-x-px rounded-xl shadow-sm" aria-label="Pagination">
+
+                                <!-- Botón Anterior -->
+                                <button @onclick="() => CambiarPagina(paginaActual - 1)"
+                                        disabled="@(paginaActual == 1)"
+                                        class="relative inline-flex items-center rounded-l-xl px-2 py-2 text-on-surface-variant ring-1 ring-inset ring-surface-container-high hover:bg-surface-container-low disabled:opacity-50 transition-all">
+                                    <span class="material-symbols-outlined text-sm">chevron_left</span>
+                                </button>
+
+                                <!-- Números de Página -->
+                                @for (int i = 1; i <= totalPaginas; i++)
+                                {
+                                    int numPagina = i;
+                                    <button @onclick="() => CambiarPagina(numPagina)"
+                                            class="relative inline-flex items-center px-4 py-2 text-sm font-bold ring-1 ring-inset ring-surface-container-high focus:z-20 transition-all
+                                                               @(numPagina == paginaActual ? "bg-primary text-white z-10" : "text-on-surface-variant hover:bg-surface-container-low")">
+                                        @numPagina
+                                    </button>
+                                }
+
+                                <!-- Botón Siguiente -->
+                                <button @onclick="() => CambiarPagina(paginaActual + 1)"
+                                        disabled="@(paginaActual == totalPaginas)"
+                                        class="relative inline-flex items-center rounded-r-xl px-2 py-2 text-on-surface-variant ring-1 ring-inset ring-surface-container-high hover:bg-surface-container-low disabled:opacity-50 transition-all">
+                                    <span class="material-symbols-outlined text-sm">chevron_right</span>
+                                </button>
+                            </nav>
+                        </div>
+                    </div>
+
+                    <!-- Versión Móvil Simplificada -->
+                    <div class="flex flex-1 justify-between sm:hidden">
+                        <button @onclick="() => CambiarPagina(paginaActual - 1)" disabled="@(paginaActual == 1)"
+                                class="relative inline-flex items-center rounded-xl border border-surface-container-high bg-white px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50">
+                            Anterior
+                        </button>
+                        <span class="flex items-center text-sm font-bold text-primary">@paginaActual / @totalPaginas</span>
+                        <button @onclick="() => CambiarPagina(paginaActual + 1)" disabled="@(paginaActual == totalPaginas)"
+                                class="relative inline-flex items-center rounded-xl border border-surface-container-high bg-white px-4 py-2 text-sm font-bold text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50">
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
             }
         </div>
     }
@@ -251,7 +311,13 @@
     private List<TurnoReadDto> historial = new();
     private bool cargandoHistorial = false;
 
-    // Propiedad computada para el buscador
+    // ==========================================
+    // ESTADO DE PAGINACIÓN FRONTEND
+    // ==========================================
+    private int paginaActual = 1;
+    private int elementosPorPagina = 10; // Puedes ajustarlo a 15 o 20
+
+    // 1. Aplicamos el filtro de búsqueda
     private IEnumerable<ClienteReadDto> clientesFiltrados =>
         string.IsNullOrWhiteSpace(searchTerm)
             ? (clientes ?? new())
@@ -259,9 +325,34 @@
                 c.Nombre.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                 (c.Telefono != null && c.Telefono.Contains(searchTerm)));
 
+    // 2. Calculamos las métricas de paginación basadas en los resultados filtrados
+    private int totalElementos => clientesFiltrados.Count();
+    private int totalPaginas => Math.Max(1, (int)Math.Ceiling(totalElementos / (double)elementosPorPagina));
+
+    // 3. Extraemos solo la porción de datos para la página actual (Usando LINQ en memoria)
+    private IEnumerable<ClienteReadDto> clientesPaginados =>
+        clientesFiltrados
+            .Skip((paginaActual - 1) * elementosPorPagina)
+            .Take(elementosPorPagina);
+
     protected override async Task OnInitializedAsync()
     {
         clientes = await ClienteService.GetAll();
+    }
+
+    // 🎯 IMPORTANTE: Resetear la página al buscar
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? "";
+        paginaActual = 1; // Si el usuario busca algo, debemos devolverlo a la página 1
+    }
+
+    private void CambiarPagina(int nuevaPagina)
+    {
+        if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas)
+        {
+            paginaActual = nuevaPagina;
+        }
     }
 
     private async Task AbrirDetalle(ClienteReadDto cliente)
