@@ -64,7 +64,7 @@
     // El slug del negocio que deberías pasarle desde tu vista principal o AppState
     [Parameter] public string SlugNegocio { get; set; } = "mi-barberia";
 
-    private string UrlPublica => $"https://zendy.ar/{SlugNegocio}";
+    private string UrlPublica => $"https://zendy.com.ar/{SlugNegocio}";
 
     // API que genera el QR
     private string UrlQrCode => $"https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={Uri.EscapeDataString(UrlPublica)}&margin=20";
