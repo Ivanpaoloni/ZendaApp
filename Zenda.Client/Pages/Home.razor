@@ -266,15 +266,23 @@
         <div class="bg-primary p-5 rounded-[2.5rem] editorial-shadow text-on-primary relative overflow-hidden group">
             <div class="absolute -right-6 -top-6 w-20 h-20 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
 
-            <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div>
+            <div class="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="pr-4">
                     <h3 class="font-headline font-bold text-base text-white">Link de Reservas</h3>
-                    <p class="text-[10px] text-white/70 tracking-tight">Compartí este enlace en tu Instagram o WhatsApp para recibir turnos.</p>
+                    <p class="text-[11px] text-white/70 tracking-tight mt-0.5">Compartí este enlace en tus redes para recibir turnos.</p>
                 </div>
-                <button @onclick="CopiarLink" class="px-4 py-2 bg-white text-primary rounded-xl font-bold text-[11px] hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2 whitespace-nowrap">
-                    <span class="material-symbols-outlined text-sm">@iconoBotonCopiar</span>
-                    @textoBotonCopiar
-                </button>
+
+                @* CONTENEDOR DE BOTONES EN COLUMNA *@
+                <div class="flex flex-col gap-2 w-full sm:w-auto mt-2 sm:mt-0 shrink-0">
+                    <button @onclick="CopiarLink" class="w-full px-5 py-2.5 bg-white text-primary rounded-xl font-bold text-[11px] hover:scale-105 active:scale-95 transition-all shadow-lg flex justify-center items-center gap-2 whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[16px]">@iconoBotonCopiar</span>
+                        @textoBotonCopiar
+                    </button>
+                    <button @onclick="() => mostrarModalQr = true" class="w-full px-5 py-2 bg-white/10 border border-white/20 text-white hover:bg-white/20 rounded-xl font-bold text-[11px] hover:scale-105 active:scale-95 transition-all flex justify-center items-center gap-2 whitespace-nowrap">
+                        <span class="material-symbols-outlined text-[16px]">qr_code_2</span>
+                        Descargar QR
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -338,3 +346,6 @@
     </div>
 
 </div>
+
+
+<QrModal @bind-Visible="mostrarModalQr" SlugNegocio="@State.CurrentNegocio?.Slug" />

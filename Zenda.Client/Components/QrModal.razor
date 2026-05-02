@@ -1,0 +1,109 @@
+﻿@inject IJSRuntime JS
+
+@if (Visible)
+{
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm flex flex-col items-center relative shadow-2xl animate-in zoom-in-95 duration-300">
+
+            @* Botón Cerrar *@
+            <button @onclick="Cerrar" class="absolute top-6 right-6 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+
+            @* Título *@
+            <div class="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-4">
+                <span class="material-symbols-outlined text-3xl">qr_code_2</span>
+            </div>
+            <h3 class="font-headline font-bold text-2xl text-primary text-center leading-tight">Tu portal de reservas</h3>
+            <p class="text-on-surface-variant text-sm text-center mt-2 mb-8">
+                Tus clientes pueden escanear este código para agendar turnos directamente.
+            </p>
+
+            @* EL CÓDIGO QR *@
+            <div class="bg-white p-4 rounded-3xl border-2 border-surface-container-high shadow-sm mb-6">
+                <img src="@UrlQrCode" alt="QR de Reservas" class="w-48 h-48 object-contain" crossorigin="anonymous" />
+            </div>
+
+            @* Link para copiar *@
+            <div class="w-full flex items-center gap-2 p-3 bg-surface-container-low rounded-xl border border-surface-container-high mb-6">
+                <span class="material-symbols-outlined text-on-surface-variant text-[18px] ml-1">link</span>
+                <input type="text" readonly value="@UrlPublica" class="bg-transparent border-none outline-none text-sm text-primary font-bold w-full truncate" />
+                <button @onclick="CopiarLink" class="p-2 bg-white rounded-lg shadow-sm text-primary hover:bg-primary hover:text-white transition-colors" title="Copiar link">
+                    <span class="material-symbols-outlined text-[16px]">content_copy</span>
+                </button>
+            </div>
+
+            @* Mensaje de copiado (feedback visual) *@
+            @if (linkCopiado)
+            {
+                <span class="text-green-600 text-xs font-bold uppercase tracking-widest mb-4 animate-in slide-in-from-bottom-2">¡Link copiado!</span>
+            }
+
+            @* Botón de Descarga *@
+            <button @onclick="DescargarQr" disabled="@descargando" class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 transition-all flex justify-center items-center gap-2 shadow-md disabled:opacity-50">
+                @if (descargando)
+                {
+                    <div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+                    <span>Procesando...</span>
+                }
+                else
+                {
+                    <span class="material-symbols-outlined">download</span>
+                    <span>Descargar QR</span>
+                }
+            </button>
+
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    // El slug del negocio que deberías pasarle desde tu vista principal o AppState
+    [Parameter] public string SlugNegocio { get; set; } = "mi-barberia";
+
+    private string UrlPublica => $"https://zendy.ar/{SlugNegocio}";
+
+    // API que genera el QR
+    private string UrlQrCode => $"https://api.qrserver.com/v1/create-qr-code/?size=500x500&data={Uri.EscapeDataString(UrlPublica)}&margin=20";
+
+    private bool linkCopiado = false;
+    private bool descargando = false;
+
+    private async Task Cerrar()
+    {
+        Visible = false;
+        linkCopiado = false;
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task CopiarLink()
+    {
+        // Usamos la API nativa del navegador para copiar al portapapeles
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", UrlPublica);
+
+        linkCopiado = true;
+        await Task.Delay(2500); // Mostramos el mensaje por 2.5 seg
+        linkCopiado = false;
+    }
+
+    private async Task DescargarQr()
+    {
+        descargando = true;
+        try
+        {
+            // Llama a la función que pegamos en el index.html
+            await JS.InvokeVoidAsync("descargarImagenUrl", UrlQrCode, $"QR_Zendy_{SlugNegocio}.png");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al descargar el QR: {ex.Message}");
+        }
+        finally
+        {
+            descargando = false;
+        }
+    }
+}

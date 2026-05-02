@@ -210,6 +210,15 @@
                                             Solo se permiten letras minúsculas, números y guiones.
                                         </p>
                                     }
+                                    @if (slugDisponible != false && !string.IsNullOrEmpty(perfilNegocio.Slug))
+                                    {
+                                        <div class="mt-2 px-1">
+                                            <button type="button" @onclick="() => mostrarModalQr = true" class="text-xs font-bold text-primary hover:underline flex items-center gap-1 transition-all">
+                                                <span class="material-symbols-outlined text-[14px]">qr_code_scanner</span>
+                                                Ver e imprimir código QR
+                                            </button>
+                                        </div>
+                                    }
                                 </div>
 
                                 @* ... (Código anterior de Nombre y Slug) ... *@
@@ -439,6 +448,8 @@
         </button>
     }
 </UpgradeModal>
+
+<QrModal @bind-Visible="mostrarModalQr" SlugNegocio="@perfilNegocio.Slug" />
 
 <style>
     /* Reutilizamos la clase que armamos para Sedes para mantener consistencia visual */

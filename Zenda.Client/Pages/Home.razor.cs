@@ -34,7 +34,6 @@ public partial class Home : ComponentBase
     protected int turnosHoy = 0;
     protected int completadosHoy = 0;
     protected decimal ingresosProyectadosHoy = 0;
-
     protected string textoBotonCopiar = "Copiar Enlace";
     protected string iconoBotonCopiar = "content_copy";
     protected string linkReserva = "";
@@ -46,6 +45,7 @@ public partial class Home : ComponentBase
     protected List<TurnoReadDto> proximosTurnos = new();
     protected List<BloqueoReadDto> ausenciasHoy = new();
     protected bool cargando = true;
+    private bool mostrarModalQr = false;
 
     // --- CICLO DE VIDA ---
     protected override async Task OnInitializedAsync()

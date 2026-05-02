@@ -44,7 +44,7 @@ public partial class Configuracion : ComponentBase, IDisposable
     protected List<PlanVistaDto> planesDisponibles = new();
     protected PlanVistaDto? planSeleccionado;
     protected bool mostrarModalUpgrade = false;
-
+    private bool mostrarModalQr = false;
     public class PlanVista
     {
         public Guid Id { get; set; }
