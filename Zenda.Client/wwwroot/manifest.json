@@ -1,0 +1,20 @@
+{
+  "name": "Zendy | Reservas online",
+  "short_name": "Zendy",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7faf6",
+  "theme_color": "#055043",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
