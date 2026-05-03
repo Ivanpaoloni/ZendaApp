@@ -20,18 +20,19 @@
     <!-- Reemplaza el contenido dentro de <div id="app"> con esto -->
     <div id="app" class="flex flex-col min-h-[100dvh] w-full overflow-x-hidden relative">
         <div class="flex flex-col items-center justify-center min-h-screen bg-background">
-            <!-- Contenedor del Logo e Icono -->
             <div class="flex flex-col items-center gap-4 animate-pulse">
-                <!-- Nuevo Logo "Z" -->
-                <img src="img/zendy-logo.png" alt="Zendy Logo" class="w-20 h-20 object-contain rounded-3xl editorial-shadow" />
 
-                <!-- Texto de Marca -->
+                <img src="img/zendy-logo.png"
+                     alt="Zendy Logo"
+                     width="80"
+                     height="80"
+                     class="logo-loading rounded-3xl editorial-shadow" />
+
                 <div class="text-3xl font-headline font-extrabold text-primary tracking-tighter">
-                    zendy
+                    Zendy
                 </div>
             </div>
 
-            <!-- Barra de progreso optimizada -->
             <div class="mt-6 w-16 h-1 bg-surface-container-high rounded-full overflow-hidden">
                 <div class="bg-primary h-full animate-[loading_1.5s_infinite_ease-in-out]"></div>
             </div>
@@ -60,6 +61,21 @@
         /* La sombra editorial que le da el toque premium */
         .editorial-shadow {
             box-shadow: 0px 24px 48px rgba(24, 29, 27, 0.06);
+        }
+        .logo-loading {
+            width: 80px !important; /* Equivalente a w-20 */
+            height: 80px !important; /* Equivalente a h-20 */
+            object-fit: contain;
+        }
+
+        @keyframes loading {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
     </style>
 
@@ -92,6 +108,7 @@
                 extend: {
                     colors: {
                         "primary": "#055043",
+                        "support": "#4F46E5",
                         "on-primary": "#ffffff",
                         "background": "#f7faf6",
                         "surface-container-low": "#f1f5f1",

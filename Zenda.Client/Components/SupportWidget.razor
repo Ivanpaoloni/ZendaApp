@@ -1,7 +1,6 @@
 @inject IConfiguration Config
 
-<div class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end">
-
+<div class="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100] flex flex-col items-end opacity-60 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300">
     @if (isMenuOpen)
     {
         <div class="mb-4 w-72 bg-background rounded-3xl p-5 editorial-shadow border border-outline-variant flex flex-col gap-4 origin-bottom-right transition-all duration-300">
@@ -30,11 +29,12 @@
 
     <button @onclick="ToggleMenu"
             class="group relative flex items-center justify-center w-14 h-14 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 active:scale-95 transition-all duration-300 editorial-shadow
-                   @(isMenuOpen ? "bg-surface-container-high text-on-surface" : "bg-primary text-white")">
+               @(isMenuOpen ? "bg-surface-container-high text-on-surface" : "bg-orange-600 text-white")">
 
         @if (!isMenuOpen)
         {
-            <span class="absolute inset-0 rounded-full bg-primary animate-ping opacity-25"></span>
+            @* Cambiamos también el color del pulso para que coincida *@
+            <span class="absolute inset-0 rounded-full bg-orange-600 animate-ping opacity-25"></span>
         }
 
         @if (isMenuOpen)
