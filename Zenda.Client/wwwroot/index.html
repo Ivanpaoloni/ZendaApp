@@ -17,10 +17,22 @@
 </head>
 
 <body class="bg-background text-on-surface font-body selection:bg-secondary-container overflow-x-hidden w-full m-0 p-0">
+    <!-- Reemplaza el contenido dentro de <div id="app"> con esto -->
     <div id="app" class="flex flex-col min-h-[100dvh] w-full overflow-x-hidden relative">
-        <div class="flex flex-col items-center justify-center min-h-screen">
-            <div class="text-3xl font-headline font-extrabold text-primary animate-pulse tracking-tighter">Zendy</div>
-            <div class="mt-4 w-12 h-0.5 bg-surface-container-high overflow-hidden">
+        <div class="flex flex-col items-center justify-center min-h-screen bg-background">
+            <!-- Contenedor del Logo e Icono -->
+            <div class="flex flex-col items-center gap-4 animate-pulse">
+                <!-- Nuevo Logo "Z" -->
+                <img src="img/zendy-logo.png" alt="Zendy Logo" class="w-20 h-20 object-contain rounded-3xl editorial-shadow" />
+
+                <!-- Texto de Marca -->
+                <div class="text-3xl font-headline font-extrabold text-primary tracking-tighter">
+                    zendy
+                </div>
+            </div>
+
+            <!-- Barra de progreso optimizada -->
+            <div class="mt-6 w-16 h-1 bg-surface-container-high rounded-full overflow-hidden">
                 <div class="bg-primary h-full animate-[loading_1.5s_infinite_ease-in-out]"></div>
             </div>
         </div>
