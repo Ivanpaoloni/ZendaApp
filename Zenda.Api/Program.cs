@@ -132,7 +132,19 @@ using (var scope = app.Services.CreateScope())
 app.UseMiddleware<ExceptionMiddleware>();
 
 // 2. Archivos estáticos
-app.UseStaticFiles();
+// Busca esta parte en tu Program.cs y reemplázala o añádela:
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Evitamos que Railway o el navegador guarden en caché el Service Worker
+        if (ctx.File.Name == "service-worker.js" || ctx.File.Name == "blazor.boot.json")
+        {
+            ctx.Context.Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+            ctx.Context.Response.Headers.Append("Expires", "0");
+        }
+    }
+});
 
 // 3. Swagger
 app.UseSwagger();

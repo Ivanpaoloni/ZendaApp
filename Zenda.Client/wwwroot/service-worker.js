@@ -1,5 +1,5 @@
 ﻿// Zendy Service Worker
-const APP_VERSION = 'v1.0.5'; // Subimos la versión para forzar el cambio
+const APP_VERSION = 'v1.0.6'; // Subimos la versión para forzar el cambio
 
 self.addEventListener('install', event => {
     console.log('Instalando Service Worker versión:', APP_VERSION);
