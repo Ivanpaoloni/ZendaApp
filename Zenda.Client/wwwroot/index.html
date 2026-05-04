@@ -121,24 +121,45 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(registration => {
+
+                // Función centralizada para mostrar el cartel
+                const showUpdateNotification = () => {
+                    const notification = document.getElementById('update-notification');
+                    notification.classList.remove('hidden');
+                    notification.classList.add('flex');
+
+                    // Al hacer clic, le decimos al Service Worker que se active a la fuerza
+                    notification.addEventListener('click', () => {
+                        if (registration.waiting) {
+                            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        }
+                    });
+                };
+
+                // CASO 1: La actualización ya se descargó en segundo plano y está esperando
+                if (registration.waiting) {
+                    showUpdateNotification();
+                }
+
+                // CASO 2: La actualización se descubre mientras el usuario tiene la app abierta
                 registration.onupdatefound = () => {
                     const installingWorker = registration.installing;
                     installingWorker.onstatechange = () => {
-                        // Si hay un nuevo worker instalado y ya había uno previo controlando la página
                         if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-
-                            // Mostramos la notificación que ya tienes maquetada
-                            const notification = document.getElementById('update-notification');
-                            notification.classList.remove('hidden');
-                            notification.classList.add('flex');
-
-                            // Agregamos un evento de clic al banner para que recargue la app
-                            notification.addEventListener('click', () => {
-                                window.location.reload();
-                            });
+                            showUpdateNotification();
                         }
                     };
                 };
+            });
+
+            // NUEVO: Escuchamos cuándo el nuevo Service Worker toma el control.
+            // Recién en este momento recargamos la página de forma segura.
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    window.location.reload();
+                    refreshing = true;
+                }
             });
         }
 

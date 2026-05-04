@@ -1,13 +1,17 @@
 ﻿// Zendy Service Worker
-// IMPORTANTE: Cambia este número de versión cada vez que hagas un push 
-// y quieras que los usuarios vean el cartel de "Actualización".
-const APP_VERSION = 'v1.0.3';
+const APP_VERSION = 'v1.0.4'; // Subimos la versión para forzar el cambio
 
 self.addEventListener('install', event => {
     console.log('Instalando Service Worker versión:', APP_VERSION);
-    // No usamos skipWaiting() para dejar que el usuario decida cuándo recargar con el cartel
 });
 
 self.addEventListener('fetch', event => {
-    // Escucha básica para que los navegadores lo consideren una PWA válida
+    // Escucha básica
+});
+
+// NUEVO: Escuchamos el mensaje desde index.html para saltar la espera
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
 });
