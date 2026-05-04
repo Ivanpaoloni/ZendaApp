@@ -1,5 +1,5 @@
 ﻿// Cambia este número para forzar la actualización en los celulares
-const APP_VERSION = 'v1.0.8';
+const APP_VERSION = 'v1.0.9';
 
 self.addEventListener('install', event => {
     console.log('Instalando SW:', APP_VERSION);
