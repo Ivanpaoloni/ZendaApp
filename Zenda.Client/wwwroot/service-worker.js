@@ -1,11 +1,18 @@
-﻿const APP_VERSION = 'v1.0.8'; // Cambia esto en cada push
+﻿// Cambia este número para forzar la actualización en los celulares
+const APP_VERSION = 'v1.0.8';
 
 self.addEventListener('install', event => {
-    console.log('Instalando Service Worker versión:', APP_VERSION);
-    // TRUCO: Toma el control inmediatamente, sin esperar
-    self.skipWaiting(); 
+    console.log('Instalando SW:', APP_VERSION);
+    // 1. Instalar y no esperar a que se cierre la app
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+    console.log('Activando SW:', APP_VERSION);
+    // 2. Tomar el control de la pestaña abierta INMEDIATAMENTE
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', event => {
-    // Escucha básica para PWA
+    // Necesario para que Chrome lo reconozca como PWA válida
 });

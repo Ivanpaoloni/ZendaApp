@@ -120,11 +120,10 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            // Registramos el worker
             navigator.serviceWorker.register('service-worker.js')
-                .catch(error => console.error('Error registrando el SW:', error));
+                .catch(error => console.error('Error en SW:', error));
 
-            // Cuando el nuevo worker toma el control (gracias al skipWaiting de arriba), recargamos
+            // 3. Cuando el nuevo SW toma el control (gracias al clients.claim), recargamos
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
