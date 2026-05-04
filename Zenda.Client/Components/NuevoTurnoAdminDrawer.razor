@@ -322,7 +322,8 @@
 
         try
         {
-            dto.FechaHoraInicio = fechaSeleccionada.Date.Add(horaSeleccionada.ToTimeSpan());
+            var fechaEnsamblada = fechaSeleccionada.Date.Add(horaSeleccionada.ToTimeSpan());
+            dto.FechaHoraInicio = DateTime.SpecifyKind(fechaEnsamblada, DateTimeKind.Unspecified);
 
             await TurnoService.CrearTurnoAdmin(dto);
 
