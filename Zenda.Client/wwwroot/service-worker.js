@@ -1,4 +1,4 @@
-﻿const APP_VERSION = 'v1.0.5'; // Cambia esto en cada push
+﻿const APP_VERSION = 'v1.0.8'; // Cambia esto en cada push
 
 self.addEventListener('install', event => {
     console.log('Instalando Service Worker versión:', APP_VERSION);
