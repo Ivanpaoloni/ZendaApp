@@ -1,7 +1,7 @@
 ﻿// Zendy Service Worker
 // IMPORTANTE: Cambia este número de versión cada vez que hagas un push 
 // y quieras que los usuarios vean el cartel de "Actualización".
-const APP_VERSION = 'v1.0.1';
+const APP_VERSION = 'v1.0.2';
 
 self.addEventListener('install', event => {
     console.log('Instalando Service Worker versión:', APP_VERSION);
