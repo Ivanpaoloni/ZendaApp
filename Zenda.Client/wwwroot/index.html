@@ -120,10 +120,11 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('service-worker.js')
-                .catch(error => console.error('Error en SW:', error));
+            navigator.serviceWorker.register('service-worker.js').then(registration => {
+                // Obligamos al celular a preguntar a Railway si hay un nuevo service-worker-assets.js
+                registration.update();
+            });
 
-            // 3. Cuando el nuevo SW toma el control (gracias al clients.claim), recargamos
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
