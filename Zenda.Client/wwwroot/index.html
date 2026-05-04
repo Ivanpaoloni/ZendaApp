@@ -120,40 +120,11 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            // Volvemos a la URL limpia
-            navigator.serviceWorker.register('service-worker.js').then(registration => {
+            // Registramos el worker
+            navigator.serviceWorker.register('service-worker.js')
+                .catch(error => console.error('Error registrando el SW:', error));
 
-                // Forzamos el chequeo al iniciar
-                registration.update();
-
-                const showUpdateNotification = () => {
-                    const notification = document.getElementById('update-notification');
-                    if (notification) {
-                        notification.classList.remove('hidden');
-                        notification.classList.add('flex');
-
-                        notification.addEventListener('click', () => {
-                            if (registration.waiting) {
-                                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                            }
-                        });
-                    }
-                };
-
-                if (registration.waiting) {
-                    showUpdateNotification();
-                }
-
-                registration.onupdatefound = () => {
-                    const installingWorker = registration.installing;
-                    installingWorker.onstatechange = () => {
-                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            showUpdateNotification();
-                        }
-                    };
-                };
-            }).catch(error => console.error('Error en Service Worker:', error));
-
+            // Cuando el nuevo worker toma el control (gracias al skipWaiting de arriba), recargamos
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
