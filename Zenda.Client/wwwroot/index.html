@@ -121,10 +121,19 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js').then(registration => {
-                // Obligamos al celular a preguntar a Railway si hay un nuevo service-worker-assets.js
+
+                // 1. Revisa si hay actualización apenas carga la app
                 registration.update();
+
+                // 2. EL LATIDO EN VIVO: Revisa silenciosamente cada 60 segundos (60000 milisegundos)
+                setInterval(() => {
+                    console.log("Buscando actualizaciones en vivo...");
+                    registration.update();
+                }, 60000);
+
             });
 
+            // 3. Cuando el latido detecta un cambio, recarga la pantalla sola
             let refreshing = false;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 if (!refreshing) {
