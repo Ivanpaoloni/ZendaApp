@@ -345,7 +345,7 @@
                 // Buscamos si la palabra "SuperAdmin" existe en CUALQUIER claim del token
                 var esSuperAdmin = authState.User.Claims.Any(c => c.Value == "SuperAdmin");
 
-                Console.WriteLine($"¿Es SuperAdmin?: {esSuperAdmin}");
+                //Console.WriteLine($"¿Es SuperAdmin?: {esSuperAdmin}");
 
                 if (esSuperAdmin)
                 {

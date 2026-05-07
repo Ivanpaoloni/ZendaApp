@@ -2,6 +2,7 @@
 using Zenda.Client.Components;
 using Zenda.Core.DTOs;
 
+namespace Zenda.Client.Services;
 public class PrestadorClient : BaseClient
 {
     private readonly HttpClient _http;

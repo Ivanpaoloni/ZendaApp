@@ -1,0 +1,76 @@
+﻿@page "/prestadores/agenda-semanal"
+@using Zenda.Core.DTOs
+@using Zenda.Core.Enums
+@inject Zenda.Client.Services.TurnoClient TurnoClient
+@* Asumo que tienes un servicio para prestadores *@
+@inject Zenda.Client.Services.PrestadorClient PrestadorClient
+
+<div class="agenda-container p-4">
+    <header class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="m-0 fw-bold" style="color: #111827;">Agenda de Turnos</h3>
+
+        <!-- Filtro Multi-Prestador -->
+        <select class="form-select w-auto shadow-sm kinetic-select" @bind="PrestadorSeleccionadoId" @bind:after="CargarTurnos">
+            <option value="">Todos los prestadores</option>
+            @if (listaPrestadores != null)
+            {
+                @foreach (var prestador in listaPrestadores)
+                {
+                    <option value="@prestador.Id">@prestador.Nombre</option>
+                }
+            }
+        </select>
+    </header>
+
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    }
+    else
+    {
+        <!-- Delegamos el renderizado a nuestro componente nativo -->
+        <!-- Seteamos la zona horaria de Argentina -->
+        <ZendyScheduler Turnos="turnos"
+                        TimeZoneId="America/Argentina/Buenos_Aires"
+                        OnTurnoSeleccionado="AbrirDetalleTurno" />
+    }
+</div>
+
+@code {
+    private List<TurnoReadDto> turnos = new();
+    private bool isLoading = true;
+
+    private Guid? PrestadorSeleccionadoId;
+    // Asumiendo un DTO básico para el select
+    private List<PrestadorReadDto> listaPrestadores = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Carga de prestadores para el filtro
+        // listaPrestadores = await PrestadorClient.GetAllAsync();
+
+        await CargarTurnos();
+    }
+
+    private async Task CargarTurnos()
+    {
+        isLoading = true;
+
+        var desde = DateTime.Today.AddDays(-30);
+        var hasta = DateTime.Today.AddDays(30);
+
+        // Llamada a tu API
+        turnos = await TurnoClient.GetByRango(desde, hasta, PrestadorSeleccionadoId);
+
+        isLoading = false;
+    }
+
+    // Manejador del evento emitido por ZendyScheduler
+    private void AbrirDetalleTurno(TurnoReadDto turno)
+    {
+        Console.WriteLine($"Abriendo detalle del turno: {turno.Id} - {turno.ClienteNombre}");
+        // Aquí disparas tu DialogService para gestionar el turno
+    }
+}

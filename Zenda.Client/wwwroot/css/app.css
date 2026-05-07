@@ -226,3 +226,86 @@ h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
     right: 1.5rem;
     top: 1rem;
 }
+
+/* app.css - SECCIÓN AGENDA */
+.grid-semana {
+    display: grid;
+    /* Escritorio: 7 columnas. Móvil: Se ajusta mediante clases d-none / d-md-grid en el HTML */
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #ffffff;
+    min-height: 800px;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+}
+
+@media (max-width: 768px) {
+    .grid-semana {
+        grid-template-columns: 1fr;
+    }
+}
+
+.grid-dia {
+    display: grid;
+    grid-template-rows: repeat(96, minmax(12px, auto));
+    position: relative;
+    border-right: 1px solid #E5E7EB;
+}
+
+    .grid-dia:last-child {
+        border-right: none;
+    }
+
+.turno-card {
+    margin: 1px 4px;
+    padding: 6px;
+    border-radius: 6px;
+    /* Color base de resguardo por si el estado falla */
+    background-color: #6B7280;
+    color: #ffffff !important;
+    font-size: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    transition: var(--kinetic-transition);
+}
+
+    .turno-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        z-index: 10;
+    }
+
+.turno-time {
+    opacity: 0.9;
+    margin-bottom: 2px;
+}
+
+.turno-client {
+    opacity: 0.8;
+    font-size: 0.7rem;
+}
+
+
+.estado-pendiente {
+    background-color: #F5A623 !important;
+    border-left: 4px solid #d38b16;
+}
+
+.estado-confirmado {
+    background-color: #7ED321 !important;
+    border-left: 4px solid #63a817;
+}
+
+.estado-cancelado {
+    background-color: #D0021B !important;
+    opacity: 0.7;
+    text-decoration: line-through;
+}
+
+.estado-reprogramado {
+    background-color: #4A90E2 !important;
+    border-left: 4px solid #336bb0;
+}

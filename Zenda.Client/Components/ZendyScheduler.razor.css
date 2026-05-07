@@ -1,0 +1,260 @@
+﻿:root {
+    --bg-color: #ffffff;
+    --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    --border-soft: #E5E7EB;
+}
+
+.zendy-scheduler-container {
+    background-color: var(--bg-color);
+    border-radius: 16px;
+    width: 100%;
+}
+
+.scheduler-internal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0 0.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.view-toggle {
+    background: #F3F4F6;
+    padding: 4px;
+    border-radius: 10px;
+    display: inline-flex;
+}
+
+    .view-toggle button {
+        background: transparent;
+        border: none;
+        padding: 0.3rem 1rem;
+        cursor: pointer;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #6B7280;
+        transition: all 0.2s ease;
+    }
+
+        .view-toggle button.active {
+            background: white;
+            color: #111827;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+.date-navigator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.date-display {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #374151;
+    min-width: 180px;
+    text-align: center;
+}
+
+.nav-btn {
+    background: white;
+    border: 1px solid var(--border-soft);
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #4B5563;
+    font-size: 1.2rem;
+    box-shadow: var(--card-shadow);
+    transition: background 0.15s ease;
+}
+
+    .nav-btn:hover {
+        background: #F3F4F6;
+    }
+
+.scheduler-scroll-area {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 1rem;
+}
+
+/* ============================================================== */
+/* NUEVA RESOLUCIÓN: 1 MINUTO = 1 PX DE ALTURA                    */
+/* ============================================================== */
+.scheduler-grid {
+    display: grid;
+    grid-auto-rows: 1px;
+    row-gap: 0px;
+    column-gap: 8px;
+    position: relative;
+    background: white;
+    padding: 0.5rem;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-soft);
+}
+
+.vista-diaria {
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: 30px repeat(1440, 1px);
+    min-width: 100%;
+}
+
+.vista-semanal {
+    grid-template-columns: 50px repeat(7, 1fr);
+    grid-template-rows: 30px repeat(1440, 1px);
+    min-width: 800px;
+}
+
+.day-header {
+    grid-row: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4B5563;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+/* Trazado de las horas en el fondo */
+.time-label-row {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border-soft);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.time-text {
+    display: inline-block;
+    width: 50px;
+    text-align: right;
+    padding-right: 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #9CA3AF;
+    transform: translateY(-50%);
+    background: white;
+}
+
+/* ============================================================== */
+/* TARJETAS DE TURNOS (COMPORTAMIENTO)                            */
+/* ============================================================== */
+.turno-card {
+    border-radius: 4px;
+    padding: 0 4px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    overflow: hidden;
+    z-index: 10;
+    pointer-events: auto;
+    transition: filter 0.1s ease;
+    box-sizing: border-box;
+}
+
+    .turno-card:hover {
+        filter: brightness(1.1); /* Efecto de brillo al pasar el mouse */
+        cursor: pointer;
+        z-index: 20;
+    }
+
+/* Reglas de contracción (Flex-Shrink) */
+.turno-time {
+    font-size: 0.6rem;
+    font-weight: 800;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.turno-client {
+    font-size: 0.65rem;
+    font-weight: 900;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    flex-shrink: 1;
+}
+
+.turno-prof {
+    font-size: 0.55rem;
+    font-weight: 600;
+    opacity: 0.85;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    flex-shrink: 2;
+}
+
+/* ============================================================== */
+/* ESTADOS VISUALES (COLORES SÓLIDOS Y TEXTO BLANCO)              */
+/* ============================================================== */
+
+/* Forzamos el texto interno a blanco */
+.turno-card.estado-pendiente *,
+.turno-card.estado-confirmado *,
+.turno-card.estado-completado *,
+.turno-card.estado-cancelado *,
+.turno-card.estado-reprogramado * {
+    color: #ffffff !important;
+}
+
+.estado-pendiente {
+    border-left: 3px solid #d97706; /* Borde más oscuro (Amber 600) */
+    background-color: #f59e0b; /* Fondo sólido (Amber 500) */
+}
+
+.estado-confirmado {
+    border-left: 3px solid #2563eb; /* Borde más oscuro (Blue 600) */
+    background-color: #3b82f6; /* Fondo sólido (Blue 500) */
+}
+
+.estado-completado {
+    border-left: 3px solid #059669; /* Borde más oscuro (Emerald 600) */
+    background-color: #10b981; /* Fondo sólido (Emerald 500) */
+}
+
+.estado-cancelado {
+    border-left: 3px solid #dc2626; /* Borde más oscuro (Red 600) */
+    background-color: #ef4444; /* Fondo sólido (Red 500) */
+    text-decoration: line-through;
+    opacity: 0.85;
+}
+
+.estado-reprogramado {
+    border-left: 3px solid #4f46e5; /* Indigo 600 */
+    background-color: #6366f1; /* Indigo 500 */
+}
+
+.estado-ausente {
+    border-left: 3px solid #4b5563; /* Borde Gray 600 */
+    background-color: #6b7280; /* Fondo Gray 500 */
+}
+
+    /* Mantenemos texto oscuro sólo para ausente, si así lo prefieres, o aplícale blanco también */
+    .estado-ausente * {
+        color: #ffffff !important;
+    }
+
+@media (max-width: 768px) {
+    .scheduler-internal-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .view-toggle {
+        justify-content: center;
+    }
+
+    .date-navigator {
+        justify-content: space-between;
+    }
+}

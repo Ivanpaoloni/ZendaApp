@@ -50,6 +50,21 @@ public class TurnosController : ControllerBase
         var turnos = await _turnosService.GetTurnosByFechaAsync(fecha);
         return Ok(turnos);
     }
+
+    [HttpGet("rango")]
+        public async Task<ActionResult<List<TurnoReadDto>>> GetByRango([FromQuery] DateTime desde, [FromQuery] DateTime hasta, [FromQuery] Guid? prestadorId)
+        {
+            try
+            {
+                var turnos = await _turnosService.GetByRangoFechasAsync(desde, hasta, prestadorId);
+                return Ok(turnos);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno: {ex.Message}");
+            }
+        }
+
     [Authorize]
     [HttpPatch("{id}/estado")]
     public async Task<IActionResult> UpdateEstado(Guid id, [FromBody] EstadoTurnoEnum nuevoEstado)
