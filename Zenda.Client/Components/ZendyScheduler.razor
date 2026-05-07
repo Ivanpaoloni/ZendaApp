@@ -57,10 +57,13 @@
                      style="grid-row: @startRow / @endRow; grid-column: @column;"
                      @onclick="() => SeleccionarTurno(turno)">
 
-                    @* UI 100% Inline *@
                     <span class="turno-time">@localStart.ToString("HH:mm")</span>
                     <strong class="turno-client">@turno.ClienteNombre</strong>
 
+                    @if (!string.IsNullOrWhiteSpace(turno.PrestadorNombre))
+                    {
+                        <span class="turno-prof">(@turno.PrestadorNombre)</span>
+                    }
                 </div>
             }
         </div>
@@ -69,13 +72,18 @@
 
 @code {
     [Parameter] public List<TurnoReadDto> Turnos { get; set; } = new();
+
+    // AHORA RECIBE EL TIMEZONEID DESDE AFUERA. Por defecto usa Buenos Aires
     [Parameter] public string TimeZoneId { get; set; } = "America/Argentina/Buenos_Aires";
+
     [Parameter] public DateTime FechaBase { get; set; } = DateTime.Today;
     [Parameter] public EventCallback<DateTime> FechaBaseChanged { get; set; }
     [Parameter] public EventCallback<TurnoReadDto> OnTurnoSeleccionado { get; set; }
 
     private bool VistaSemanal { get; set; } = true;
-    private TimeZoneInfo ZonaHorariaLocal => TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+
+    // SE USA EL TIMEZONE RECIBIDO POR PARÁMETRO
+    private TimeZoneInfo ZonaHorariaLocal => TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId ?? "America/Argentina/Buenos_Aires");
 
     private IEnumerable<TurnoReadDto> TurnosVisibles
     {
@@ -133,10 +141,9 @@
         }
     }
 
-    // RESOLUCIÓN EXACTA: 1 Minuto = 1 Fila
     private int CalcularFila(DateTime fechaLocal)
     {
-        int offsetCabecera = 2; // Fila 1 es siempre la cabecera
+        int offsetCabecera = 2;
         return (fechaLocal.Hour * 60) + fechaLocal.Minute + offsetCabecera;
     }
 

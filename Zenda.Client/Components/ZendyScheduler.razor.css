@@ -2,17 +2,6 @@
     --bg-color: #ffffff;
     --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
     --border-soft: #E5E7EB;
-    --color-pendiente: #F59E0B;
-    --bg-pendiente: rgba(245, 158, 11, 0.15);
-    --color-confirmado: #10B981;
-    --bg-confirmado: rgba(16, 185, 129, 0.15);
-    --color-cancelado: #EF4444;
-    --bg-cancelado: rgba(239, 68, 68, 0.1);
-    --color-reprogramado: #3B82F6;
-    --bg-reprogramado: rgba(59, 130, 246, 0.15);
-    --color-ausente: #6B7280;
-    --bg-ausente: #F3F4F6;
-    --text-ausente-dark: #111827;
 }
 
 .zendy-scheduler-container {
@@ -103,7 +92,7 @@
 .scheduler-grid {
     display: grid;
     grid-auto-rows: 1px;
-    row-gap: 0px; /* Sin espacios entre horas */
+    row-gap: 0px;
     column-gap: 8px;
     position: relative;
     background: white;
@@ -155,89 +144,104 @@
     background: white;
 }
 
-/* Tarjetas de Turnos (Matemáticamente perfectas) */
-/* Tarjetas de Turnos (Inline y Matemáticamente perfectas) */
+/* ============================================================== */
+/* TARJETAS DE TURNOS (COMPORTAMIENTO)                            */
+/* ============================================================== */
 .turno-card {
     border-radius: 4px;
-    padding: 0 4px; /* 0px vertical para aprovechar al máximo los 15px de altura */
+    padding: 0 4px;
     display: flex;
-    flex-direction: row; /* Cambio radical: Todo en una línea */
-    align-items: center; /* Centrado vertical exacto */
-    gap: 4px; /* Separación sutil entre hora y nombre */
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
     overflow: hidden;
     z-index: 10;
     pointer-events: auto;
-    transition: transform 0.1s ease, filter 0.1s ease;
-    border-bottom: 1px solid rgba(255,255,255,0.8);
+    transition: filter 0.1s ease;
     box-sizing: border-box;
 }
 
     .turno-card:hover {
-        filter: brightness(0.95);
+        filter: brightness(1.1); /* Efecto de brillo al pasar el mouse */
         cursor: pointer;
         z-index: 20;
     }
 
-/* Tipografía súper compactada e Inline */
+/* Reglas de contracción (Flex-Shrink) */
 .turno-time {
     font-size: 0.6rem;
     font-weight: 800;
-    line-height: 1;
-    opacity: 0.8;
     white-space: nowrap;
-    flex-shrink: 0; /* Evita que la hora se encoja si el nombre es muy largo */
+    flex-shrink: 0;
 }
 
 .turno-client {
     font-size: 0.65rem;
-    font-weight: 700;
-    line-height: 1;
-    color: #111827;
+    font-weight: 900;
     white-space: nowrap;
-    text-overflow: ellipsis; /* Puntos suspensivos si el nombre no entra */
+    text-overflow: ellipsis;
     overflow: hidden;
-    flex-grow: 1; /* Ocupa el resto del espacio disponible */
+    flex-shrink: 1;
 }
 
-/* Estados Visuales */
+.turno-prof {
+    font-size: 0.55rem;
+    font-weight: 600;
+    opacity: 0.85;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    flex-shrink: 2;
+}
+
+/* ============================================================== */
+/* ESTADOS VISUALES (COLORES SÓLIDOS Y TEXTO BLANCO)              */
+/* ============================================================== */
+
+/* Forzamos el texto interno a blanco */
+.turno-card.estado-pendiente *,
+.turno-card.estado-confirmado *,
+.turno-card.estado-completado *,
+.turno-card.estado-cancelado *,
+.turno-card.estado-reprogramado * {
+    color: #ffffff !important;
+}
+
 .estado-pendiente {
-    border-left: 3px solid var(--color-pendiente);
-    background-color: var(--bg-pendiente);
-    color: #92400E;
+    border-left: 3px solid #d97706; /* Borde más oscuro (Amber 600) */
+    background-color: #f59e0b; /* Fondo sólido (Amber 500) */
 }
 
 .estado-confirmado {
-    border-left: 3px solid var(--color-confirmado);
-    background-color: var(--bg-confirmado);
-    color: #065F46;
+    border-left: 3px solid #2563eb; /* Borde más oscuro (Blue 600) */
+    background-color: #3b82f6; /* Fondo sólido (Blue 500) */
+}
+
+.estado-completado {
+    border-left: 3px solid #059669; /* Borde más oscuro (Emerald 600) */
+    background-color: #10b981; /* Fondo sólido (Emerald 500) */
 }
 
 .estado-cancelado {
-    border-left: 3px solid var(--color-cancelado);
-    background-color: var(--bg-cancelado);
-    color: #991B1B;
+    border-left: 3px solid #dc2626; /* Borde más oscuro (Red 600) */
+    background-color: #ef4444; /* Fondo sólido (Red 500) */
     text-decoration: line-through;
-    opacity: 0.6;
+    opacity: 0.85;
 }
 
 .estado-reprogramado {
-    border-left: 3px solid var(--color-reprogramado);
-    background-color: var(--bg-reprogramado);
-    color: #1E40AF;
+    border-left: 3px solid #4f46e5; /* Indigo 600 */
+    background-color: #6366f1; /* Indigo 500 */
 }
 
 .estado-ausente {
-    border-left: 3px solid var(--color-ausente);
-    background-color: var(--bg-ausente);
+    border-left: 3px solid #4b5563; /* Borde Gray 600 */
+    background-color: #6b7280; /* Fondo Gray 500 */
 }
 
-    .estado-ausente .turno-time {
-        color: var(--text-ausente-dark);
-        opacity: 0.7;
-    }
-
-    .estado-ausente .turno-client {
-        color: var(--text-ausente-dark);
+    /* Mantenemos texto oscuro sólo para ausente, si así lo prefieres, o aplícale blanco también */
+    .estado-ausente * {
+        color: #ffffff !important;
     }
 
 @media (max-width: 768px) {

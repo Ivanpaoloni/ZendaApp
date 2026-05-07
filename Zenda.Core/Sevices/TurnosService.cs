@@ -463,6 +463,7 @@ public class TurnosService : ITurnosService
         var query = _context.Turnos
             .Include(t => t.Cliente)
             .Include(t => t.Servicio)
+            .Include(t => t.Prestador)
             .AsNoTracking()
             .Where(t => t.FechaHoraInicioUtc >= fechaInicioUtc && t.FechaHoraInicioUtc <= fechaFinUtc);
 
@@ -485,7 +486,7 @@ public class TurnosService : ITurnosService
                 ClienteTelefono = t.Cliente.Telefono,
                 PrestadorId = t.PrestadorId,
                 // Si tienes el Prestador incluido, mapea su nombre:
-                // PrestadorNombre = t.Prestador.Nombre,
+                PrestadorNombre = t.Prestador!.Nombre,
                 Estado = t.Estado,
                 ServicioId = t.ServicioId,
                 ServicioNombre = t.Servicio.Nombre,

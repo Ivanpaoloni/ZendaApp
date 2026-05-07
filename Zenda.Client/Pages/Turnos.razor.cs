@@ -14,6 +14,7 @@ namespace Zenda.Client.Pages
         [Inject] private NegocioClient _negocioService { get; set; } = default!;
         [Inject] private AppState State { get; set; } = default!;
         [Inject] private TurnoClient TurnoService { get; set; } = default!;
+        [Inject] private SedeClient SedeService { get; set; } = default!; // INYECTAMOS SEDE CLIENT
         [Inject] public IJSRuntime JS { get; set; } = default!;
 
         // Estado Core
@@ -21,8 +22,9 @@ namespace Zenda.Client.Pages
         protected bool cargando = true;
         protected DateTime ultimaActualizacion = DateTime.Now;
 
-        // Memoria caché local: Traemos +-15 días para evitar requests al cambiar la vista o navegar la semana.
+        // Memoria caché local
         protected List<TurnoReadDto> turnosDelPeriodo = new();
+        protected List<SedeReadDto> sedesCompletas = new(); // ALMACENA LAS SEDES CON SU TIMEZONE
 
         // Controladores de UI
         protected string modoVista = "Calendario";
@@ -51,6 +53,8 @@ namespace Zenda.Client.Pages
         protected MedioPagoEnum medioPagoSeleccionado = MedioPagoEnum.Efectivo;
         protected string errorCobro = "";
         protected bool exportando = false;
+        protected bool mostrarModalDetalle = false;
+        protected TurnoReadDto? turnoSeleccionado;
 
         protected int CantidadFiltrosActivos =>
             (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
@@ -61,7 +65,6 @@ namespace Zenda.Client.Pages
 
         // --- PROPIEDADES COMPUTADAS ---
 
-        // 1. O(N) Filtrado para ZendyScheduler (Calendario)
         protected List<TurnoReadDto> TurnosPlanosFiltrados
         {
             get
@@ -87,21 +90,45 @@ namespace Zenda.Client.Pages
             }
         }
 
-        // 2. O(N) Agrupamiento para Vista Lista Diaria
-        protected Dictionary<string, List<TurnoReadDto>> GruposFiltradosDelDia
+        protected List<TurnoReadDto> TurnosDelDiaSeleccionado
         {
             get
             {
-                // Solo renderiza la fecha exacta que se indica en fechaFiltro
                 return TurnosPlanosFiltrados
                     .Where(t => t.FechaHoraInicioUtc.ToLocalTime().Date == fechaFiltro.Date)
-                    .GroupBy(t => t.PrestadorNombre)
-                    .ToDictionary(g => g.Key, g => g.ToList());
+                    .OrderBy(t => t.FechaHoraInicioUtc)
+                    .ToList();
             }
+        }
+
+        // --- MÉTODO PARA RESOLVER EL TIMEZONE DINÁMICO ---
+        protected string ObtenerTimeZoneActual()
+        {
+            if (!string.IsNullOrEmpty(sedeFiltro) && sedesCompletas.Any())
+            {
+                var sedeSeleccionada = sedesCompletas.FirstOrDefault(s => s.Nombre == sedeFiltro);
+                if (sedeSeleccionada != null && !string.IsNullOrEmpty(sedeSeleccionada.ZonaHorariaId))
+                {
+                    return sedeSeleccionada.ZonaHorariaId;
+                }
+            }
+            // Fallback a Argentina si no hay sede seleccionada o no tiene TZ
+            return "America/Argentina/Buenos_Aires";
         }
 
         protected override async Task OnInitializedAsync()
         {
+            // Cargamos la lista completa de sedes en memoria para tener sus TimeZones
+            try
+            {
+                if (State.CurrentNegocio != null)
+                {
+                    // Asume un método similar en tu SedeService para traer las sedes
+                    sedesCompletas = await SedeService.GetAll() ?? new();
+                }
+            }
+            catch { /* Log o ignorar, usará fallback */ }
+
             await CargarTurnosDesdeCero();
 
             if (AbrirNuevoTurno == "true")
@@ -117,16 +144,19 @@ namespace Zenda.Client.Pages
 
             try
             {
-                // Buscamos 15 días hacia atrás y 15 hacia adelante para soportar la vista semanal fluidamente
                 var desde = fechaFiltro.AddDays(-15);
                 var hasta = fechaFiltro.AddDays(15);
 
                 turnosDelPeriodo = await TurnoService.GetByRango(desde, hasta, null) ?? new List<TurnoReadDto>();
 
-                // Poblar dropdowns garantizando que no se rompa si hay valores nulos
                 listaProfesionalesDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.PrestadorNombre)).Select(t => t.PrestadorNombre).Distinct().OrderBy(n => n).ToList();
                 listaSedesDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.SedeNombre)).Select(t => t.SedeNombre).Distinct().OrderBy(n => n).ToList();
                 listaServiciosDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.ServicioNombre)).Select(t => t.ServicioNombre).Distinct().OrderBy(n => n).ToList();
+
+                if (listaProfesionalesDropdown.Any() && !listaProfesionalesDropdown.Contains(profesionalFiltro))
+                {
+                    profesionalFiltro = listaProfesionalesDropdown.First();
+                }
 
                 ultimaActualizacion = DateTime.Now;
             }
@@ -144,7 +174,6 @@ namespace Zenda.Client.Pages
 
         protected async Task CambiarFechaFiltro()
         {
-            // Solo disparamos la recarga HTTP si el usuario se mueve muy lejos de la memoria actual.
             await CargarTurnosDesdeCero();
         }
 
@@ -177,11 +206,43 @@ namespace Zenda.Client.Pages
 
         protected void OnTurnoSeleccionadoDesdeCalendario(TurnoReadDto turno)
         {
-            // Disparamos el modal principal (por defecto asumo que prefieres el de Cobro o Detalles)
-            MostrarModalCobro(turno);
+            turnoSeleccionado = turno;
+            mostrarModalDetalle = true;
         }
 
-        // --- MÉTODOS DE MODALES Y ACCIONES ---
+        protected void CerrarModalDetalle()
+        {
+            mostrarModalDetalle = false;
+            turnoSeleccionado = null;
+        }
+
+        protected void PrepararCobroDesdeDetalle()
+        {
+            if (turnoSeleccionado == null) return;
+            var turnoTemp = turnoSeleccionado;
+            CerrarModalDetalle();
+            MostrarModalCobro(turnoTemp);
+        }
+
+        protected void PrepararCancelacionDesdeDetalle()
+        {
+            if (turnoSeleccionado == null) return;
+            var turnoTemp = turnoSeleccionado;
+            CerrarModalDetalle();
+            MostrarModalCancelacion(turnoTemp);
+        }
+
+        protected async Task AvanzarDia()
+        {
+            fechaFiltro = fechaFiltro.AddDays(1);
+            await CambiarFechaFiltro();
+        }
+
+        protected async Task RetrocederDia()
+        {
+            fechaFiltro = fechaFiltro.AddDays(-1);
+            await CambiarFechaFiltro();
+        }
 
         protected void MostrarModalCancelacion(TurnoReadDto turno)
         {
