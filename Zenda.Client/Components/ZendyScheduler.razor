@@ -1,0 +1,149 @@
+﻿@using System.Globalization
+@using Zenda.Core.DTOs
+
+<div class="zendy-scheduler-container">
+    <header class="scheduler-internal-header">
+        <div class="view-toggle">
+            <button class="@(VistaSemanal ? "" : "active")" @onclick="() => CambiarVista(false)">Diaria</button>
+            <button class="@(VistaSemanal ? "active" : "")" @onclick="() => CambiarVista(true)">Semanal</button>
+        </div>
+
+        <div class="date-navigator">
+            <button class="nav-btn" @onclick="Retroceder"><span aria-hidden="true">&lsaquo;</span></button>
+            <span class="date-display">@ObtenerTextoFecha()</span>
+            <button class="nav-btn" @onclick="Avanzar"><span aria-hidden="true">&rsaquo;</span></button>
+        </div>
+    </header>
+
+    <div class="scheduler-scroll-area">
+        <div class="scheduler-grid @(VistaSemanal ? "vista-semanal" : "vista-diaria")">
+
+            @* Fila 1: Cabeceras *@
+            <div class="day-header" style="grid-column: 1;">GMT-3</div>
+            @if (VistaSemanal)
+            {
+                <div class="day-header" style="grid-column: 2;">Lun</div>
+                <div class="day-header" style="grid-column: 3;">Mar</div>
+                <div class="day-header" style="grid-column: 4;">Mié</div>
+                <div class="day-header" style="grid-column: 5;">Jue</div>
+                <div class="day-header" style="grid-column: 6;">Vie</div>
+                <div class="day-header" style="grid-column: 7;">Sáb</div>
+                <div class="day-header" style="grid-column: 8;">Dom</div>
+            }
+            else
+            {
+                <div class="day-header" style="grid-column: 2;">@FechaBase.ToString("dddd", new CultureInfo("es-AR")).ToUpper()</div>
+            }
+
+            @* Eje de Tiempos y Líneas Horizontales *@
+            @for (int i = 0; i < 24; i++)
+            {
+                <div class="time-label-row" style="grid-row: @((i * 60) + 2) / span 60;">
+                    <span class="time-text">@i.ToString("00"):00</span>
+                </div>
+            }
+
+            @* Renderizado de Turnos Matemáticamente Exactos *@
+            @foreach (var turno in TurnosVisibles)
+            {
+                var localStart = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraInicioUtc, ZonaHorariaLocal);
+                var localEnd = TimeZoneInfo.ConvertTimeFromUtc(turno.FechaHoraFinUtc, ZonaHorariaLocal);
+
+                int startRow = CalcularFila(localStart);
+                int endRow = CalcularFila(localEnd);
+                int column = CalcularColumna(localStart);
+
+                <div class="turno-card estado-@turno.Estado.ToString().ToLower()"
+                     style="grid-row: @startRow / @endRow; grid-column: @column;"
+                     @onclick="() => SeleccionarTurno(turno)">
+
+                    @* UI 100% Inline *@
+                    <span class="turno-time">@localStart.ToString("HH:mm")</span>
+                    <strong class="turno-client">@turno.ClienteNombre</strong>
+
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<TurnoReadDto> Turnos { get; set; } = new();
+    [Parameter] public string TimeZoneId { get; set; } = "America/Argentina/Buenos_Aires";
+    [Parameter] public DateTime FechaBase { get; set; } = DateTime.Today;
+    [Parameter] public EventCallback<DateTime> FechaBaseChanged { get; set; }
+    [Parameter] public EventCallback<TurnoReadDto> OnTurnoSeleccionado { get; set; }
+
+    private bool VistaSemanal { get; set; } = true;
+    private TimeZoneInfo ZonaHorariaLocal => TimeZoneInfo.FindSystemTimeZoneById(TimeZoneId);
+
+    private IEnumerable<TurnoReadDto> TurnosVisibles
+    {
+        get
+        {
+            if (Turnos == null || !Turnos.Any()) return Enumerable.Empty<TurnoReadDto>();
+
+            var inicioPeriodo = ObtenerInicioPeriodo();
+            var finPeriodo = VistaSemanal ? inicioPeriodo.AddDays(7) : inicioPeriodo.AddDays(1);
+
+            return Turnos.Where(t =>
+            {
+                var localStart = TimeZoneInfo.ConvertTimeFromUtc(t.FechaHoraInicioUtc, ZonaHorariaLocal);
+                return localStart >= inicioPeriodo && localStart < finPeriodo;
+            });
+        }
+    }
+
+    private void CambiarVista(bool esSemanal) => VistaSemanal = esSemanal;
+
+    private async Task Retroceder()
+    {
+        FechaBase = VistaSemanal ? FechaBase.AddDays(-7) : FechaBase.AddDays(-1);
+        await FechaBaseChanged.InvokeAsync(FechaBase);
+    }
+
+    private async Task Avanzar()
+    {
+        FechaBase = VistaSemanal ? FechaBase.AddDays(7) : FechaBase.AddDays(1);
+        await FechaBaseChanged.InvokeAsync(FechaBase);
+    }
+
+    private DateTime ObtenerInicioPeriodo()
+    {
+        if (!VistaSemanal) return FechaBase.Date;
+        int diff = (7 + (FechaBase.DayOfWeek - DayOfWeek.Monday)) % 7;
+        return FechaBase.AddDays(-1 * diff).Date;
+    }
+
+    private string ObtenerTextoFecha()
+    {
+        var culture = new CultureInfo("es-AR");
+        if (!VistaSemanal) return FechaBase.ToString("dddd, d 'de' MMMM", culture).ToUpper();
+
+        var inicioSemana = ObtenerInicioPeriodo();
+        var finSemana = inicioSemana.AddDays(6);
+        return $"{inicioSemana.Day} al {finSemana.ToString("d 'de' MMMM", culture)}".ToUpper();
+    }
+
+    private async Task SeleccionarTurno(TurnoReadDto turno)
+    {
+        if (OnTurnoSeleccionado.HasDelegate)
+        {
+            await OnTurnoSeleccionado.InvokeAsync(turno);
+        }
+    }
+
+    // RESOLUCIÓN EXACTA: 1 Minuto = 1 Fila
+    private int CalcularFila(DateTime fechaLocal)
+    {
+        int offsetCabecera = 2; // Fila 1 es siempre la cabecera
+        return (fechaLocal.Hour * 60) + fechaLocal.Minute + offsetCabecera;
+    }
+
+    private int CalcularColumna(DateTime fechaLocal)
+    {
+        if (!VistaSemanal) return 2;
+        int offset = fechaLocal.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)fechaLocal.DayOfWeek;
+        return offset + 1;
+    }
+}

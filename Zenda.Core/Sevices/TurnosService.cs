@@ -454,6 +454,46 @@ public class TurnosService : ITurnosService
             NegocioSlug = turno.Prestador.Negocio?.Slug ?? ""
         };
     }
+    public async Task<List<TurnoReadDto>> GetByRangoFechasAsync(DateTime desdeLocal, DateTime hastaLocal, Guid? prestadorId)
+    {
+        // Convertimos al formato UTC para asegurar coincidencias exactas en la BD
+        var fechaInicioUtc = desdeLocal.Date.ToUniversalTime();
+        var fechaFinUtc = hastaLocal.Date.AddDays(1).AddTicks(-1).ToUniversalTime();
+
+        var query = _context.Turnos
+            .Include(t => t.Cliente)
+            .Include(t => t.Servicio)
+            .AsNoTracking()
+            .Where(t => t.FechaHoraInicioUtc >= fechaInicioUtc && t.FechaHoraInicioUtc <= fechaFinUtc);
+
+        // Filtro dinámico: solo si el usuario seleccionó un prestador
+        if (prestadorId.HasValue && prestadorId.Value != Guid.Empty)
+        {
+            query = query.Where(t => t.PrestadorId == prestadorId.Value);
+        }
+
+        return await query
+            .OrderBy(t => t.FechaHoraInicioUtc)
+            .Select(t => new TurnoReadDto
+            {
+                Id = t.Id,
+                FechaHoraInicioUtc = t.FechaHoraInicioUtc,
+                FechaHoraFinUtc = t.FechaHoraFinUtc,
+                ClienteId = t.ClienteId,
+                ClienteNombre = t.Cliente.Nombre,
+                ClienteEmail = t.Cliente.Email,
+                ClienteTelefono = t.Cliente.Telefono,
+                PrestadorId = t.PrestadorId,
+                // Si tienes el Prestador incluido, mapea su nombre:
+                // PrestadorNombre = t.Prestador.Nombre,
+                Estado = t.Estado,
+                ServicioId = t.ServicioId,
+                ServicioNombre = t.Servicio.Nombre,
+                DuracionMinutos = t.Servicio.DuracionMinutos,
+                Precio = t.Servicio.Precio
+            })
+            .ToListAsync();
+    }
 
     // Para la acción de cancelar desde el mail
     public async Task<bool> CancelarPorClienteAsync(Guid turnoId)

@@ -19,6 +19,30 @@ public class TurnoClient : BaseClient
             $"api/Turnos/disponibilidad?sedeId={sedeId}&fecha={fechaStr}&servicioId={servicioId}{prestadorQuery}"
         );
     }
+    
+    public async Task<List<TurnoReadDto>> GetByRango(DateTime desde, DateTime hasta, Guid? prestadorId = null)
+    {
+        try
+        {
+            var desdeStr = desde.ToString("yyyy-MM-dd");
+            var hastaStr = hasta.ToString("yyyy-MM-dd");
+            var query = $"api/turnos/rango?desde={desdeStr}&hasta={hastaStr}";
+
+            if (prestadorId.HasValue && prestadorId.Value != Guid.Empty)
+            {
+                query += $"&prestadorId={prestadorId.Value}";
+            }
+
+            var response = await _http.GetFromJsonAsync<List<TurnoReadDto>>(query);
+            return response ?? new List<TurnoReadDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener turnos por rango: {ex.Message}");
+            return new List<TurnoReadDto>();
+        }
+    }
+
     public async Task<TurnoReadDto?> Reservar(TurnoCreateDto dto)
     {
         var response = await _http.PostAsJsonAsync("api/turnos", dto);

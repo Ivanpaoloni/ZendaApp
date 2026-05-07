@@ -12,6 +12,7 @@ public interface ITurnosService
     Task<IEnumerable<TurnoReadDto>> GetTurnosByFechaAsync(DateTime fecha);
     Task<TurnoReadDto> GetResumenPublicoAsync(Guid turnoId);
     Task<DashboardResumenDto> GetDashboardResumenAsync();
+    Task<List<TurnoReadDto>> GetByRangoFechasAsync(DateTime desdeLocal, DateTime hastaLocal, Guid? prestadorId);
 
     //create/update
     Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto);

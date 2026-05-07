@@ -1,302 +1,318 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using Zenda.Client.Services; // Ajusta este namespace según la ubicación de tu AppState y NegocioClient
+using Zenda.Client.Services;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 
-namespace Zenda.Client.Pages; // Ajusta al namespace de tu proyecto cliente
-
-public partial class Turnos : ComponentBase
+namespace Zenda.Client.Pages
 {
-    [SupplyParameterFromQuery(Name = "nuevo")]
-    public string? AbrirNuevoTurno { get; set; }
-    [Inject] private NegocioClient _negocioService { get; set; } = default!;
-    [Inject] private AppState State { get; set; } = default!;
-    [Inject] private TurnoClient TurnoService { get; set; } = default!;
-    [Inject] public IJSRuntime JS { get; set; } = default!;
-
-    protected DateTime fechaFiltro = DateTime.Today;
-    protected bool cargando = true;
-    protected List<TurnoReadDto> turnosDelDia = new();
-    protected Dictionary<string, List<TurnoReadDto>> turnosPorProfesional = new();
-    protected DateTime ultimaActualizacion = DateTime.Now;
-
-    // Variables de UI para los Filtros
-    protected bool mostrarFiltros = false;
-    protected string busquedaCliente = "";
-    protected string estadoFiltro = "";
-    protected string profesionalFiltro = "";
-    protected string sedeFiltro = "";
-    protected string servicioFiltro = "";
-
-    // Listas para poblar los selects
-    protected List<string> listaProfesionalesDropdown = new();
-    protected List<string> listaSedesDropdown = new();
-    protected List<string> listaServiciosDropdown = new();
-
-    // modales
-    protected bool mostrarModal = false;
-    protected TurnoReadDto? turnoAEliminar;
-    protected bool procesandoCancelacion = false;
-    private bool mostrarDrawerTurno = false;
-    protected bool mostrarModalCobro = false;
-    protected TurnoReadDto? turnoACobrar;
-    protected bool procesandoCobro = false;
-    protected MedioPagoEnum medioPagoSeleccionado = MedioPagoEnum.Efectivo;
-    protected string errorCobro = "";
-    private bool exportando = false;
-    // Propiedad calculada que cuenta cuántos filtros están en uso
-    protected int CantidadFiltrosActivos =>
-        (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
-        (!string.IsNullOrEmpty(estadoFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(profesionalFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(sedeFiltro) ? 1 : 0) +
-        (!string.IsNullOrEmpty(servicioFiltro) ? 1 : 0);
-
-    protected override async Task OnInitializedAsync()
+    public partial class Turnos : ComponentBase
     {
-        await CargarTurnos(mantenerFiltros: false);
+        [SupplyParameterFromQuery(Name = "nuevo")]
+        public string? AbrirNuevoTurno { get; set; }
 
-        if (AbrirNuevoTurno == "true")
+        [Inject] private NegocioClient _negocioService { get; set; } = default!;
+        [Inject] private AppState State { get; set; } = default!;
+        [Inject] private TurnoClient TurnoService { get; set; } = default!;
+        [Inject] public IJSRuntime JS { get; set; } = default!;
+
+        // Estado Core
+        protected DateTime fechaFiltro = DateTime.Today;
+        protected bool cargando = true;
+        protected DateTime ultimaActualizacion = DateTime.Now;
+
+        // Memoria caché local: Traemos +-15 días para evitar requests al cambiar la vista o navegar la semana.
+        protected List<TurnoReadDto> turnosDelPeriodo = new();
+
+        // Controladores de UI
+        protected string modoVista = "Calendario";
+        protected bool mostrarFiltros = false;
+
+        // Variables Filtros
+        protected string busquedaCliente = "";
+        protected string estadoFiltro = "";
+        protected string profesionalFiltro = "";
+        protected string sedeFiltro = "";
+        protected string servicioFiltro = "";
+
+        // Opciones Dropdown
+        protected List<string> listaProfesionalesDropdown = new();
+        protected List<string> listaSedesDropdown = new();
+        protected List<string> listaServiciosDropdown = new();
+
+        // Estado Modales
+        protected bool mostrarModal = false;
+        protected TurnoReadDto? turnoAEliminar;
+        protected bool procesandoCancelacion = false;
+        protected bool mostrarDrawerTurno = false;
+        protected bool mostrarModalCobro = false;
+        protected TurnoReadDto? turnoACobrar;
+        protected bool procesandoCobro = false;
+        protected MedioPagoEnum medioPagoSeleccionado = MedioPagoEnum.Efectivo;
+        protected string errorCobro = "";
+        protected bool exportando = false;
+
+        protected int CantidadFiltrosActivos =>
+            (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
+            (!string.IsNullOrEmpty(estadoFiltro) ? 1 : 0) +
+            (!string.IsNullOrEmpty(profesionalFiltro) ? 1 : 0) +
+            (!string.IsNullOrEmpty(sedeFiltro) ? 1 : 0) +
+            (!string.IsNullOrEmpty(servicioFiltro) ? 1 : 0);
+
+        // --- PROPIEDADES COMPUTADAS ---
+
+        // 1. O(N) Filtrado para ZendyScheduler (Calendario)
+        protected List<TurnoReadDto> TurnosPlanosFiltrados
         {
-            mostrarDrawerTurno = true;
+            get
+            {
+                var query = turnosDelPeriodo.AsEnumerable();
+
+                if (!string.IsNullOrWhiteSpace(busquedaCliente))
+                    query = query.Where(t => t.ClienteNombre.Contains(busquedaCliente, StringComparison.OrdinalIgnoreCase));
+
+                if (!string.IsNullOrEmpty(estadoFiltro))
+                    query = query.Where(t => t.Estado.ToString() == estadoFiltro);
+
+                if (!string.IsNullOrEmpty(profesionalFiltro))
+                    query = query.Where(t => t.PrestadorNombre == profesionalFiltro);
+
+                if (!string.IsNullOrEmpty(sedeFiltro))
+                    query = query.Where(t => t.SedeNombre == sedeFiltro);
+
+                if (!string.IsNullOrEmpty(servicioFiltro))
+                    query = query.Where(t => t.ServicioNombre == servicioFiltro);
+
+                return query.ToList();
+            }
         }
-    }
 
-    // --- MÉTODOS DEL MODAL ---
-
-    protected void MostrarModalCancelacion(TurnoReadDto turno)
-    {
-        turnoAEliminar = turno;
-        mostrarModal = true;
-    }
-
-    protected void CerrarModal()
-    {
-        mostrarModal = false;
-        turnoAEliminar = null;
-    }
-
-    protected async Task ConfirmarCancelacion()
-    {
-        if (turnoAEliminar == null) return;
-
-        procesandoCancelacion = true;
-        StateHasChanged();
-
-        try
+        // 2. O(N) Agrupamiento para Vista Lista Diaria
+        protected Dictionary<string, List<TurnoReadDto>> GruposFiltradosDelDia
         {
-            await CambiarEstado(turnoAEliminar.Id, EstadoTurnoEnum.Cancelado);
-            CerrarModal();
+            get
+            {
+                // Solo renderiza la fecha exacta que se indica en fechaFiltro
+                return TurnosPlanosFiltrados
+                    .Where(t => t.FechaHoraInicioUtc.ToLocalTime().Date == fechaFiltro.Date)
+                    .GroupBy(t => t.PrestadorNombre)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+            }
         }
-        finally
+
+        protected override async Task OnInitializedAsync()
         {
-            procesandoCancelacion = false;
+            await CargarTurnosDesdeCero();
+
+            if (AbrirNuevoTurno == "true")
+            {
+                mostrarDrawerTurno = true;
+            }
+        }
+
+        protected async Task CargarTurnosDesdeCero()
+        {
+            cargando = true;
             StateHasChanged();
-        }
-    }
 
-    protected void ToggleFiltros() => mostrarFiltros = !mostrarFiltros;
-
-    protected void LimpiarFiltros()
-    {
-        busquedaCliente = "";
-        estadoFiltro = "";
-        profesionalFiltro = "";
-        sedeFiltro = "";
-        servicioFiltro = "";
-    }
-
-    protected Dictionary<string, List<TurnoReadDto>> GruposFiltrados
-    {
-        get
-        {
-            var filtrados = turnosPorProfesional.AsEnumerable();
-
-            if (!string.IsNullOrEmpty(profesionalFiltro))
+            try
             {
-                filtrados = filtrados.Where(g => g.Key == profesionalFiltro);
+                // Buscamos 15 días hacia atrás y 15 hacia adelante para soportar la vista semanal fluidamente
+                var desde = fechaFiltro.AddDays(-15);
+                var hasta = fechaFiltro.AddDays(15);
+
+                turnosDelPeriodo = await TurnoService.GetByRango(desde, hasta, null) ?? new List<TurnoReadDto>();
+
+                // Poblar dropdowns garantizando que no se rompa si hay valores nulos
+                listaProfesionalesDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.PrestadorNombre)).Select(t => t.PrestadorNombre).Distinct().OrderBy(n => n).ToList();
+                listaSedesDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.SedeNombre)).Select(t => t.SedeNombre).Distinct().OrderBy(n => n).ToList();
+                listaServiciosDropdown = turnosDelPeriodo.Where(t => !string.IsNullOrEmpty(t.ServicioNombre)).Select(t => t.ServicioNombre).Distinct().OrderBy(n => n).ToList();
+
+                ultimaActualizacion = DateTime.Now;
             }
-
-            if (!string.IsNullOrWhiteSpace(busquedaCliente) ||
-                !string.IsNullOrEmpty(estadoFiltro) ||
-                !string.IsNullOrEmpty(sedeFiltro) ||
-                !string.IsNullOrEmpty(servicioFiltro))
+            catch (Exception ex)
             {
-                filtrados = filtrados.Select(g => new KeyValuePair<string, List<TurnoReadDto>>(
-                    g.Key,
-                    g.Value.Where(t =>
-                        (string.IsNullOrWhiteSpace(busquedaCliente) || t.ClienteNombre.Contains(busquedaCliente, StringComparison.OrdinalIgnoreCase)) &&
-                        (string.IsNullOrEmpty(estadoFiltro) || t.Estado.ToString() == estadoFiltro) &&
-                        (string.IsNullOrEmpty(sedeFiltro) || t.SedeNombre == sedeFiltro) &&
-                        (string.IsNullOrEmpty(servicioFiltro) || t.ServicioNombre == servicioFiltro)
-                    ).ToList()
-                ))
-                .Where(g => g.Value.Any());
+                Console.WriteLine($"Error cargando turnos: {ex.Message}");
+                turnosDelPeriodo = new();
             }
-
-            return filtrados.ToDictionary(g => g.Key, g => g.Value);
-        }
-    }
-
-    protected async Task IrAHoy()
-    {
-        fechaFiltro = DateTime.Today;
-        await CargarTurnos(mantenerFiltros: false);
-    }
-
-    protected async Task CambiarFecha()
-    {
-        await CargarTurnos(mantenerFiltros: false);
-    }
-
-    protected async Task RefrescarManual()
-    {
-        await CargarTurnos(mantenerFiltros: true);
-    }
-
-    protected async Task CargarTurnos(bool mantenerFiltros)
-    {
-        cargando = true;
-        StateHasChanged();
-
-        try
-        {
-            turnosDelDia = await TurnoService.GetByFecha(fechaFiltro) ?? new List<TurnoReadDto>();
-
-            listaProfesionalesDropdown = turnosDelDia.Select(t => t.PrestadorNombre).Distinct().OrderBy(n => n).ToList();
-            listaSedesDropdown = turnosDelDia.Select(t => t.SedeNombre).Where(s => !string.IsNullOrEmpty(s)).Distinct().OrderBy(n => n).ToList();
-            listaServiciosDropdown = turnosDelDia.Select(t => t.ServicioNombre).Distinct().OrderBy(n => n).ToList();
-
-            turnosPorProfesional = turnosDelDia
-                .GroupBy(t => t.PrestadorNombre)
-                .ToDictionary(g => g.Key, g => g.ToList());
-
-            ultimaActualizacion = DateTime.Now;
-
-            if (!mantenerFiltros)
+            finally
             {
-                LimpiarFiltros();
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(profesionalFiltro) && !listaProfesionalesDropdown.Contains(profesionalFiltro)) profesionalFiltro = "";
-                if (!string.IsNullOrEmpty(sedeFiltro) && !listaSedesDropdown.Contains(sedeFiltro)) sedeFiltro = "";
-                if (!string.IsNullOrEmpty(servicioFiltro) && !listaServiciosDropdown.Contains(servicioFiltro)) servicioFiltro = "";
+                cargando = false;
+                StateHasChanged();
             }
         }
-        catch
-        {
-            turnosDelDia = new();
-            turnosPorProfesional = new();
-            listaProfesionalesDropdown = new();
-            listaSedesDropdown = new();
-            listaServiciosDropdown = new();
-        }
-        finally
-        {
-            cargando = false;
-        }
-    }
 
-    protected async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
-    {
-        try
+        protected async Task CambiarFechaFiltro()
         {
-            var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
-            if (exito)
+            // Solo disparamos la recarga HTTP si el usuario se mueve muy lejos de la memoria actual.
+            await CargarTurnosDesdeCero();
+        }
+
+        protected async Task IrAHoy()
+        {
+            fechaFiltro = DateTime.Today;
+            await CargarTurnosDesdeCero();
+        }
+
+        protected async Task RefrescarManual()
+        {
+            await CargarTurnosDesdeCero();
+        }
+
+        protected void CambiarModoVista(string modo)
+        {
+            modoVista = modo;
+        }
+
+        protected void ToggleFiltros() => mostrarFiltros = !mostrarFiltros;
+
+        protected void LimpiarFiltros()
+        {
+            busquedaCliente = "";
+            estadoFiltro = "";
+            profesionalFiltro = "";
+            sedeFiltro = "";
+            servicioFiltro = "";
+        }
+
+        protected void OnTurnoSeleccionadoDesdeCalendario(TurnoReadDto turno)
+        {
+            // Disparamos el modal principal (por defecto asumo que prefieres el de Cobro o Detalles)
+            MostrarModalCobro(turno);
+        }
+
+        // --- MÉTODOS DE MODALES Y ACCIONES ---
+
+        protected void MostrarModalCancelacion(TurnoReadDto turno)
+        {
+            turnoAEliminar = turno;
+            mostrarModal = true;
+        }
+
+        protected void CerrarModal()
+        {
+            mostrarModal = false;
+            turnoAEliminar = null;
+        }
+
+        protected async Task ConfirmarCancelacion()
+        {
+            if (turnoAEliminar == null) return;
+
+            procesandoCancelacion = true;
+            StateHasChanged();
+
+            try
             {
-                var turnoModificado = turnosDelDia.FirstOrDefault(t => t.Id == id);
-                if (turnoModificado != null)
+                await CambiarEstado(turnoAEliminar.Id, EstadoTurnoEnum.Cancelado);
+                CerrarModal();
+            }
+            finally
+            {
+                procesandoCancelacion = false;
+                StateHasChanged();
+            }
+        }
+
+        protected async Task CambiarEstado(Guid id, EstadoTurnoEnum nuevoEstado)
+        {
+            try
+            {
+                var exito = await TurnoService.ActualizarEstado(id, nuevoEstado);
+                if (exito)
                 {
-                    turnoModificado.Estado = nuevoEstado;
-                    StateHasChanged();
+                    var turnoModificado = turnosDelPeriodo.FirstOrDefault(t => t.Id == id);
+                    if (turnoModificado != null)
+                    {
+                        turnoModificado.Estado = nuevoEstado;
+                        StateHasChanged();
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error al cambiar estado: {ex.Message}");
-            // Sería ideal mostrar un toast de error aquí si falla la API
-        }
-    }
-
-    protected string GenerarWhatsAppUrl(string telefono, string nombre, DateTime inicioLocal)
-    {
-        var nombreNegocio = State.CurrentNegocio?.Nombre ?? "nuestro local";
-        var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
-        var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
-        return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
-    }
-    protected void MostrarModalCobro(TurnoReadDto turno)
-    {
-        errorCobro = "";
-        medioPagoSeleccionado = MedioPagoEnum.Efectivo;
-        turnoACobrar = turno;
-        mostrarModalCobro = true;
-    }
-
-    protected void CerrarModalCobro()
-    {
-        mostrarModalCobro = false;
-        turnoACobrar = null;
-    }
-
-    protected async Task ConfirmarCobro()
-    {
-        if (turnoACobrar == null) return;
-
-        procesandoCobro = true;
-        errorCobro = "";
-        StateHasChanged();
-
-        try
-        {
-            await TurnoService.CobrarTurno(turnoACobrar.Id, medioPagoSeleccionado);
-
-            turnoACobrar.Estado = EstadoTurnoEnum.Completado;
-            CerrarModalCobro();
-        }
-        catch (Exception ex)
-        {
-            errorCobro = ex.Message;
-        }
-        finally
-        {
-            procesandoCobro = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ExportarExcelMes()
-    {
-        exportando = true;
-        StateHasChanged();
-
-        try
-        {
-            // Calculamos el mes en base a la fecha que el usuario está mirando en pantalla
-            var primerDiaMes = new DateTime(fechaFiltro.Year, fechaFiltro.Month, 1);
-
-            // Calculamos el último día de ese mismo mes a las 23:59:59 para no perder turnos de última hora
-            var ultimoDiaMes = primerDiaMes.AddMonths(1).AddTicks(-1);
-
-            var stream = await TurnoService.GetExcelStreamAsync(primerDiaMes, ultimoDiaMes);
-            if (stream != null)
+            catch (Exception ex)
             {
-                using var streamRef = new DotNetStreamReference(stream);
-
-                // Usamos el formato Zendy_YYYYMMDD_HHmm que me pediste antes
-                await JS.InvokeVoidAsync("downloadFileFromStream", $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx", streamRef);
+                Console.WriteLine($"Error al cambiar estado: {ex.Message}");
             }
         }
-        catch (Exception ex)
+
+        protected string GenerarWhatsAppUrl(string telefono, string nombre, DateTime inicioLocal)
         {
-            Console.WriteLine($"Error exportando turnos: {ex.Message}");
+            var nombreNegocio = State.CurrentNegocio?.Nombre ?? "nuestro local";
+            var mensaje = $"¡Hola {nombre}! Te escribo de {nombreNegocio} para recordarte tu turno de hoy a las {inicioLocal:HH:mm} hs.";
+            var telefonoLimpio = new string(telefono.Where(char.IsDigit).ToArray());
+            return $"https://wa.me/{telefonoLimpio}?text={Uri.EscapeDataString(mensaje)}";
         }
-        finally
+
+        protected void MostrarModalCobro(TurnoReadDto turno)
         {
-            exportando = false;
+            errorCobro = "";
+            medioPagoSeleccionado = MedioPagoEnum.Efectivo;
+            turnoACobrar = turno;
+            mostrarModalCobro = true;
+        }
+
+        protected void CerrarModalCobro()
+        {
+            mostrarModalCobro = false;
+            turnoACobrar = null;
+        }
+
+        protected async Task ConfirmarCobro()
+        {
+            if (turnoACobrar == null) return;
+
+            procesandoCobro = true;
+            errorCobro = "";
+            StateHasChanged();
+
+            try
+            {
+                await TurnoService.CobrarTurno(turnoACobrar.Id, medioPagoSeleccionado);
+
+                var turnoLocal = turnosDelPeriodo.FirstOrDefault(t => t.Id == turnoACobrar.Id);
+                if (turnoLocal != null)
+                {
+                    turnoLocal.Estado = EstadoTurnoEnum.Completado;
+                }
+
+                CerrarModalCobro();
+            }
+            catch (Exception ex)
+            {
+                errorCobro = ex.Message;
+            }
+            finally
+            {
+                procesandoCobro = false;
+                StateHasChanged();
+            }
+        }
+
+        private async Task ExportarExcelMes()
+        {
+            exportando = true;
+            StateHasChanged();
+
+            try
+            {
+                var primerDiaMes = new DateTime(fechaFiltro.Year, fechaFiltro.Month, 1);
+                var ultimoDiaMes = primerDiaMes.AddMonths(1).AddTicks(-1);
+
+                var stream = await TurnoService.GetExcelStreamAsync(primerDiaMes, ultimoDiaMes);
+                if (stream != null)
+                {
+                    using var streamRef = new DotNetStreamReference(stream);
+                    await JS.InvokeVoidAsync("downloadFileFromStream", $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx", streamRef);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error exportando turnos: {ex.Message}");
+            }
+            finally
+            {
+                exportando = false;
+            }
         }
     }
 }
