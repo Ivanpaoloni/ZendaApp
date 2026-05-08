@@ -18,21 +18,38 @@
     <div class="scheduler-scroll-area">
         <div class="scheduler-grid @(VistaSemanal ? "vista-semanal" : "vista-diaria")">
 
-            @* Fila 1: Cabeceras *@
+            @* Fila 1: Cabeceras Dinámicas y Separadores *@
             <div class="day-header" style="grid-column: 1;">GMT-3</div>
+
             @if (VistaSemanal)
             {
-                <div class="day-header" style="grid-column: 2;">Lun</div>
-                <div class="day-header" style="grid-column: 3;">Mar</div>
-                <div class="day-header" style="grid-column: 4;">Mié</div>
-                <div class="day-header" style="grid-column: 5;">Jue</div>
-                <div class="day-header" style="grid-column: 6;">Vie</div>
-                <div class="day-header" style="grid-column: 7;">Sáb</div>
-                <div class="day-header" style="grid-column: 8;">Dom</div>
+                var inicioSemana = ObtenerInicioPeriodo();
+                @for (int i = 0; i < 7; i++)
+                {
+                    var fechaColumna = inicioSemana.AddDays(i);
+                    bool esHoy = fechaColumna.Date == DateTime.Today;
+                    int colIndex = i + 2; // +2 porque la columna 1 es la de horas
+
+                    @* Cabecera del día *@
+                    <div id="@(esHoy ? "columna-hoy" : "")"
+                         class="day-header @(esHoy ? "today" : "") flex flex-col items-center justify-center leading-tight"
+                         style="grid-column: @colIndex;">
+                        <span>@fechaColumna.ToString("ddd", new CultureInfo("es-AR")).ToUpper()</span>
+                        <span class="text-[10px] opacity-70">@fechaColumna.Day</span>
+                    </div>
+
+                    @* Línea vertical divisoria (Abarca desde la fila 2 hasta el final) *@
+                    <div class="day-column-separator @(esHoy ? "bg-green-500/5" : "")"
+                         style="grid-column: @colIndex; grid-row: 2 / -1;">
+                    </div>
+                }
             }
             else
             {
-                <div class="day-header" style="grid-column: 2;">@FechaBase.ToString("dddd", new CultureInfo("es-AR")).ToUpper()</div>
+                bool esHoy = FechaBase.Date == DateTime.Today;
+                <div id="@(esHoy ? "columna-hoy" : "")" class="day-header @(esHoy ? "today" : "")" style="grid-column: 2;">
+                    @FechaBase.ToString("dddd, dd MMM", new CultureInfo("es-AR")).ToUpper()
+                </div>
             }
 
             @* Eje de Tiempos y Líneas Horizontales *@
@@ -79,6 +96,7 @@
     [Parameter] public DateTime FechaBase { get; set; } = DateTime.Today;
     [Parameter] public EventCallback<DateTime> FechaBaseChanged { get; set; }
     [Parameter] public EventCallback<TurnoReadDto> OnTurnoSeleccionado { get; set; }
+    [Inject] public IJSRuntime JS { get; set; } = default!;
 
     private bool VistaSemanal { get; set; } = true;
 
@@ -102,6 +120,34 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ScrollAlDiaActual();
+        }
+    }
+    // Pequeño método que ejecuta JS nativo para centrar la columna
+    private async Task ScrollAlDiaActual()
+    {
+        try
+        {
+            // Usamos un pequeño delay para asegurar que el DOM está listo
+            await Task.Delay(100);
+
+            // Invocamos JS directamente para hacer scroll suave hacia el ID
+            await JS.InvokeVoidAsync("eval", @"
+                var hoy = document.getElementById('columna-hoy');
+                if (hoy) {
+                    hoy.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            ");
+        }
+        catch
+        {
+            // Ignoramos si falla (ej. durante el prerendering del servidor)
+        }
+    }
     private void CambiarVista(bool esSemanal) => VistaSemanal = esSemanal;
 
     private async Task Retroceder()

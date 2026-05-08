@@ -1,7 +1,8 @@
 ﻿:root {
     --bg-color: #ffffff;
     --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-    --border-soft: #E5E7EB;
+    --border-soft: #E5E7EB; /* Gris muy claro para bordes de botones/tarjetas */
+    --border-grid: #D1D5DB; /* CORRECCIÓN 1: Gris más oscuro para trazar la grilla */
 }
 
 .zendy-scheduler-container {
@@ -93,10 +94,10 @@
     display: grid;
     grid-auto-rows: 1px;
     row-gap: 0px;
-    column-gap: 8px;
+    column-gap: 0px;
     position: relative;
     background: white;
-    padding: 0.5rem;
+    padding: 0.5rem 0;
     border-radius: 12px;
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-soft);
@@ -104,32 +105,14 @@
 
 .vista-diaria {
     grid-template-columns: 50px 1fr;
-    grid-template-rows: 30px repeat(1440, 1px);
+    grid-template-rows: 35px repeat(1440, 1px); /* Aumentado a 35px para cabeceras altas */
     min-width: 100%;
 }
 
 .vista-semanal {
     grid-template-columns: 50px repeat(7, 1fr);
-    grid-template-rows: 30px repeat(1440, 1px);
+    grid-template-rows: 35px repeat(1440, 1px);
     min-width: 800px;
-}
-
-.day-header {
-    grid-row: 1;
-    text-align: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #4B5563;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border-soft);
-}
-
-/* Trazado de las horas en el fondo */
-.time-label-row {
-    grid-column: 1 / -1;
-    border-top: 1px solid var(--border-soft);
-    pointer-events: none;
-    z-index: 1;
 }
 
 .time-text {
@@ -150,6 +133,7 @@
 .turno-card {
     border-radius: 4px;
     padding: 0 4px;
+    margin: 0 4px;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -162,7 +146,7 @@
 }
 
     .turno-card:hover {
-        filter: brightness(1.1); /* Efecto de brillo al pasar el mouse */
+        filter: brightness(1.1);
         cursor: pointer;
         z-index: 20;
     }
@@ -198,7 +182,6 @@
 /* ESTADOS VISUALES (COLORES SÓLIDOS Y TEXTO BLANCO)              */
 /* ============================================================== */
 
-/* Forzamos el texto interno a blanco */
 .turno-card.estado-pendiente *,
 .turno-card.estado-confirmado *,
 .turno-card.estado-completado *,
@@ -208,41 +191,81 @@
 }
 
 .estado-pendiente {
-    border-left: 3px solid #d97706; /* Borde más oscuro (Amber 600) */
-    background-color: #f59e0b; /* Fondo sólido (Amber 500) */
+    border-left: 3px solid #d97706;
+    background-color: #f59e0b;
 }
 
 .estado-confirmado {
-    border-left: 3px solid #2563eb; /* Borde más oscuro (Blue 600) */
-    background-color: #3b82f6; /* Fondo sólido (Blue 500) */
+    border-left: 3px solid #2563eb;
+    background-color: #3b82f6;
 }
 
 .estado-completado {
-    border-left: 3px solid #059669; /* Borde más oscuro (Emerald 600) */
-    background-color: #10b981; /* Fondo sólido (Emerald 500) */
+    border-left: 3px solid #059669;
+    background-color: #10b981;
 }
 
 .estado-cancelado {
-    border-left: 3px solid #dc2626; /* Borde más oscuro (Red 600) */
-    background-color: #ef4444; /* Fondo sólido (Red 500) */
+    border-left: 3px solid #dc2626;
+    background-color: #ef4444;
     text-decoration: line-through;
     opacity: 0.85;
 }
 
 .estado-reprogramado {
-    border-left: 3px solid #4f46e5; /* Indigo 600 */
-    background-color: #6366f1; /* Indigo 500 */
+    border-left: 3px solid #4f46e5;
+    background-color: #6366f1;
 }
 
 .estado-ausente {
-    border-left: 3px solid #4b5563; /* Borde Gray 600 */
-    background-color: #6b7280; /* Fondo Gray 500 */
+    border-left: 3px solid #4b5563;
+    background-color: #6b7280;
 }
 
-    /* Mantenemos texto oscuro sólo para ausente, si así lo prefieres, o aplícale blanco también */
     .estado-ausente * {
         color: #ffffff !important;
     }
+
+/* ============================================================== */
+/* SEPARADORES VERTICALES Y DÍA ACTUAL                            */
+/* ============================================================== */
+.day-column-separator {
+    border-left: 1px solid var(--border-grid); /* CORRECCIÓN 2: Usar variable de grilla */
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Cabeceras de los días */
+.day-header {
+    grid-row: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4B5563;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border-grid);
+    border-left: 1px solid transparent;
+}
+
+    /* Línea izquierda en las cabeceras (para que coincida con la columna) */
+    .day-header:not(:first-child) {
+        border-left: 1px solid var(--border-grid);
+    }
+
+/* Trazado de las horas horizontales en el fondo */
+.time-label-row {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border-grid);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.day-header.today {
+    color: #10B981; /* CORRECCIÓN 3: Reemplazo por HEX ya que borramos la variable */
+    background-color: rgba(16, 185, 129, 0.05);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
 
 @media (max-width: 768px) {
     .scheduler-internal-header {
