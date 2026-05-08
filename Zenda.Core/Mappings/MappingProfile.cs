@@ -52,10 +52,12 @@ public class MappingProfile : Profile
         #endregion
 
         #region Negocio
+
         CreateMap<Negocio, NegocioReadDto>()
-            .ForMember(dest => dest.PlanNombre, opt => opt.MapFrom(src => src.PlanSuscripcion.Nombre));
+            .ForMember(dest => dest.PlanNombre, opt => opt.Ignore());
 
         CreateMap<NegocioCreateDto, Negocio>();
+
         #endregion
 
         #region servicios 

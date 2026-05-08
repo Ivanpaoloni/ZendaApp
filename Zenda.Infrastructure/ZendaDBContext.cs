@@ -41,7 +41,7 @@ namespace Zenda.Infrastructure
             // ==============================================
             modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted);
             modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted);
-            modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted); 
+            modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted);
             modelBuilder.Entity<BloqueoAgenda>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
             modelBuilder.Entity<CajaDiaria>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<MovimientoCaja>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
@@ -224,9 +224,9 @@ namespace Zenda.Infrastructure
 
                 // Relación: Un Negocio tiene una Suscripción (o historial de ellas)
                 entity.HasOne(s => s.Negocio)
-                      .WithMany() // Si decides que Negocio tenga un ICollection<SuscripcionNegocio>, ponlo aquí
-                      .HasForeignKey(s => s.NegocioId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                  .WithMany(n => n.Suscripciones) // 🔥 LA CLAVE: Le decimos explícitamente a qué colección pertenece
+                  .HasForeignKey(s => s.NegocioId)
+                  .OnDelete(DeleteBehavior.Restrict);
 
                 // Relación: La Suscripción pertenece a un Plan
                 entity.HasOne(s => s.PlanSuscripcion)

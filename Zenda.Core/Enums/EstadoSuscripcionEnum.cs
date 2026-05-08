@@ -1,4 +1,5 @@
-﻿public enum EstadoSuscripcionEnum
+﻿namespace Zenda.Core.Enums;
+public enum EstadoSuscripcionEnum
 {
     Activa = 1,
     Vencida = 2,

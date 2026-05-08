@@ -1,4 +1,5 @@
 ﻿using Zenda.Core.Entities;
+using Zenda.Core.Enums;
 using Zenda.Core.Models;
 
 public class SuscripcionNegocio : BaseEntity

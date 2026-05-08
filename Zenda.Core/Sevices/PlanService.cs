@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
-using Zenda.Core.Entities;
+using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Application.Services;
@@ -19,33 +19,40 @@ public class PlanService : IPlanService
     public async Task<bool> PuedeAgregarProfesionalAsync()
     {
         var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) return false;
 
-        // Traemos el negocio CON sus límites de plan
-        var negocio = await _context.Negocios
-            .Include(n => n.PlanSuscripcion)
-            .FirstOrDefaultAsync(n => n.Id == negocioId);
+        // 1. Buscamos la SUSCRIPCIÓN ACTIVA como Única Fuente de Verdad
+        var suscripcionActiva = await _context.SuscripcionesNegocio
+            .Include(s => s.PlanSuscripcion)
+            .FirstOrDefaultAsync(s => s.NegocioId == negocioId
+                                   && s.Estado == EstadoSuscripcionEnum.Activa);
 
-        if (negocio?.PlanSuscripcion == null) return false;
+        // Si no hay suscripción activa o no tiene plan, bloqueamos la acción por seguridad (Fail-Fast)
+        if (suscripcionActiva?.PlanSuscripcion == null) return false;
 
+        // 2. Contamos los prestadores (Recordá que el filtro global en DbContext ya excluye los eliminados)
         var cantidadActual = await _context.Prestadores.CountAsync(p => p.NegocioId == negocioId);
 
-        return cantidadActual < negocio.PlanSuscripcion.MaxProfesionales;
+        // 3. Validamos contra el límite REAL del plan activo
+        return cantidadActual < suscripcionActiva.PlanSuscripcion.MaxProfesionales;
     }
 
     public async Task<bool> TieneRecordatoriosAutomaticosAsync()
     {
         var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) return false;
 
-        var negocio = await _context.Negocios
-            .Include(n => n.PlanSuscripcion)
-            .FirstOrDefaultAsync(n => n.Id == negocioId);
+        // Misma lógica: consultamos la suscripción activa
+        var suscripcionActiva = await _context.SuscripcionesNegocio
+            .Include(s => s.PlanSuscripcion)
+            .FirstOrDefaultAsync(s => s.NegocioId == negocioId
+                                   && s.Estado == EstadoSuscripcionEnum.Activa);
 
-        return negocio?.PlanSuscripcion?.HabilitaRecordatoriosHangfire ?? false;
+        return suscripcionActiva?.PlanSuscripcion?.HabilitaRecordatoriosHangfire ?? false;
     }
 
     public async Task<List<PlanVistaDto>> ObtenerPlanesActivosAsync()
     {
-        // 🎯 AHORA SÍ: Buscamos los planes correctamente en la base de datos
         var planes = await _context.PlanesSuscripcion.ToListAsync();
 
         return planes.Select(p => new PlanVistaDto
@@ -58,7 +65,7 @@ public class PlanService : IPlanService
             PrecioTexto = p.PrecioMensual == 0 ? "Gratis" : $"${p.PrecioMensual:N0}",
             HabilitaRecordatorios = p.HabilitaRecordatoriosHangfire
         })
-        .OrderBy(p => p.PrecioMensual) // Los ordenamos por precio (de Menor a Mayor)
+        .OrderBy(p => p.PrecioMensual)
         .ToList();
     }
 }

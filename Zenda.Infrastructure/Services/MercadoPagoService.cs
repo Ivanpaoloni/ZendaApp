@@ -6,6 +6,7 @@ using MercadoPago.Resource.Preference;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Infrastructure.Services;
@@ -133,10 +134,9 @@ public class MercadoPagoService : IMercadoPagoService
                     };
                     _dbContext.HistorialPagos.Add(historial);
 
-                    // 🎯 4. Actualizamos el Plan directamente en el negocio (opcional, pero útil por compatibilidad hacia atrás si lo usas en otros lados)
-                    negocio.PlanSuscripcionId = planId;
+                    // 🔥 ELIMINAMOS EL PASO 4 ANTERIOR (negocio.PlanSuscripcionId = planId)
 
-                    // 🎯 5. Guardamos TODO en una sola transacción a la BD
+                    // 🎯 4. Guardamos TODO en una sola transacción a la BD
                     await _dbContext.SaveChangesAsync();
 
                     _logger.LogInformation("¡Éxito! Negocio {NegocioId} procesó el pago y actualizó suscripción al plan {PlanId}.", negocioId, planId);

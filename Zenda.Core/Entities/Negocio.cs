@@ -15,10 +15,11 @@ public class Negocio : BaseEntity
     public Rubro Rubro { get; set; } = null!;
 
     public List<Sede> Sedes { get; set; } = new();
-
+    public ICollection<SuscripcionNegocio> Suscripciones { get; set; } = new List<SuscripcionNegocio>();
     public bool IsActive { get; set; } = true;
     public string? NotasAdmin { get; set; }
-
-    public Guid PlanSuscripcionId { get; set; }
-    public PlanSuscripcion PlanSuscripcion { get; set; } = null!;
+    public SuscripcionNegocio? ObtenerSuscripcionActiva()
+    {
+        return Suscripciones.FirstOrDefault(s => s.Estado == Enums.EstadoSuscripcionEnum.Activa);
+    }
 }
