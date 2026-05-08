@@ -39,9 +39,9 @@ namespace Zenda.Infrastructure
             // ==============================================
             // FILTROS GLOBALES (MULTI-TENANT & SOFT DELETE)
             // ==============================================
-            modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
-            modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
-            modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
+            modelBuilder.Entity<Sede>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted);
+            modelBuilder.Entity<Prestador>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted);
+            modelBuilder.Entity<Turno>().HasQueryFilter(e => e.NegocioId == CurrentTenantId && !e.IsDeleted); 
             modelBuilder.Entity<BloqueoAgenda>().HasQueryFilter(e => CurrentTenantId == null || e.Prestador!.NegocioId == CurrentTenantId);
             modelBuilder.Entity<CajaDiaria>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);
             modelBuilder.Entity<MovimientoCaja>().HasQueryFilter(e => e.NegocioId == CurrentTenantId);

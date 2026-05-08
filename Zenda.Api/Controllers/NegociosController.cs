@@ -109,4 +109,23 @@ public class NegociosController : ControllerBase
             return StatusCode(500, new { message = "Error interno.", error = ex.Message });
         }
     }
+
+    [HttpPost("downgrade")]
+    [Authorize]
+    public async Task<IActionResult> DowngradePlanGratuito([FromBody] DowngradeRequestDto request)
+    {
+        try
+        {
+            var exito = await _service.CambiarAPlanGratuitoAsync(request.PlanId);
+
+            if (exito) return Ok();
+
+            return BadRequest(new { mensaje = "No se pudo validar el plan solicitado." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Capturamos el error de límite excedido lanzado por el servicio
+            return BadRequest(new { mensaje = ex.Message });
+        }
+    }
 }

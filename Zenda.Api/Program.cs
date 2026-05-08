@@ -82,6 +82,7 @@ builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<ICajaService, CajaService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
+builder.Services.AddScoped<IFacturacionService, FacturacionService>();
 #endregion
 
 #region Health Checks

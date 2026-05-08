@@ -138,10 +138,55 @@ public partial class Configuracion : ComponentBase, IDisposable
     // 4. Actualiza la firma de IniciarCambioPlan
     protected void IniciarCambioPlan(PlanVistaDto plan)
     {
+        // Lógica de validación temprana para planes gratuitos (Downgrade)
+        if (plan.PrecioMensual == 0)
+        {
+            // Comparamos el uso actual con los límites del nuevo plan
+            if (resumenFacturacion.SedesUsadas > plan.MaxSedes ||
+                resumenFacturacion.ProfesionalesUsados > plan.MaxProfesionales)
+            {
+                mensajeError = $"Para usar el plan {plan.Nombre}, debés tener como máximo {plan.MaxSedes} sede(s) y {plan.MaxProfesionales} profesional(es). Por favor, ajustá tu negocio o contactá a soporte.";
+
+                // Retornamos temprano para no abrir el modal
+                return;
+            }
+        }
+
         planSeleccionado = plan;
         mostrarModalUpgrade = true;
     }
+    protected async Task ConfirmarPlanGratuito()
+    {
+        if (planSeleccionado == null) return;
 
+        mostrarModalUpgrade = false;
+        cargando = true;
+        mensajeError = null;
+
+        try
+        {
+            // Llamada a un nuevo endpoint en tu API diseñado específicamente para el downgrade
+            var exito = await NegocioService.CambiarAPlanGratuitoAsync(planSeleccionado.Id);
+
+            if (exito)
+            {
+                mensajeExito = "¡Tu plan ha sido actualizado correctamente!";
+                await CargarDatos(); // Recargamos para reflejar el nuevo estado
+            }
+            else
+            {
+                mensajeError = "No pudimos actualizar tu plan. Intentá nuevamente.";
+            }
+        }
+        catch
+        {
+            mensajeError = "Ocurrió un error al procesar el cambio de plan.";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
     protected async Task PagarConMercadoPago()
     {
         if (planSeleccionado == null) return;

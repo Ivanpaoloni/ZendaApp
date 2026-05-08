@@ -432,20 +432,35 @@
     </div>
 </div>
 
-<UpgradeModal @bind-Visible="mostrarModalUpgrade" Titulo="Confirmar cambio de plan" Icono="shopping_cart_checkout">
+<UpgradeModal @bind-Visible="mostrarModalUpgrade"
+              Titulo="@(planSeleccionado?.PrecioMensual == 0 ? "Confirmar Plan Gratuito" : "Confirmar cambio de plan")"
+              Icono="@(planSeleccionado?.PrecioMensual == 0 ? "check_circle" : "shopping_cart_checkout")">
+
     @if (planSeleccionado != null)
     {
-        <p class="mb-4">Estás a punto de suscribirte al plan <strong>@planSeleccionado.Nombre</strong>.</p>
+        <p class="mb-4">Estás a punto de cambiar al plan <strong>@planSeleccionado.Nombre</strong>.</p>
 
-        <div class="bg-surface-container-low p-4 rounded-2xl mb-6">
-            <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-1">Total a pagar hoy:</p>
-            <p class="text-3xl font-black text-primary font-headline">@planSeleccionado.PrecioTexto</p>
-        </div>
+        @if (planSeleccionado.PrecioMensual > 0)
+        {
+            <div class="bg-surface-container-low p-4 rounded-2xl mb-6">
+                <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-1">Total a pagar hoy:</p>
+                <p class="text-3xl font-black text-primary font-headline">@planSeleccionado.PrecioTexto</p>
+            </div>
 
-        <button @onclick="PagarConMercadoPago" class="w-full py-4 bg-[#009EE3] text-white rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
-            <span class="material-symbols-outlined">payments</span>
-            Pagar con MercadoPago
-        </button>
+            <button @onclick="PagarConMercadoPago" class="w-full py-4 bg-[#009EE3] text-white rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
+                <span class="material-symbols-outlined">payments</span>
+                Pagar con MercadoPago
+            </button>
+        }
+        else
+        {
+            <p class="text-sm text-on-surface-variant mb-6">Tu cuenta pasará inmediatamente al plan gratuito y se ajustarán tus funcionalidades.</p>
+
+            <button @onclick="ConfirmarPlanGratuito" class="w-full py-4 bg-primary text-white rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all flex justify-center items-center gap-2">
+                <span class="material-symbols-outlined">check</span>
+                Confirmar Cambio
+            </button>
+        }
     }
 </UpgradeModal>
 

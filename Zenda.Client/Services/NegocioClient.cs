@@ -81,7 +81,13 @@ public class NegocioClient : BaseClient
             return null;
         }
     }
+    public async Task<bool> CambiarAPlanGratuitoAsync(Guid planId)
+    {
+        var request = new DowngradeRequestDto { PlanId = planId };
+        var response = await _http.PostAsJsonAsync("api/negocios/downgrade", request);
 
+        return response.IsSuccessStatusCode;
+    }
     private class CheckoutResponse { public string? UrlCheckout { get; set; } }
     private class LogoResponse { public string Url { get; set; } = ""; }
 }

@@ -143,4 +143,56 @@ public class NegocioService : INegocioService
 
         return true;
     }
+    public async Task<bool> CambiarAPlanGratuitoAsync(Guid planId)
+    {
+        var tenantId = _tenantService.GetCurrentTenantId();
+        if (tenantId == null) return false;
+
+        // 1. Obtener el plan gratuito y validar que realmente sea gratis por seguridad
+        var planGratuito = await _context.PlanesSuscripcion.FindAsync(planId);
+        if (planGratuito == null || planGratuito.PrecioMensual > 0)
+            return false;
+
+        // 2. Validación Estricta: Contar uso real
+        var sedesActivas = await _context.Sedes.CountAsync(s => s.NegocioId == tenantId);
+        var profesionalesActivos = await _context.Prestadores.CountAsync(p => p.NegocioId == tenantId);
+
+        if (sedesActivas > planGratuito.MaxSedes || profesionalesActivos > planGratuito.MaxProfesionales)
+        {
+            throw new InvalidOperationException($"El uso actual supera los límites del plan {planGratuito.Nombre}. Ajustá tu negocio primero.");
+        }
+
+        // 3. Modificar la Suscripción y el Negocio
+        var suscripcion = await _context.SuscripcionesNegocio.FirstOrDefaultAsync(s => s.NegocioId == tenantId);
+        var negocio = await _context.Negocios.FindAsync(tenantId);
+
+        if (negocio != null)
+        {
+            negocio.PlanSuscripcionId = planGratuito.Id;
+        }
+
+        if (suscripcion != null)
+        {
+            suscripcion.PlanSuscripcionId = planGratuito.Id;
+            suscripcion.Estado = EstadoSuscripcionEnum.Activa;
+            // Para planes gratis, podés extender el vencimiento a un año o dejarlo null si tu lógica lo permite
+            suscripcion.FechaVencimiento = DateTime.UtcNow.AddYears(1);
+        }
+        else
+        {
+            // Fallback por si la base de datos estaba inconsistente y no tenía suscripción
+            suscripcion = new SuscripcionNegocio
+            {
+                NegocioId = tenantId.Value,
+                PlanSuscripcionId = planGratuito.Id,
+                Estado = EstadoSuscripcionEnum.Activa,
+                FechaInicio = DateTime.UtcNow,
+                FechaVencimiento = DateTime.UtcNow.AddYears(1)
+            };
+            _context.SuscripcionesNegocio.Add(suscripcion);
+        }
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }

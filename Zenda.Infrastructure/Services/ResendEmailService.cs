@@ -1,4 +1,5 @@
-﻿using Resend;
+﻿using Microsoft.Extensions.Logging;
+using Resend;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Infrastructure.Services;
@@ -6,12 +7,14 @@ namespace Zenda.Infrastructure.Services;
 public class ResendEmailService : IEmailService
 {
     private readonly IResend _resend;
+    private ILogger<ResendEmailService> _logger;
+    
     private readonly string _fromEmail = "no-reply@zendy.com.ar";
     private readonly string _adminEmail = "ivanpaoloni@gmail.com";
-
-    public ResendEmailService(IResend resend)
+    public ResendEmailService(IResend resend, ILogger<ResendEmailService> logger)
     {
         _resend = resend;
+        _logger = logger;
     }
 
     // 1. CONFIRMACIÓN DE TURNO
@@ -55,8 +58,8 @@ public class ResendEmailService : IEmailService
                     </p>
                 </div>"
         };
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
 
     // 2. RECORDATORIO DE TURNO
@@ -91,8 +94,8 @@ public class ResendEmailService : IEmailService
                 </div>"
         };
 
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
 
     // 3. BIENVENIDA AL SaaS (ACTUALIZADO CON LINK DE CONFIRMACIÓN)
@@ -126,8 +129,8 @@ public class ResendEmailService : IEmailService
                     </p>
                 </div>"
         };
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
     // 4. CONTACTO DESDE LA LANDING PAGE
     public async Task<bool> EnviarConsultaContactoAsync(string nombreRemitente, string emailRemitente, string mensaje)
@@ -158,8 +161,8 @@ public class ResendEmailService : IEmailService
                     </p>
                 </div>"
         };
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
     // 5. CONFIRMACIÓN DE CANCELACIÓN
     public async Task<bool> EnviarCancelacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurnoLocal, string negocioSlug)
@@ -195,8 +198,8 @@ public class ResendEmailService : IEmailService
                     </p>
                 </div>"
         };
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
     // 6. REENVÍO DE CONFIRMACIÓN DE EMAIL (NUEVO)
     public async Task<bool> EnviarEmailConfirmacionAsync(string emailDestino, string nombreUsuario, string confirmLink)
@@ -227,8 +230,8 @@ public class ResendEmailService : IEmailService
                     </p>
                 </div>"
         };
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
     }
     // 7. RECUPERACIÓN DE CONTRASEÑA
     public async Task<bool> EnviarRecuperacionClaveAsync(string email, string resetLink)
@@ -260,7 +263,31 @@ public class ResendEmailService : IEmailService
                 </div>"
         };
 
-        var response = await _resend.EmailSendAsync(message);
-        return response.Success;
+        var response = await SendEmailAsync(message);
+        return response;
+    }
+
+    private async Task<bool> SendEmailAsync(EmailMessage message)
+    {
+        try
+        {
+            var response = await _resend.EmailSendAsync(message);
+
+            if (!response.Success)
+            {
+                // Si la API responde pero indica fallo (ej. email rebotado)
+                _logger.LogWarning("Resend rechazó el envío del email a {Destino}. Motivo desconocido en la respuesta.", string.Join(",", message.To));
+            }
+
+            return response.Success;
+        }
+        catch (Exception ex)
+        {
+            // Atrapamos cualquier error de red, timeout o malformación
+            _logger.LogError(ex, "Excepción crítica al intentar enviar email a {Destino} con asunto '{Asunto}'.", string.Join(",", message.To), message.Subject);
+
+            // Retornamos false para que el flujo principal (ej. Crear Turno) pueda continuar sin explotar
+            return false;
+        }
     }
 }

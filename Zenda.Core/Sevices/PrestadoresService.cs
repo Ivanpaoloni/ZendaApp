@@ -139,22 +139,44 @@ public class PrestadoresService : IPrestadoresService
         return true;
     }
 
+    // Asumiendo que recibes el CancellationToken desde el controlador hasta el servicio
     public async Task<bool> DeleteAsync(Guid id)
     {
         var tenantId = _tenantService.GetCurrentTenantId();
         if (tenantId == null) return false;
 
-        // 🎯 FIX: Verificamos pertenencia antes de aplicar la baja lógica
         var prestador = await _context.Prestadores
             .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == tenantId);
 
         if (prestador == null) return false;
 
+        // 1. Definimos explícitamente qué significa "Pendiente" para el negocio
+        var estadosActivos = new[]
+        {
+        Zenda.Core.Enums.EstadoTurnoEnum.Pendiente,
+        Zenda.Core.Enums.EstadoTurnoEnum.Confirmado
+    };
+
+        // 2. Ejecutamos la consulta optimizada y segura a futuro
+        var tieneTurnosPendientes = await _context.Turnos
+            .AnyAsync(t => t.PrestadorId == id
+                        && t.FechaHoraInicioUtc > DateTime.UtcNow
+                        && estadosActivos.Contains(t.Estado)); // Pasamos el token
+
+        if (tieneTurnosPendientes)
+        {
+            throw new InvalidOperationException("No se puede dar de baja al profesional porque tiene turnos futuros activos.");
+        }
+
         prestador.IsDeleted = true;
+
+        // Si tienes campos de auditoría, es un buen momento para actualizarlos:
+        // prestador.DeletedAtUtc = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return true;
     }
+
 
     #endregion
 }
