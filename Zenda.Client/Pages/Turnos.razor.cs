@@ -27,7 +27,7 @@ namespace Zenda.Client.Pages
         protected List<SedeReadDto> sedesCompletas = new(); // ALMACENA LAS SEDES CON SU TIMEZONE
 
         // Controladores de UI
-        protected string modoVista = "Calendario";
+        protected string modoVista = "Lista";
         protected bool mostrarFiltros = false;
 
         // Variables Filtros
