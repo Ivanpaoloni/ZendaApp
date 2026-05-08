@@ -13,12 +13,21 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // 1. Base de Datos
+        // 1. Base de Datos con Estrategia de Reintentos
         services.AddDbContext<ZendaDbContext>(options =>
         {
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
+            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"),
+                npgsqlOptions =>
+                {
+                    // 🔥 LA SOLUCIÓN: Habilita reintentos automáticos para fallos transitorios
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,            // Máximo de reintentos
+                        maxRetryDelay: TimeSpan.FromSeconds(30), // Tiempo máximo entre reintentos
+                        errorCodesToAdd: null        // Códigos de error adicionales si fueran necesarios
+                    );
+                });
 
-            // Apagamos el validador dinámico para poder migrar tranquilos 
+            // Mantenemos la supresión de advertencias de migración
             options.ConfigureWarnings(warnings =>
                 warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
