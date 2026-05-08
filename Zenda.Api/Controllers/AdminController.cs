@@ -9,14 +9,16 @@ namespace Zenda.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(Roles = "SuperAdmin")] // ¡Seguridad máxima!
+[Authorize(Roles = "SuperAdmin")]
 public class AdminController : ControllerBase
 {
     private readonly IZendaDbContext _context;
+    private readonly INegocioService _negocioService;
 
-    public AdminController(IZendaDbContext context)
+    public AdminController(IZendaDbContext context, INegocioService negocioService)
     {
         _context = context;
+        _negocioService = negocioService;
     }
 
     [HttpGet("negocios")]
@@ -78,38 +80,11 @@ public class AdminController : ControllerBase
     [HttpPut("negocios/{negocioId}")]
     public async Task<IActionResult> UpdateNegocio(Guid negocioId, [FromBody] AdminUpdateNegocioDto dto)
     {
-        var negocio = await _context.Negocios
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(n => n.Id == negocioId);
+        // El controlador ahora es "Thin" (delgado)
+        var result = await _negocioService.ActualizarSuscripcionAdminAsync(negocioId, dto);
 
-        if (negocio == null) return NotFound("Negocio no encontrado.");
+        if (!result) return NotFound("Negocio no encontrado.");
 
-        var suscripcion = await _context.SuscripcionesNegocio
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.Estado == EstadoSuscripcionEnum.Activa);
-
-        if (suscripcion == null)
-        {
-            suscripcion = new SuscripcionNegocio
-            {
-                Id = Guid.NewGuid(),
-                NegocioId = negocioId,
-                CreatedAtUtc = DateTime.UtcNow
-            };
-            _context.SuscripcionesNegocio.Add(suscripcion);
-        }
-
-        // 1. Actualizamos el Negocio
-        negocio.IsActive = dto.IsActive;
-        // 🔥 EL FIX: Eliminamos la línea "negocio.PlanSuscripcionId = dto.PlanSuscripcionId;"
-
-        // 2. Actualizamos la Suscripción
-        suscripcion.PlanSuscripcionId = dto.PlanSuscripcionId;
-        suscripcion.PrecioMensualPersonalizado = dto.PrecioMensualPersonalizado;
-        suscripcion.FechaVencimiento = dto.FechaVencimiento.ToUniversalTime();
-        suscripcion.Estado = EstadoSuscripcionEnum.Activa;
-
-        await _context.SaveChangesAsync();
         return Ok();
     }
 }

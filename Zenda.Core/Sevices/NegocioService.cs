@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
+using Zenda.Core.DTOs.Admin;
 using Zenda.Core.Entities;
 using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
@@ -198,6 +199,69 @@ public class NegocioService : INegocioService
                 FechaVencimiento = DateTime.UtcNow.AddYears(1)
             };
             _context.SuscripcionesNegocio.Add(nuevaSuscripcion);
+        }
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+    public async Task<bool> ActualizarSuscripcionAdminAsync(Guid negocioId, AdminUpdateNegocioDto dto)
+    {
+        var negocio = await _context.Negocios
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(n => n.Id == negocioId);
+
+        if (negocio == null) return false;
+
+        var suscripcion = await _context.SuscripcionesNegocio
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.Estado == EstadoSuscripcionEnum.Activa);
+
+        if (suscripcion == null)
+        {
+            suscripcion = new SuscripcionNegocio
+            {
+                Id = Guid.NewGuid(),
+                NegocioId = negocioId,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _context.SuscripcionesNegocio.Add(suscripcion);
+        }
+
+        // --- LÓGICA DE DETECCIÓN DE CAMBIOS ---
+
+        decimal? nuevoPrecio = dto.PrecioMensualPersonalizado;
+        var nuevaFechaVencimientoUtc = dto.FechaVencimiento.ToUniversalTime();
+
+        // Validaciones de cambio de estado
+        bool huboCambioPrecio = suscripcion.PrecioMensualPersonalizado != nuevoPrecio;
+        bool huboCambioPlan = suscripcion.PlanSuscripcionId != dto.PlanSuscripcionId;
+        bool huboCambioFecha = suscripcion.FechaVencimiento.Date != nuevaFechaVencimientoUtc.Date;
+        bool esCeroExplicito = nuevoPrecio.HasValue && nuevoPrecio.Value == 0;
+
+        // Solo generamos historial si hubo un cambio real en el contrato
+        bool generarHistorial = huboCambioPlan || huboCambioFecha || huboCambioPrecio;
+
+        // --- ACTUALIZACIÓN DE ENTIDADES ---
+        negocio.IsActive = dto.IsActive;
+
+        suscripcion.PlanSuscripcionId = dto.PlanSuscripcionId;
+        suscripcion.PrecioMensualPersonalizado = nuevoPrecio;
+        suscripcion.FechaVencimiento = nuevaFechaVencimientoUtc;
+        suscripcion.Estado = EstadoSuscripcionEnum.Activa;
+
+        if (generarHistorial)
+        {
+            var historial = new HistorialPago
+            {
+                SuscripcionNegocio = suscripcion,
+                MontoCobrado = nuevoPrecio ?? 0, // Si es nulo, el monto registrado es 0
+                FechaPago = DateTime.UtcNow,
+                MercadoPagoPaymentId = esCeroExplicito ? "BONIFICACION_ADMIN" : "AJUSTE_ADMIN",
+                DetalleRecibo = esCeroExplicito
+                    ? "Suscripción bonificada al 100% por administración."
+                    : $"Ajuste de suscripción. Precio mensual: {nuevoPrecio?.ToString("C") ?? "Precio de Lista"}."
+            };
+            _context.HistorialPagos.Add(historial);
         }
 
         await _context.SaveChangesAsync();

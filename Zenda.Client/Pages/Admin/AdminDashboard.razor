@@ -355,25 +355,21 @@ else
     private async Task GuardarCambios()
     {
         if (negocioEnEdicion == null || itemOriginal == null) return;
-
         guardando = true;
+
         try
         {
-            // Opcional: Si el monto es 0, lo mandamos como null para que tome el precio de lista
-            if (negocioEnEdicion.PrecioMensualPersonalizado <= 0)
+            // EL FIX: Solo mandamos null si el usuario dejó el campo vacío (o un valor negativo inválido)
+            // Si escribió 0, queremos que el servidor reciba 0.
+            if (negocioEnEdicion.PrecioMensualPersonalizado < 0)
                 negocioEnEdicion.PrecioMensualPersonalizado = null;
 
             var exito = await AdminClient.UpdateNegocioAsync(negocioIdEditando, negocioEnEdicion);
 
             if (exito)
             {
-                // Actualizamos la tabla visualmente sin tener que recargar la página
-                itemOriginal.IsActive = negocioEnEdicion.IsActive;
-                itemOriginal.MontoMensual = negocioEnEdicion.PrecioMensualPersonalizado ?? itemOriginal.MontoMensual; // Reflejaría el precio normal si es null, ideal recargar la lista
-
-                // Recargar toda la lista para estar 100% sincronizados
+                // Forzamos la recarga de la lista para ver el impacto de la lógica del servidor
                 TodosLosNegocios = await AdminClient.GetNegociosAsync();
-
                 CerrarModal();
             }
         }

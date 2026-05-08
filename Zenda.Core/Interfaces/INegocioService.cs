@@ -1,4 +1,5 @@
 ﻿using Zenda.Core.DTOs;
+using Zenda.Core.DTOs.Admin;
 
 public interface INegocioService
 {
@@ -10,4 +11,5 @@ public interface INegocioService
     Task<bool> UpdatePerfilAsync(NegocioUpdateDto dto); 
     Task<bool> UpdateLogoUrlAsync(string logoUrl);
     Task<bool> CambiarAPlanGratuitoAsync(Guid planId);
+    Task<bool> ActualizarSuscripcionAdminAsync(Guid negocioId, AdminUpdateNegocioDto dto);
 }
