@@ -46,85 +46,92 @@ public class AuthService : IAuthService
         if (await _context.Negocios.AnyAsync(n => n.Slug == dto.SlugNegocio))
             return new AuthResponseDto { Success = false, Message = "El slug del negocio ya está en uso." };
 
-        // 2. Iniciamos una transacción para que todo sea atómico
-        using var transaction = await _context.Database.BeginTransactionAsync();
+        // 2. Obtenemos la estrategia de ejecución para soportar reintentos en PostgreSQL
+        var strategy = _context.Database.CreateExecutionStrategy();
 
-        try
+        // Envolvemos todo en strategy.ExecuteAsync
+        return await strategy.ExecuteAsync(async () =>
         {
-            // 3. Crear el Negocio
-            var nuevoNegocio = new Core.DTOs.NegocioCreateDto
-            {
-                Nombre = dto.NombreNegocio,
-                Slug = dto.SlugNegocio,
-                RubroId = dto.RubroId,
-                PlanSuscripcionId = Guid.Parse("11111111-1111-1111-1111-111111111111") // Plan Gratis por defecto
-            };
-            var creadoNegocio = await _negocioService.CreateAsync(nuevoNegocio);
-            
-            await _context.SaveChangesAsync();
+            // 3. Iniciamos la transacción DENTRO de la estrategia
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // 4. Crear el Usuario (Owner)
-            var newUser = new ApplicationUser
+            try
             {
-                UserName = dto.Email,
-                Email = dto.Email,
-                Nombre = dto.Nombre,
-                Apellido = dto.Apellido,
-                NegocioId = creadoNegocio.Id // ¡Acá atamos el usuario al tenant!
-            };
-
-            var result = await _userManager.CreateAsync(newUser, dto.Password);
-            
-            if (result.Succeeded)
-            {
-                try
+                // 4. Crear el Negocio
+                var nuevoNegocio = new Core.DTOs.NegocioCreateDto
                 {
-                    // Generar token de Identity y codificarlo para URL
-                    var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
-                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
+                    Nombre = dto.NombreNegocio,
+                    Slug = dto.SlugNegocio,
+                    RubroId = dto.RubroId,
+                    PlanSuscripcionId = Guid.Parse("11111111-1111-1111-1111-111111111111") // Plan Gratis por defecto
+                };
+                var creadoNegocio = await _negocioService.CreateAsync(nuevoNegocio);
 
-                    var frontUrl = _config["FrontendUrl"]; // ej: https://localhost:5001 configurado en appsettings.json
-                    var confirmLink = $"{frontUrl}/confirmar-email?uid={newUser.Id}&t={encodedToken}";
+                await _context.SaveChangesAsync();
 
-                    // Asegurate de que tu IEmailService reciba este nuevo parámetro 'confirmLink'
-                    await _emailService.EnviarBienvenidaRegistroAsync(newUser.Email, newUser.Nombre, nuevoNegocio.Nombre, confirmLink);
-                }
-                catch (Exception ex)
+                // 5. Crear el Usuario (Owner)
+                var newUser = new ApplicationUser
                 {
-                    Console.WriteLine($"Error enviando email de bienvenida: {ex.Message}");
+                    UserName = dto.Email,
+                    Email = dto.Email,
+                    Nombre = dto.Nombre,
+                    Apellido = dto.Apellido,
+                    NegocioId = creadoNegocio.Id // ¡Acá atamos el usuario al tenant!
+                };
+
+                var result = await _userManager.CreateAsync(newUser, dto.Password);
+
+                if (result.Succeeded)
+                {
+                    try
+                    {
+                        // Generar token de Identity y codificarlo para URL
+                        var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
+
+                        var frontUrl = _config["FrontendUrl"]; // ej: https://localhost:5001 configurado en appsettings.json
+                        var confirmLink = $"{frontUrl}/confirmar-email?uid={newUser.Id}&t={encodedToken}";
+
+                        // Asegurate de que tu IEmailService reciba este nuevo parámetro 'confirmLink'
+                        await _emailService.EnviarBienvenidaRegistroAsync(newUser.Email, newUser.Nombre, nuevoNegocio.Nombre, confirmLink);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error enviando email de bienvenida: {ex.Message}");
+                    }
                 }
+
+                if (!result.Succeeded)
+                {
+                    await transaction.RollbackAsync();
+                    return new AuthResponseDto { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
+                }
+
+                // 6. Crear el rol "Owner" si no existe y asignarlo
+                if (!await _roleManager.RoleExistsAsync("Owner"))
+                    await _roleManager.CreateAsync(new IdentityRole("Owner"));
+
+                await _userManager.AddToRoleAsync(newUser, "Owner");
+
+                // Confirmamos la transacción
+                await transaction.CommitAsync();
+
+                // GENERAR TOKEN AUTOMÁTICAMENTE
+                var token = await GenerateJwtToken(newUser);
+
+                return new AuthResponseDto
+                {
+                    Success = true,
+                    Message = "Dueño y negocio creados con éxito.",
+                    Token = token
+                };
             }
-
-            if (!result.Succeeded)
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                return new AuthResponseDto { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
+                return new AuthResponseDto { Success = false, Message = $"Error interno: {ex.Message}" };
             }
-
-            // 5. Crear el rol "Owner" si no existe y asignarlo
-            if (!await _roleManager.RoleExistsAsync("Owner"))
-                await _roleManager.CreateAsync(new IdentityRole("Owner"));
-
-            await _userManager.AddToRoleAsync(newUser, "Owner");
-
-            // Confirmamos la transacción
-            await transaction.CommitAsync();
-
-            // GENERAR TOKEN AUTOMÁTICAMENTE
-            var token = await GenerateJwtToken(newUser);
-
-            return new AuthResponseDto
-            {
-                Success = true,
-                Message = "Dueño y negocio creados con éxito.",
-                Token = token // <--- Agregamos el token aquí
-            };
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            return new AuthResponseDto { Success = false, Message = $"Error interno: {ex.Message}" };
-        }
+        });
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
