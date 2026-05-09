@@ -24,5 +24,6 @@ public interface IZendaDbContext
     DbSet<ApplicationUser> Users { get; set; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     // Agregamos FindAsync para que el Service lo use sin depender de la implementación
-    ValueTask<TEntity?> FindAsync<TEntity>(params object?[]? keyValues) where TEntity : class;
+    ValueTask<TEntity?> FindAsync<TEntity>(params object?[]? keyValues) where TEntity : class; 
+    Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation, Func<T, bool> isSuccess);
 }
