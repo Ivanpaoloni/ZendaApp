@@ -302,5 +302,35 @@ namespace Zenda.Infrastructure
             }
             return base.SaveChangesAsync(cancellationToken);
         }
+        // Implementación del helper: Solo DbContext sabe cómo manejar la estrategia de EF Core
+        public async Task<T> ExecuteInTransactionAsync<T>(Func<Task<T>> operation, Func<T, bool> isSuccess)
+        {
+            var strategy = this.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await this.Database.BeginTransactionAsync();
+                try
+                {
+                    var result = await operation();
+
+                    if (isSuccess(result))
+                    {
+                        await transaction.CommitAsync();
+                    }
+                    else
+                    {
+                        await transaction.RollbackAsync();
+                    }
+
+                    return result;
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
     }
 }
