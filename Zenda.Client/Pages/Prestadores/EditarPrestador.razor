@@ -2,11 +2,14 @@
 @using Microsoft.AspNetCore.Authorization
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
+@using System.Net.Http.Json
 @attribute [Authorize]
 @inject PrestadorClient PrestadorService
 @inject SedeClient SedeService
 @inject ServicioClient ServicioService
 @inject NavigationManager Nav
+@inject HttpClient Http
+@inject IJSRuntime JS
 
 <div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
     <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
@@ -15,6 +18,7 @@
 
     <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
         <h2 class="text-3xl font-bold text-primary tracking-tighter mb-8 text-center">Editar Profesional</h2>
+
         @if (model == null)
         {
             <div class="flex justify-center py-10">
@@ -75,6 +79,58 @@
                     }
                 </div>
 
+                <hr class="border-surface-container-high my-6" />
+
+                <!-- SECCIÓN GOOGLE CALENDAR -->
+                <div>
+                    <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-4 block">Google Calendar</label>
+
+                    @if (tieneCalendarioVinculado)
+                    {
+                        <div class="bg-[#f1f5f0] border border-[#166534]/30 rounded-2xl p-4 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-[#166534] fs-4">check_circle</span>
+                                <div>
+                                    <strong class="text-primary block text-sm">Sincronización Activa</strong>
+                                    <p class="mb-0 text-xs text-on-surface-variant">Los turnos se sincronizan automáticamente.</p>
+                                </div>
+                            </div>
+                            <button type="button" class="text-xs font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-widest px-3 py-2 rounded-xl hover:bg-red-50" disabled="@procesandoCalendario" @onclick="DesvincularCalendario">
+                                Desvincular
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-xs text-on-surface-variant mb-4 px-1">Evita choques de horarios sincronizando la agenda de Zendy con el Google Calendar de este profesional.</p>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" class="flex-1 py-3 px-4 bg-primary text-white text-sm font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2" disabled="@procesandoCalendario" @onclick="VincularDirecto">
+                                <span class="material-symbols-outlined text-sm">calendar_month</span> Vincular mi cuenta
+                            </button>
+
+                            <button type="button" class="flex-1 py-3 px-4 bg-surface-container-low text-primary text-sm font-bold rounded-xl hover:bg-surface-container-high transition-all flex justify-center items-center gap-2 border border-primary/10" disabled="@procesandoCalendario" @onclick="GenerarLinkDelegado">
+                                <span class="material-symbols-outlined text-sm">link</span> Generar enlace
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(linkGenerado))
+                        {
+                            <div class="mt-4 p-4 bg-surface-container-low border border-primary/10 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-2 block">Enlace de integración (Expira 24hs)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" class="input-zenda text-sm py-2 px-3 flex-1" readonly value="@linkGenerado" />
+                                    <button class="bg-primary text-white px-4 py-2 rounded-xl font-bold hover:scale-[1.02] transition-all flex items-center gap-2" type="button" @onclick="CopiarAlPortapapeles">
+                                        <span class="material-symbols-outlined text-sm">content_copy</span> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <hr class="border-surface-container-high my-6" />
+
                 <button type="submit" disabled="@guardando" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex justify-center items-center gap-2">
                     @if (guardando)
                     {
@@ -82,7 +138,6 @@
                     }
                     else
                     {
-
                         <span>Guardar Cambios</span>
                     }
                 </button>
@@ -126,11 +181,17 @@
     private PrestadorUpdateDto? model;
     private List<SedeReadDto> sedes = new();
     private List<CategoriaServicioReadDto>? catalogo;
+
+    // Estado General
     private bool guardando = false;
+
+    // Estado Google Calendar
+    private bool tieneCalendarioVinculado = false;
+    private bool procesandoCalendario = false;
+    private string? linkGenerado;
 
     protected override async Task OnInitializedAsync()
     {
-        // 1. Cargamos datos paralelos para que sea más rápido
         var taskSedes = SedeService.GetAll();
         var taskCatalogo = ServicioService.GetCatalogo();
         var taskPrestador = PrestadorService.GetById(Id);
@@ -143,6 +204,9 @@
 
         if (p != null)
         {
+            // Asignamos el estado de vinculación (Asegúrate de agregar TieneCalendarioVinculado en el DTO de retorno de tu API)
+            // tieneCalendarioVinculado = p.TieneCalendarioVinculado;
+
             model = new PrestadorUpdateDto
             {
                 Id = p.Id,
@@ -179,5 +243,70 @@
         guardando = false;
 
         if (res.Success) Nav.NavigateTo("prestadores");
+    }
+
+    // --- LÓGICA DE GOOGLE CALENDAR ---
+
+    private async Task VincularDirecto()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<UrlResponse>($"api/calendar/conectar-directo/{Id}");
+            if (response != null && !string.IsNullOrEmpty(response.Url))
+            {
+                Nav.NavigateTo(response.Url, forceLoad: true);
+            }
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task GenerarLinkDelegado()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            var response = await Http.GetFromJsonAsync<UrlResponse>($"api/calendar/generar-link/{Id}");
+            if (response != null && !string.IsNullOrEmpty(response.Url))
+            {
+                linkGenerado = response.Url;
+            }
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task DesvincularCalendario()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            // var res = await Http.DeleteAsync($"api/calendar/desvincular/{Id}");
+            // if (res.IsSuccessStatusCode) tieneCalendarioVinculado = false;
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task CopiarAlPortapapeles()
+    {
+        if (!string.IsNullOrEmpty(linkGenerado))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", linkGenerado);
+            // Aquí puedes agregar un toast o alerta indicando que se copió correctamente
+        }
+    }
+
+    // Clase auxiliar para mapear la respuesta de la API
+    public class UrlResponse
+    {
+        public string Url { get; set; } = string.Empty;
     }
 }
