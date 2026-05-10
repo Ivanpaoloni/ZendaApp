@@ -37,6 +37,25 @@ public class CalendarController : ControllerBase
         return Ok(new { Url = url });
     }
 
+    [AllowAnonymous]
+    [HttpGet("conectar-magico")]
+    public IActionResult ConectarMagico([FromQuery] string token)
+    {
+        var prestadorId = _magicLinkService.ValidarTokenIntegracion(token);
+
+        if (prestadorId == null || prestadorId == Guid.Empty)
+        {
+            return BadRequest("El enlace es inválido o ha expirado.");
+        }
+
+        string state = $"MAG_{prestadorId}";
+        string url = _authService.GenerarUrlOAuth(state);
+
+        // ANTES: return Redirect(url);
+        // AHORA: Devolvemos la URL limpia para que el frontend haga el viaje
+        return Ok(new { Url = url });
+    }
+
     [HttpGet("generar-link/{prestadorId:guid}")]
     public IActionResult GenerarLink(Guid prestadorId)
     {
@@ -82,38 +101,49 @@ public class CalendarController : ControllerBase
             // 2. RECUPERAR EL ID DEL PRESTADOR
             // ==========================================
             // El state llega como "DIR_019dbfce-8d66..."
-            Guid prestadorId = Guid.Empty;
+            // Dentro del try de tu GoogleCallback...
 
-            if (!string.IsNullOrEmpty(state) && state.StartsWith("DIR_"))
+            Guid prestadorId = Guid.Empty;
+            bool esConexionMagica = false;
+
+            // Revisamos cómo empieza el state
+            if (!string.IsNullOrEmpty(state))
             {
-                var idString = state.Substring(4); // Le cortamos los primeros 4 caracteres ("DIR_")
-                Guid.TryParse(idString, out prestadorId);
+                if (state.StartsWith("DIR_"))
+                {
+                    var idString = state.Substring(4);
+                    Guid.TryParse(idString, out prestadorId);
+                }
+                else if (state.StartsWith("MAG_"))
+                {
+                    var idString = state.Substring(4);
+                    Guid.TryParse(idString, out prestadorId);
+                    esConexionMagica = true; // ¡Vino por el enlace mágico!
+                }
             }
 
             if (prestadorId == Guid.Empty)
             {
-                // Si alguien manipuló el link o el state viene vacío
                 return Redirect($"{frontendUrl}/prestadores?sync=error");
             }
 
-            // ==========================================
-            // 3. INTERCAMBIAR EL CÓDIGO POR EL TOKEN
-            // ==========================================
-            // Llamamos al método mágico que me acabas de mostrar
-            // 3. INTERCAMBIAR EL CÓDIGO POR EL TOKEN (¡Ahora atrapamos 3 variables!)
+            // ... Haces el intercambio de token y guardas en la base de datos igual que antes ...
             var (refreshToken, email, calendarId) = await _authService.IntercambiarCodigoAsync(code);
-
-            // 4. GUARDAR EN LA BASE DE DATOS (¡Le pasamos el calendarId al servicio!)
-
-            // ==========================================
-            // 4. GUARDAR EN LA BASE DE DATOS
-            // ==========================================
-            // TODO: Aquí debes llamar a tu servicio para guardar los datos en Zenda.
-            // Ejemplo:
             await _prestadoresService.ActualizarGoogleTokenAsync(prestadorId, refreshToken, calendarId);
 
-            // 5. ¡Éxito! Redirigimos al frontend
-            return Redirect($"{frontendUrl}/prestadores?sync=success");
+            // ==========================================
+            // REDIRECCIÓN INTELIGENTE
+            // ==========================================
+            if (esConexionMagica)
+            {
+                // Lo mandamos a una página pública de éxito para el empleado
+                return Redirect($"{frontendUrl}/integracion/exito");
+            }
+            else
+            {
+                // Lo mandamos al panel de control del administrador
+                return Redirect($"{frontendUrl}/prestadores?sync=success");
+            }
         }
         catch (InvalidOperationException ex)
         {
