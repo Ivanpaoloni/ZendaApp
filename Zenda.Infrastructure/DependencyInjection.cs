@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddTransient<IResend, ResendClient>();
         services.AddScoped<IMercadoPagoService, MercadoPagoService>();
         services.AddScoped<IEmailService, ResendEmailService>();
+        services.AddScoped<IExternalCalendarAuthService, GoogleCalendarAuthService>();
 
         // 3. Hangfire y Tareas en Segundo Plano
         services.AddScoped<IJobService, HangfireJobService>();

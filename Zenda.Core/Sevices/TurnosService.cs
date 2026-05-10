@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 using Zenda.Core.Enums;
@@ -15,14 +16,25 @@ public class TurnosService : ITurnosService
     private readonly ITenantService _tenantService;
     private readonly IMapper _mapper;
     private readonly IJobService _jobService;
+    private readonly IExternalCalendarAuthService _googleCalendarService;
+    private readonly ILogger<TurnosService> _logger;
 
-    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService, IJobService jobService)
+    public TurnosService(
+        IZendaDbContext context,
+        IMapper mapper,
+        ITenantService tenantService,
+        IEmailService emailService,
+        IJobService jobService,
+        IExternalCalendarAuthService googleCalendarService,
+        ILogger<TurnosService> logger)
     {
         _context = context;
         _mapper = mapper;
         _tenantService = tenantService;
         _emailService = emailService;
         _jobService = jobService;
+        _googleCalendarService = googleCalendarService;
+        _logger = logger;
     }
 
     public async Task<TurnoReadDto> GetByIdAsync(Guid id)
@@ -295,11 +307,22 @@ public class TurnosService : ITurnosService
         catch (Exception ex)
         {
             // Aquí deberías registrar el error con un ILogger<TurnosService>
-            // _logger.LogError(ex, "El turno se guardó, pero falló el envío del email de confirmación para {Email}", dto.EmailClienteInvitado);
+            _logger.LogError(ex, "El turno se guardó, pero falló el envío del email de confirmación para {Email}", dto.EmailClienteInvitado);
 
             // IMPORTANTE: No lanzamos el throw. El usuario ya tiene su turno asegurado.
         }
-
+        DispararSincronizacionGoogle(
+    prestador.GoogleRefreshToken,
+    prestador.GoogleCalendarId,
+    cliente.Nombre,
+    cliente.Telefono,
+    cliente.Email,
+    servicio.Nombre,
+    nuevoTurno.FechaHoraInicioUtc,
+    nuevoTurno.FechaHoraFinUtc,
+    prestador.Id,
+    esReservaManualAdmin: false
+);
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
 
@@ -587,7 +610,8 @@ public class TurnosService : ITurnosService
                         t.FechaHoraInicioUtc >= inicioMesAnteriorUtc &&
                         t.FechaHoraInicioUtc < inicioMesSiguienteUtc && // 🎯 Cortamos el query en BD
                         t.Estado != EstadoTurnoEnum.Cancelado)
-            .Select(t => new {
+            .Select(t => new
+            {
                 t.FechaHoraInicioUtc
             })
             .ToListAsync();
@@ -595,7 +619,7 @@ public class TurnosService : ITurnosService
         // 🎯 Filtramos en memoria asegurando el cajón del mes actual
         var turnosActual = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesActualUtc && t.FechaHoraInicioUtc < inicioMesSiguienteUtc).ToList();
         var turnosAnterior = turnos.Where(t => t.FechaHoraInicioUtc >= inicioMesAnteriorUtc && t.FechaHoraInicioUtc < inicioMesActualUtc).ToList();
-        
+
         int reservasActual = turnosActual.Count;
         int reservasAnterior = turnosAnterior.Count;
         // 5. HACEMOS LO MISMO CON LA CAJA
@@ -605,7 +629,8 @@ public class TurnosService : ITurnosService
                         m.CreatedAtUtc >= inicioMesAnteriorUtc &&
                         m.CreatedAtUtc < inicioMesSiguienteUtc && // 🎯 Acotamos ingresos también
                         m.Tipo == TipoMovimientoEnum.Ingreso)
-            .Select(m => new {
+            .Select(m => new
+            {
                 m.CreatedAtUtc,
                 m.Monto
             })
@@ -942,7 +967,65 @@ public class TurnosService : ITurnosService
                 // El error de email no rompe la reserva manual
             }
         }
-
+        DispararSincronizacionGoogle(
+    prestador.GoogleRefreshToken,
+    prestador.GoogleCalendarId,
+    clienteAsignado.Nombre,
+    clienteAsignado.Telefono,
+    clienteAsignado.Email,
+    servicio.Nombre,
+    nuevoTurno.FechaHoraInicioUtc,
+    nuevoTurno.FechaHoraFinUtc,
+    prestador.Id,
+    esReservaManualAdmin: true // <--- Es público
+);
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
+    }
+
+    private void DispararSincronizacionGoogle(
+    string? refreshToken,
+    string? calendarId,
+    string nombreCliente,
+    string? telefonoCliente,
+    string? emailCliente,
+    string nombreServicio,
+    DateTime inicioUtc,
+    DateTime finUtc,
+    Guid prestadorId,
+    bool esReservaManualAdmin)
+    {
+        if (string.IsNullOrEmpty(refreshToken)) return;
+
+        // Cambiamos sutilmente el mensaje según quién lo creó
+        var origen = esReservaManualAdmin ? "Reserva manual vía Zendy Admin." : "Servicio programado vía Zendy.";
+        var tituloEvento = $"Zendy: {nombreCliente} ({nombreServicio})";
+        var descripcionEvento = $@"{origen}
+
+📋 Detalles del Cliente:
+Nombre: {nombreCliente}
+Teléfono: {telefonoCliente ?? "No provisto"}
+Email: {emailCliente ?? "No provisto"}
+
+⚙️ Servicio: {nombreServicio}";
+
+        // Disparamos el hilo secundario
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _googleCalendarService.CrearEventoAsync(
+                    refreshToken,
+                    calendarId ?? "primary",
+                    tituloEvento,
+                    descripcionEvento,
+                    inicioUtc,
+                    finUtc
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Fallo al sincronizar turno en Google Calendar. Prestador: {PrestadorId}", prestadorId);
+            }
+        });
     }
 }

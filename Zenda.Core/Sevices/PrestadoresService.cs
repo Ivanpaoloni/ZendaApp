@@ -178,5 +178,40 @@ public class PrestadoresService : IPrestadoresService
     }
 
 
+    public async Task ActualizarGoogleTokenAsync(Guid prestadorId, string refreshToken, string calendarId)
+    {
+        // Usamos IgnoreQueryFilters por el contexto del Callback (Anonymous)
+        var prestador = await _context.Prestadores
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == prestadorId);
+
+        if (prestador == null)
+        {
+            throw new KeyNotFoundException($"No se encontró el prestador con ID {prestadorId}.");
+        }
+
+        // Actualizamos AMBOS datos
+        prestador.GoogleRefreshToken = refreshToken;
+        prestador.GoogleCalendarId = calendarId;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DesvincularGoogleCalendarAsync(Guid prestadorId)
+    {
+        var prestador = await _context.Prestadores.FindAsync(prestadorId);
+
+        if (prestador == null)
+        {
+            throw new KeyNotFoundException($"No se encontró el prestador con ID {prestadorId}.");
+        }
+
+        // Limpiamos los tokens y el ID del calendario
+        prestador.GoogleRefreshToken = null;
+        prestador.GoogleCalendarId = null;
+
+        _context.Prestadores.Update(prestador);
+        await _context.SaveChangesAsync();
+    }
     #endregion
 }

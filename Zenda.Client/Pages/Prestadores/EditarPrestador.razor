@@ -2,11 +2,14 @@
 @using Microsoft.AspNetCore.Authorization
 @using Zenda.Client.Services
 @using Zenda.Core.DTOs
+@using System.Net.Http.Json
 @attribute [Authorize]
 @inject PrestadorClient PrestadorService
 @inject SedeClient SedeService
 @inject ServicioClient ServicioService
 @inject NavigationManager Nav
+@inject HttpClient Http
+@inject IJSRuntime JS
 
 <div class="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
     <button @onclick='() => Nav.NavigateTo("prestadores")' class="text-primary font-bold text-xs uppercase tracking-widest flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
@@ -14,7 +17,24 @@
     </button>
 
     <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
+
+        @if (!string.IsNullOrEmpty(mensajeAlerta))
+        {
+            <div class="mb-6 p-4 rounded-2xl @claseAlerta flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-xl">
+                        @(SyncStatus == "success" ? "check_circle" : "error")
+                    </span>
+                    <span class="text-sm font-bold">@mensajeAlerta</span>
+                </div>
+                <button type="button" @onclick="CerrarAlerta" class="opacity-50 hover:opacity-100 transition-opacity">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+        }
+
         <h2 class="text-3xl font-bold text-primary tracking-tighter mb-8 text-center">Editar Profesional</h2>
+
         @if (model == null)
         {
             <div class="flex justify-center py-10">
@@ -75,6 +95,60 @@
                     }
                 </div>
 
+                <hr class="border-surface-container-high my-6" />
+
+                <div>
+                    <label class="flex items-center gap-2 text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-4">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" alt="Google Calendar Logo" class="w-4 h-4 drop-shadow-sm" />
+                        Google Calendar
+                    </label>
+
+                    @if (tieneCalendarioVinculado)
+                    {
+                        <div class="bg-[#f1f5f0] border border-[#166534]/30 rounded-2xl p-4 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-[#166534] fs-4">check_circle</span>
+                                <div>
+                                    <strong class="text-primary block text-sm">Sincronización Activa</strong>
+                                    <p class="mb-0 text-xs text-on-surface-variant">Los turnos se sincronizan automáticamente.</p>
+                                </div>
+                            </div>
+                            <button type="button" class="text-xs font-bold text-red-600 hover:text-red-800 transition-colors uppercase tracking-widest px-3 py-2 rounded-xl hover:bg-red-50" disabled="@procesandoCalendario" @onclick="DesvincularCalendario">
+                                Desvincular
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-xs text-on-surface-variant mb-4 px-1">Evita choques de horarios sincronizando la agenda de Zendy con el Google Calendar de este profesional.</p>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="button" class="flex-1 py-3 px-4 bg-primary text-white text-sm font-bold rounded-xl shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2" disabled="@procesandoCalendario" @onclick="VincularDirecto">
+                                <span class="material-symbols-outlined text-sm">calendar_month</span> Vincular mi cuenta
+                            </button>
+
+                            <button type="button" class="flex-1 py-3 px-4 bg-surface-container-low text-primary text-sm font-bold rounded-xl hover:bg-surface-container-high transition-all flex justify-center items-center gap-2 border border-primary/10" disabled="@procesandoCalendario" @onclick="GenerarLinkDelegado">
+                                <span class="material-symbols-outlined text-sm">link</span> Generar enlace
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(linkGenerado))
+                        {
+                            <div class="mt-4 p-4 bg-surface-container-low border border-primary/10 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                                <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-2 block">Enlace de integración (Expira 24hs)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" class="input-zenda text-sm py-2 px-3 flex-1" readonly value="@linkGenerado" />
+                                    <button class="bg-primary text-white px-4 py-2 rounded-xl font-bold hover:scale-[1.02] transition-all flex items-center gap-2" type="button" @onclick="CopiarAlPortapapeles">
+                                        <span class="material-symbols-outlined text-sm">content_copy</span> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <hr class="border-surface-container-high my-6" />
+
                 <button type="submit" disabled="@guardando" class="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-95 transition-all flex justify-center items-center gap-2">
                     @if (guardando)
                     {
@@ -82,7 +156,6 @@
                     }
                     else
                     {
-
                         <span>Guardar Cambios</span>
                     }
                 </button>
@@ -123,14 +196,29 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    private PrestadorUpdateDto? model;
+
+    [SupplyParameterFromQuery(Name = "sync")] public string? SyncStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "motivo")] public string? SyncMotivo { get; set; }
+
     private List<SedeReadDto> sedes = new();
     private List<CategoriaServicioReadDto>? catalogo;
+    private PrestadorUpdateDto? model;
+
+    // Estado General
     private bool guardando = false;
+
+    // Variables para la alerta UI
+    private string? mensajeAlerta;
+    private string claseAlerta = "";
+
+    // Estado Google Calendar
+    private bool tieneCalendarioVinculado = false;
+    private bool procesandoCalendario = false;
+    private string? linkGenerado;
 
     protected override async Task OnInitializedAsync()
     {
-        // 1. Cargamos datos paralelos para que sea más rápido
         var taskSedes = SedeService.GetAll();
         var taskCatalogo = ServicioService.GetCatalogo();
         var taskPrestador = PrestadorService.GetById(Id);
@@ -143,6 +231,8 @@
 
         if (p != null)
         {
+            tieneCalendarioVinculado = p.TieneCalendarioVinculado;
+
             model = new PrestadorUpdateDto
             {
                 Id = p.Id,
@@ -152,7 +242,41 @@
                 ServiciosIds = p.Servicios?.Select(s => s.Id).ToList() ?? new()
             };
         }
+
+        // NUEVO: Verificamos si venimos de regreso de Google
+        ProcesarRespuestaGoogle();
     }
+
+    private void ProcesarRespuestaGoogle()
+    {
+        if (!string.IsNullOrEmpty(SyncStatus))
+        {
+            if (SyncStatus == "success")
+            {
+                mensajeAlerta = "¡Calendario de Google vinculado correctamente!";
+                claseAlerta = "bg-[#f1f5f0] text-[#166534] border-[#166534]/30"; // Tonos verdes de tu app
+                tieneCalendarioVinculado = true; // Forzamos el cambio visual sin recargar de BD
+            }
+            else if (SyncStatus == "error")
+            {
+                if (SyncMotivo == "no_token")
+                {
+                    mensajeAlerta = "Debes revocar los permisos de Zendy en tu cuenta de Google antes de reintentar.";
+                }
+                else
+                {
+                    mensajeAlerta = "Hubo un problema al vincular el calendario. Inténtalo de nuevo.";
+                }
+                claseAlerta = "bg-red-50 text-red-800 border-red-200";
+            }
+
+            // Limpiamos la URL para que no vuelva a saltar si el usuario recarga la página
+            Nav.NavigateTo(Nav.GetUriWithQueryParameters(
+                new Dictionary<string, object?> { { "sync", null }, { "motivo", null } }), replace: true);
+        }
+    }
+
+    private void CerrarAlerta() => mensajeAlerta = null;
 
     private void ToggleServicio(Guid servicioId, object? checkedValue)
     {
@@ -179,5 +303,74 @@
         guardando = false;
 
         if (res.Success) Nav.NavigateTo("prestadores");
+    }
+
+    // --- LÓGICA DE GOOGLE CALENDAR ---
+
+    private async Task VincularDirecto()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            var url = await PrestadorService.ObtenerUrlGoogleAuthAsync(Id);
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                Nav.NavigateTo(url, forceLoad: true);
+            }
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task GenerarLinkDelegado()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            var url = await PrestadorService.ObtenerUrlMagicLinkAsync(Id);
+
+            if (!string.IsNullOrEmpty(url))
+            {
+                linkGenerado = url;
+            }
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task DesvincularCalendario()
+    {
+        procesandoCalendario = true;
+        try
+        {
+            var exito = await PrestadorService.DesvincularGoogleCalendarAsync(Id);
+            if (exito)
+            {
+                tieneCalendarioVinculado = false;
+                mensajeAlerta = "El calendario fue desvinculado con éxito.";
+                claseAlerta = "bg-blue-50 text-blue-800 border-blue-200"; // Tono azul informativo
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            procesandoCalendario = false;
+        }
+    }
+
+    private async Task CopiarAlPortapapeles()
+    {
+        if (!string.IsNullOrEmpty(linkGenerado))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", linkGenerado);
+            mensajeAlerta = "¡Enlace copiado al portapapeles!";
+            claseAlerta = "bg-[#f1f5f0] text-[#166534] border-[#166534]/30";
+            StateHasChanged();
+        }
     }
 }

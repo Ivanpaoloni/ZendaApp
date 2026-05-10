@@ -15,6 +15,7 @@ using Zenda.Core.Interfaces;
 using Zenda.Core.Services;
 using Zenda.Core.Sevices;
 using Zenda.Infrastructure;
+using Zenda.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +84,7 @@ builder.Services.AddScoped<ICajaService, CajaService>();
 builder.Services.AddScoped<IStorageService, CloudinaryStorageService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
 builder.Services.AddScoped<IFacturacionService, FacturacionService>();
+builder.Services.AddScoped<IMagicLinkService, MagicLinkService>();
 #endregion
 
 #region Health Checks

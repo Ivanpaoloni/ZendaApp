@@ -1,0 +1,73 @@
+﻿@page "/integracion/google"
+@using Microsoft.AspNetCore.Components
+@using System.Net.Http.Json
+@inject NavigationManager Nav
+@inject IConfiguration Config
+@inject HttpClient Http
+
+<div class="min-h-screen flex items-center justify-center bg-[#f1f5f0] p-4">
+    <div class="bg-white max-w-md w-full p-8 rounded-[2rem] shadow-xl text-center animate-in fade-in slide-in-from-bottom-4">
+
+        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span class="material-symbols-outlined text-4xl text-primary">calendar_month</span>
+        </div>
+
+        <h1 class="text-2xl font-bold text-primary mb-2">Vincular Calendario</h1>
+        <p class="text-on-surface-variant mb-8 text-sm">
+            Tu lugar de trabajo te ha invitado a sincronizar tu cuenta de Google para organizar tus turnos en Zendy.
+        </p>
+
+        @if (string.IsNullOrEmpty(Token))
+        {
+            <div class="p-4 bg-red-50 text-red-800 rounded-xl text-sm font-bold">
+                El enlace no es válido. Falta el token de seguridad.
+            </div>
+        }
+        else
+        {
+            <button @onclick="IrAGoogle" class="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all flex justify-center items-center gap-2">
+                Continuar con Google
+            </button>
+            <p class="text-[10px] text-on-surface-variant/50 mt-4 uppercase tracking-widest">
+                Serás redirigido de forma segura a Google.com
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    // Variable para mostrar un error en pantalla si el token expiró
+    private string? MensajeError;
+
+    private async Task IrAGoogle()
+    {
+        MensajeError = null;
+        var apiUrl = Config["ApiUrl"] ?? "http://localhost:5039";
+
+        try
+        {
+            // 1. Le pedimos la URL a tu API
+            var response = await Http.GetFromJsonAsync<RespuestaUrl>($"{apiUrl}/api/calendar/conectar-magico?token={Token}");
+
+            // 2. Si la API nos dio la URL de Google, saltamos hacia allá
+            if (response != null && !string.IsNullOrEmpty(response.Url))
+            {
+                Nav.NavigateTo(response.Url, forceLoad: true);
+            }
+        }
+        catch (Exception)
+        {
+            // Si la API tira BadRequest (ej: Token vencido), caemos aquí
+            MensajeError = "El enlace de seguridad es inválido o ha expirado. Pide que te generen uno nuevo.";
+        }
+    }
+
+    // Clase auxiliar para leer el JSON de la API
+    private class RespuestaUrl
+    {
+        public string Url { get; set; } = "";
+    }
+}

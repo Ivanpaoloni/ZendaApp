@@ -18,4 +18,9 @@ public class Prestador : BaseEntity, ITenantEntity
     public List<Disponibilidad> Horarios { get; set; } = new();
     public List<Turno> Turnos { get; set; } = new();
     public ICollection<Servicio> Servicios { get; set; } = new List<Servicio>();
+
+    // Integración Google Calendar
+    public string? GoogleRefreshToken { get; set; }
+    public string? GoogleCalendarId { get; set; }
+    public bool TieneCalendarioVinculado => !string.IsNullOrEmpty(GoogleRefreshToken);
 }

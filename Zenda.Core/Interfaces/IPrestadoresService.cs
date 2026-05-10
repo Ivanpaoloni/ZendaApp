@@ -10,4 +10,6 @@ public interface IPrestadoresService
     Task<PrestadorReadDto?> GetByIdAsync(Guid id);
     Task<IEnumerable<PrestadorReadDto>> GetPublicBySedeIdAsync(Guid sedeId);
     Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto);
+    Task ActualizarGoogleTokenAsync(Guid prestadorId, string refreshToken, string calendarId);
+    Task DesvincularGoogleCalendarAsync(Guid prestadorId);
 }
