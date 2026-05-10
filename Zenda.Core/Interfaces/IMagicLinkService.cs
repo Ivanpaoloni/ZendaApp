@@ -1,5 +1,5 @@
 ﻿public interface IMagicLinkService
 {
-    string GenerarTokenIntegracion(int prestadorId, int expiracionHoras = 24);
-    int? ExtraerPrestadorId(string token);
+    string GenerarTokenIntegracion(Guid prestadorId, int expiracionHoras = 24);
+    Guid? ExtraerPrestadorId(string token);
 }

@@ -17,6 +17,22 @@
     </button>
 
     <div class="bg-white p-10 rounded-[3rem] editorial-shadow border border-surface-container-high">
+
+        @if (!string.IsNullOrEmpty(mensajeAlerta))
+        {
+            <div class="mb-6 p-4 rounded-2xl @claseAlerta flex justify-between items-center animate-in fade-in slide-in-from-top-2">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-xl">
+                        @(SyncStatus == "success" ? "check_circle" : "error")
+                    </span>
+                    <span class="text-sm font-bold">@mensajeAlerta</span>
+                </div>
+                <button type="button" @onclick="CerrarAlerta" class="opacity-50 hover:opacity-100 transition-opacity">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
+        }
+
         <h2 class="text-3xl font-bold text-primary tracking-tighter mb-8 text-center">Editar Profesional</h2>
 
         @if (model == null)
@@ -81,7 +97,6 @@
 
                 <hr class="border-surface-container-high my-6" />
 
-                <!-- SECCIÓN GOOGLE CALENDAR -->
                 <div>
                     <label class="text-[10px] font-black text-primary/50 tracking-widest uppercase px-1 mb-4 block">Google Calendar</label>
 
@@ -178,12 +193,21 @@
 
 @code {
     [Parameter] public Guid Id { get; set; }
-    private PrestadorUpdateDto? model;
+
+    [SupplyParameterFromQuery(Name = "sync")] public string? SyncStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "motivo")] public string? SyncMotivo { get; set; }
+
     private List<SedeReadDto> sedes = new();
     private List<CategoriaServicioReadDto>? catalogo;
+    private PrestadorUpdateDto? model;
 
     // Estado General
     private bool guardando = false;
+
+    // Variables para la alerta UI
+    private string? mensajeAlerta;
+    private string claseAlerta = "";
 
     // Estado Google Calendar
     private bool tieneCalendarioVinculado = false;
@@ -204,8 +228,7 @@
 
         if (p != null)
         {
-            // Asignamos el estado de vinculación (Asegúrate de agregar TieneCalendarioVinculado en el DTO de retorno de tu API)
-            // tieneCalendarioVinculado = p.TieneCalendarioVinculado;
+            tieneCalendarioVinculado = p.TieneCalendarioVinculado;
 
             model = new PrestadorUpdateDto
             {
@@ -216,7 +239,41 @@
                 ServiciosIds = p.Servicios?.Select(s => s.Id).ToList() ?? new()
             };
         }
+
+        // NUEVO: Verificamos si venimos de regreso de Google
+        ProcesarRespuestaGoogle();
     }
+
+    private void ProcesarRespuestaGoogle()
+    {
+        if (!string.IsNullOrEmpty(SyncStatus))
+        {
+            if (SyncStatus == "success")
+            {
+                mensajeAlerta = "¡Calendario de Google vinculado correctamente!";
+                claseAlerta = "bg-[#f1f5f0] text-[#166534] border-[#166534]/30"; // Tonos verdes de tu app
+                tieneCalendarioVinculado = true; // Forzamos el cambio visual sin recargar de BD
+            }
+            else if (SyncStatus == "error")
+            {
+                if (SyncMotivo == "no_token")
+                {
+                    mensajeAlerta = "Debes revocar los permisos de Zendy en tu cuenta de Google antes de reintentar.";
+                }
+                else
+                {
+                    mensajeAlerta = "Hubo un problema al vincular el calendario. Inténtalo de nuevo.";
+                }
+                claseAlerta = "bg-red-50 text-red-800 border-red-200";
+            }
+
+            // Limpiamos la URL para que no vuelva a saltar si el usuario recarga la página
+            Nav.NavigateTo(Nav.GetUriWithQueryParameters(
+                new Dictionary<string, object?> { { "sync", null }, { "motivo", null } }), replace: true);
+        }
+    }
+
+    private void CerrarAlerta() => mensajeAlerta = null;
 
     private void ToggleServicio(Guid servicioId, object? checkedValue)
     {
@@ -252,10 +309,11 @@
         procesandoCalendario = true;
         try
         {
-            var response = await Http.GetFromJsonAsync<UrlResponse>($"api/calendar/conectar-directo/{Id}");
-            if (response != null && !string.IsNullOrEmpty(response.Url))
+            var url = await PrestadorService.ObtenerUrlGoogleAuthAsync(Id);
+
+            if (!string.IsNullOrEmpty(url))
             {
-                Nav.NavigateTo(response.Url, forceLoad: true);
+                Nav.NavigateTo(url, forceLoad: true);
             }
         }
         finally
@@ -269,10 +327,11 @@
         procesandoCalendario = true;
         try
         {
-            var response = await Http.GetFromJsonAsync<UrlResponse>($"api/calendar/generar-link/{Id}");
-            if (response != null && !string.IsNullOrEmpty(response.Url))
+            var url = await PrestadorService.ObtenerUrlMagicLinkAsync(Id);
+
+            if (!string.IsNullOrEmpty(url))
             {
-                linkGenerado = response.Url;
+                linkGenerado = url;
             }
         }
         finally
@@ -286,8 +345,14 @@
         procesandoCalendario = true;
         try
         {
-            // var res = await Http.DeleteAsync($"api/calendar/desvincular/{Id}");
-            // if (res.IsSuccessStatusCode) tieneCalendarioVinculado = false;
+            var exito = await PrestadorService.DesvincularGoogleCalendarAsync(Id);
+            if (exito)
+            {
+                tieneCalendarioVinculado = false;
+                mensajeAlerta = "El calendario fue desvinculado con éxito.";
+                claseAlerta = "bg-blue-50 text-blue-800 border-blue-200"; // Tono azul informativo
+                StateHasChanged();
+            }
         }
         finally
         {
@@ -300,13 +365,9 @@
         if (!string.IsNullOrEmpty(linkGenerado))
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", linkGenerado);
-            // Aquí puedes agregar un toast o alerta indicando que se copió correctamente
+            mensajeAlerta = "¡Enlace copiado al portapapeles!";
+            claseAlerta = "bg-[#f1f5f0] text-[#166534] border-[#166534]/30";
+            StateHasChanged();
         }
-    }
-
-    // Clase auxiliar para mapear la respuesta de la API
-    public class UrlResponse
-    {
-        public string Url { get; set; } = string.Empty;
     }
 }

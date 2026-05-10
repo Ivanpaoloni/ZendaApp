@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
 using Zenda.Client.Components;
 using Zenda.Core.DTOs;
 
@@ -7,7 +8,7 @@ public class PrestadorClient : BaseClient
 {
     private readonly HttpClient _http;
     public PrestadorClient(HttpClient http) => _http = http;
-
+    
     public async Task<List<PrestadorReadDto>> GetPublicBySede(Guid sedeId)
     {
         return await _http.GetFromJsonAsync<List<PrestadorReadDto>>($"api/prestadores/public/sede/{sedeId}")
@@ -102,6 +103,7 @@ public class PrestadorClient : BaseClient
             return (false, $"Error de conexión: {ex.Message}");
         }
     }
+
     public async Task<bool> Delete(Guid id)
     {
         // El interceptor añadirá el token automáticamente
@@ -115,5 +117,48 @@ public class PrestadorClient : BaseClient
         // Usamos el extractor de mensajes que centralizamos en la clase base
         var rawError = await response.Content.ReadAsStringAsync();
         throw new Exception(ParseError(rawError));
+    }
+
+
+    public async Task<string?> ObtenerUrlGoogleAuthAsync(Guid prestadorId)
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<UrlResponseDto>($"api/calendar/conectar-directo/{prestadorId}");
+            return response?.Url;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error obteniendo URL de Auth: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<string?> ObtenerUrlMagicLinkAsync(Guid prestadorId)
+    {
+        try
+        {
+            var response = await _http.GetFromJsonAsync<UrlResponseDto>($"api/calendar/generar-link/{prestadorId}");
+            return response?.Url;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error obteniendo Magic Link: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> DesvincularGoogleCalendarAsync(Guid prestadorId)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"api/calendar/desvincular/{prestadorId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error desvinculando calendario: {ex.Message}");
+            return false;
+        }
     }
 }

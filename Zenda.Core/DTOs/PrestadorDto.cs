@@ -22,7 +22,7 @@ namespace Zenda.Core.DTOs
         public string Nombre { get; set; } = string.Empty;
         public int DuracionTurnoMinutos { get; set; }
 
-
+        public bool TieneCalendarioVinculado { get; set; }
         public string SedeNombre { get; set; } = string.Empty;
         public List<DisponibilidadReadDto> Horarios { get; set; } = new();
         public List<ServicioReadDto> Servicios { get; set; } = new();

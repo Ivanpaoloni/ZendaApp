@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using Zenda.Core.Interfaces;
 
 namespace Zenda.Infrastructure.Services;
 
@@ -16,7 +15,8 @@ public class MagicLinkService : IMagicLinkService
         _config = config;
     }
 
-    public string GenerarTokenIntegracion(int prestadorId, int expiracionHoras = 24)
+    // Refactorizado para recibir Guid en lugar de int
+    public string GenerarTokenIntegracion(Guid prestadorId, int expiracionHoras = 24)
     {
         // En producción, asegúrate de tener "Jwt:Key", "Jwt:Issuer" y "Jwt:Audience" en appsettings.json
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "ClaveSuperSecretaDeDesarrolloZendy123!"));
@@ -37,7 +37,8 @@ public class MagicLinkService : IMagicLinkService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public int? ExtraerPrestadorId(string token)
+    // Refactorizado para retornar Guid? en lugar de int?
+    public Guid? ExtraerPrestadorId(string token)
     {
         try
         {
@@ -45,11 +46,17 @@ public class MagicLinkService : IMagicLinkService
             var jwtToken = tokenHandler.ReadJwtToken(token);
             var claim = jwtToken.Claims.FirstOrDefault(c => c.Type == "PrestadorId");
 
-            return claim != null ? int.Parse(claim.Value) : null;
+            // Parseo seguro para evitar excepciones de formato si el JWT fue alterado maliciosamente
+            if (claim != null && Guid.TryParse(claim.Value, out var prestadorId))
+            {
+                return prestadorId;
+            }
+
+            return null;
         }
         catch
         {
-            return null; // Token inválido o manipulado
+            return null; // Token inválido o firmas incorrectas
         }
     }
 }
