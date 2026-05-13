@@ -60,8 +60,8 @@ public static class DependencyInjection
                 // OPTIMIZACIÓN 1: Reducir la frecuencia de consulta (Polling)
                 // Por defecto, Hangfire consulta la DB muy rápido. 15 segundos es perfecto para 
                 // recordatorios de turnos sin asfixiar la base de datos.
-                QueuePollInterval = TimeSpan.FromSeconds(15), 
-                
+                QueuePollInterval = TimeSpan.FromSeconds(60), // Incluso 30s es seguro para recordatorios
+                InvisibilityTimeout = TimeSpan.FromMinutes(5), // Evita re-procesamientos agresivos
                 // OPTIMIZACIÓN 2: Limpieza de disco
                 // Verifica los trabajos completados/expirados cada 1 hora en lugar de constantemente.
                 JobExpirationCheckInterval = TimeSpan.FromHours(1),
