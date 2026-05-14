@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Zenda.Client.Services;
 using Zenda.Core.DTOs;
 
-namespace Zenda.Client.Pages.Public; // 👈 Confirmá que sea este tu namespace
+namespace Zenda.Client.Pages.Public;
 
 public partial class Reserva : ComponentBase
 {
@@ -50,6 +50,25 @@ public partial class Reserva : ComponentBase
     protected override async Task OnParametersSetAsync()
     {
         await CargarDatosIniciales();
+    }
+
+    protected void VolverPasoAnterior()
+    {
+        switch (pasoActual)
+        {
+            case PasoReserva.SeleccionarServicio:
+                VolverASedes();
+                break;
+            case PasoReserva.SeleccionarPrestador:
+                VolverAServicios();
+                break;
+            case PasoReserva.SeleccionarTurno:
+                VolverAPrestadores();
+                break;
+            case PasoReserva.CompletarDatos:
+                VolverAHorarios();
+                break;
+        }
     }
 
     private async Task CargarDatosIniciales()
@@ -161,7 +180,6 @@ public partial class Reserva : ComponentBase
 
         try
         {
-            // Si no hay prestador, mandamos null
             Guid? idAEnviar = prestadorSeleccionado?.Id;
 
             var res = await TurnoService.GetDisponibilidad(idAEnviar, sedeSeleccionada!.Id, fechaSeleccionada, servicioSeleccionado!.Id);
@@ -170,8 +188,8 @@ public partial class Reserva : ComponentBase
             {
                 foreach (var slot in res.HorariosLibres)
                 {
-                    slots.Add(slot.Hora); // Para pintar los botones en pantalla
-                    prestadoresPorHoraLibre[slot.Hora] = slot.PrestadorId; // Para saber a quién asignarle el turno final
+                    slots.Add(slot.Hora);
+                    prestadoresPorHoraLibre[slot.Hora] = slot.PrestadorId;
                 }
             }
         }
@@ -187,13 +205,11 @@ public partial class Reserva : ComponentBase
 
     protected async Task ConfirmarReserva()
     {
-        // 1. PATRÓN DE GUARDIA (Early Return): Evita ejecuciones paralelas inmediatas
         if (enviandoReserva) return;
 
         errorReserva = string.Empty;
         enviandoReserva = true;
 
-        // Forzamos el renderizado para que el botón se deshabilite y muestre el spinner INMEDIATAMENTE
         StateHasChanged();
 
         try
@@ -257,9 +273,8 @@ public partial class Reserva : ComponentBase
                 var turnoId = resultado.Id;
                 var telefonoNegocioEnc = Uri.EscapeDataString(negocio?.Telefono ?? "");
 
-                // NAVEGACIÓN EXITOSA: NO rehabilitamos el botón. Dejamos que el componente muera con el botón bloqueado.
                 Nav.NavigateTo($"/reserva-confirmada?fecha={fechaEnc}&hora={horaEnc}&nombre={nombreEnc}&duracion={duracionReal}&direccion={direccionEnc}&TurnoId={turnoId}&TelefonoNegocio={telefonoNegocioEnc}");
-                return; // Salimos antes del bloque finally para mantener el estado
+                return;
             }
             else
             {
@@ -271,8 +286,7 @@ public partial class Reserva : ComponentBase
             errorReserva = "El horario seleccionado ya no está disponible. Por favor, elegí otro.";
         }
 
-        // MANEJO DE ERRORES: Solo rehabilitamos la UI si el proceso falló.
         enviandoReserva = false;
-        StateHasChanged(); // Aseguramos que el usuario vea el mensaje de error y recupere el control del botón
+        StateHasChanged();
     }
 }
