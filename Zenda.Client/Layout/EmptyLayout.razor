@@ -1,9 +1,18 @@
 ﻿@inherits LayoutComponentBase
 
-<main class="min-h-screen bg-surface-container-low">
-    @Body
-</main>
+<div class="min-h-screen bg-surface-container-low flex flex-col">
+    <main class="flex-grow w-full flex flex-col items-center justify-start md:justify-center">
+        @Body
+    </main>
 
-@code {
-    // Este layout es minimalista, solo renderiza el cuerpo de la página
-}
+    <!-- Footer sutil de adquisición (Product-Led Growth) -->
+    <footer class="w-full py-6 text-center shrink-0">
+        <a href="https://zendy.com.ar" 
+           target="_blank" 
+           rel="noopener noreferrer" 
+           class="inline-flex items-center gap-2 text-xs font-semibold text-on-surface-variant/50 hover:text-primary transition-colors duration-300 outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg p-2">
+            <span class="material-symbols-outlined text-[16px]">bolt</span>
+            <span>¿Querés Zendy para tu negocio? Creá tu cuenta gratis</span>
+        </a>
+    </footer>
+</div>
