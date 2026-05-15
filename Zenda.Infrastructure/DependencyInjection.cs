@@ -105,15 +105,7 @@ public static class DependencyInjection
                 });
             }, name: "Mercado Pago API", tags: new[] { "external-api", "billing" })
 
-            // 2. Resend: Verificación estricta del token de acceso (401 Unauthorized)
-            .AddUrlGroup(options =>
-            {
-                options.AddUri(new Uri("https://api.resend.com/api-keys"), uriOptions =>
-                {
-                    uriOptions.AddCustomHeader("Authorization", $"Bearer {configuration["Resend:ApiKey"]}");
-                });
-            }, name: "Resend API", tags: new[] { "external-api", "communications" })
-
+           
             .AddCheck<LogicCheck>("Zendy Core Logic", tags: new[] { "business-logic" });
 
         services.AddHealthChecksUI(setup =>
