@@ -87,14 +87,6 @@ builder.Services.AddScoped<IFacturacionService, FacturacionService>();
 builder.Services.AddScoped<IMagicLinkService, MagicLinkService>();
 #endregion
 
-#region Health Checks
-builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!, name: "Neon-Database");
-
-
-builder.Services.AddHealthChecksUI().AddInMemoryStorage();
-#endregion
-
 #region CORS
 builder.Services.AddCors(options =>
 {
@@ -170,8 +162,18 @@ app.UseHangfireDashboard();
 app.MapControllers();
 
 // 9. Endpoints de Health Checks
-app.UseHealthChecks("/health", new HealthCheckOptions { ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse });
-app.UseHealthChecksUI(config => config.UIPath = "/health-dash");
+// Usamos MapHealthChecks y MapHealthChecksUI (recomendado en .NET 6+) en lugar de UseHealthChecks
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+
+app.MapHealthChecksUI(config =>
+{
+    config.UIPath = "/health-dash";
+});//.RequireAuthorization(); // <-- Descoméntalo en el futuro para exigir JWT y proteger este panel.
+
 
 using (var scope = app.Services.CreateScope())
 {

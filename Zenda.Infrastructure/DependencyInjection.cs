@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Resend;
 using Zenda.Core.Interfaces;
+using Zenda.Infrastructure.HealthChecks;
 using Zenda.Infrastructure.Services;
 
 namespace Zenda.Infrastructure;
@@ -78,6 +79,37 @@ public static class DependencyInjection
             options.WorkerCount = 2; 
         });
 
+        // ==========================================================
+        // 4. REGISTRO DE HEALTH CHECKS (Monitoreo de Infraestructura)
+        // ==========================================================
+        services.AddHealthChecks()
+            .AddNpgSql(configuration.GetConnectionString("DefaultConnection")!,
+                name: "PostgreSQL Zendy", tags: new[] { "db", "core" })
+
+            // 2. LA SOLUCIÓN: Pasamos los argumentos por posición para evitar el error de overload
+            .AddHangfire(
+                options => { options.MinimumAvailableServers = 1; }, // setup
+                "Hangfire Workers",                                  // name (por posición)
+                null,                                                // failureStatus
+                new[] { "jobs" }                                     // tags
+            )
+
+            .AddUrlGroup(new Uri("https://api.mercadopago.com/v1/payments"),
+                name: "Mercado Pago API", tags: new[] { "external-api", "billing" })
+
+            .AddUrlGroup(new Uri("https://api.resend.com/emails"),
+                name: "Resend API", tags: new[] { "external-api", "communications" })
+
+            .AddProcessAllocatedMemoryHealthCheck(maximumMegabytesAllocated: 400,
+                name: "Consumo de Memoria API", tags: new[] { "hosting", "resources" })
+
+            .AddCheck<LogicCheck>("Zendy Core Logic", tags: new[] { "business-logic" });
+
+        services.AddHealthChecksUI(setup =>
+        {
+            setup.AddHealthCheckEndpoint("Zendy API", "/health");
+            setup.SetEvaluationTimeInSeconds(30);
+        }).AddInMemoryStorage();
         return services;
     }
 }
