@@ -7,6 +7,7 @@ using Resend;
 using Zenda.Core.Interfaces;
 using Zenda.Infrastructure.HealthChecks;
 using Zenda.Infrastructure.Services;
+using HealthChecks.Uris;
 
 namespace Zenda.Infrastructure;
 
@@ -86,30 +87,46 @@ public static class DependencyInjection
             .AddNpgSql(configuration.GetConnectionString("DefaultConnection")!,
                 name: "PostgreSQL Zendy", tags: new[] { "db", "core" })
 
-            // 2. LA SOLUCIÓN: Pasamos los argumentos por posición para evitar el error de overload
             .AddHangfire(
-                options => { options.MinimumAvailableServers = 1; }, // setup
-                "Hangfire Workers",                                  // name (por posición)
-                null,                                                // failureStatus
-                new[] { "jobs" }                                     // tags
+                options => { options.MinimumAvailableServers = 1; },
+                "Hangfire Workers",
+                null,
+                new[] { "jobs" }
             )
 
-            .AddUrlGroup(new Uri("https://api.mercadopago.com/v1/payments"),
-                name: "Mercado Pago API", tags: new[] { "external-api", "billing" })
+            // 1. Mercado Pago: Autenticación explícita para evitar bloqueos (403 Forbidden)
+            .AddUrlGroup(options =>
+            {
+                options.AddUri(new Uri("https://api.mercadopago.com/v1/payment_methods"), uriOptions =>
+                {
+                    uriOptions.AddCustomHeader("Authorization", $"Bearer {configuration["MercadoPago:AccessToken"]}");
+                    // Opcional: Agregar un User-Agent si MP sigue bloqueando la petición por ser un bot
+                    uriOptions.AddCustomHeader("User-Agent", "Zendy-HealthCheck/1.0");
+                });
+            }, name: "Mercado Pago API", tags: new[] { "external-api", "billing" })
 
-            .AddUrlGroup(new Uri("https://api.resend.com/emails"),
-                name: "Resend API", tags: new[] { "external-api", "communications" })
-
-            .AddProcessAllocatedMemoryHealthCheck(maximumMegabytesAllocated: 400,
-                name: "Consumo de Memoria API", tags: new[] { "hosting", "resources" })
+            // 2. Resend: Verificación estricta del token de acceso (401 Unauthorized)
+            .AddUrlGroup(options =>
+            {
+                options.AddUri(new Uri("https://api.resend.com/api-keys"), uriOptions =>
+                {
+                    uriOptions.AddCustomHeader("Authorization", $"Bearer {configuration["Resend:ApiKey"]}");
+                });
+            }, name: "Resend API", tags: new[] { "external-api", "communications" })
 
             .AddCheck<LogicCheck>("Zendy Core Logic", tags: new[] { "business-logic" });
 
         services.AddHealthChecksUI(setup =>
         {
-            setup.AddHealthCheckEndpoint("Zendy API", "/health");
+            // CORRECCIÓN 3: Forzamos la resolución a través de una URL válida (localhost o producción)
+            // Extraemos el BaseApiUrl de tu configuración para evitar el ruteo a 0.0.0.0
+            var baseApiUrl = configuration["BaseApiUrl"] ?? "http://localhost:5039/";
+            var healthEndpoint = $"{baseApiUrl.TrimEnd('/')}/health";
+
+            setup.AddHealthCheckEndpoint("Zendy API", healthEndpoint);
             setup.SetEvaluationTimeInSeconds(30);
         }).AddInMemoryStorage();
+
         return services;
     }
 }
