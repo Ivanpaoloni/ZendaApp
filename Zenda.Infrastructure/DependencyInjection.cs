@@ -120,7 +120,7 @@ public static class DependencyInjection
         {
             // CORRECCIÓN 3: Forzamos la resolución a través de una URL válida (localhost o producción)
             // Extraemos el BaseApiUrl de tu configuración para evitar el ruteo a 0.0.0.0
-            var baseApiUrl = configuration["BaseApiUrl"] ?? "http://localhost:5039/";
+            var baseApiUrl = configuration["BaseApiUrl"] ?? "https://api.zendy.com.ar/";
             var healthEndpoint = $"{baseApiUrl.TrimEnd('/')}/health";
 
             setup.AddHealthCheckEndpoint("Zendy API", healthEndpoint);
