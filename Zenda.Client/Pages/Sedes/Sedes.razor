@@ -84,11 +84,18 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto pt-4 flex gap-2">
-                        <span class="px-3 py-1.5 bg-surface-container-low text-[10px] font-bold rounded-xl text-on-surface-variant flex items-center gap-1 border border-surface-container-high">
+                    <div class="mt-auto pt-4 flex justify-between items-center gap-2 border-t border-surface-container-lowest mt-4">
+                        <span class="px-3 py-1.5 bg-surface-container-low text-[10px] font-bold rounded-xl text-on-surface-variant flex items-center gap-1 border border-surface-container-high shrink-0">
                             <span class="material-symbols-outlined text-[14px]">schedule</span>
                             @sede.ZonaHorariaId
                         </span>
+
+                        <button @onclick="() => CopiarEnlaceReserva(sede)"
+                                class="px-3 py-1.5 bg-primary/10 text-primary text-[10px] font-bold rounded-xl hover:bg-primary hover:text-white transition-colors flex items-center gap-1 shrink-0"
+                                title="Copiar enlace directo a esta sede">
+                            <span class="material-symbols-outlined text-[14px]">link</span>
+                            Copiar Link
+                        </button>
                     </div>
                 </div>
             }

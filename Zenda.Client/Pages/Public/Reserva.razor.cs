@@ -12,6 +12,7 @@ namespace Zenda.Client.Pages.Public;
 public partial class Reserva : ComponentBase
 {
     [Parameter] public string NegocioSlug { get; set; } = string.Empty;
+    [Parameter] public Guid? SedeId { get; set; } // Puede venir nulo si entran al enlace general
 
     // --- INYECCIONES ---
     [Inject] protected NavigationManager Nav { get; set; } = default!;
@@ -52,25 +53,6 @@ public partial class Reserva : ComponentBase
         await CargarDatosIniciales();
     }
 
-    protected void VolverPasoAnterior()
-    {
-        switch (pasoActual)
-        {
-            case PasoReserva.SeleccionarServicio:
-                VolverASedes();
-                break;
-            case PasoReserva.SeleccionarPrestador:
-                VolverAServicios();
-                break;
-            case PasoReserva.SeleccionarTurno:
-                VolverAPrestadores();
-                break;
-            case PasoReserva.CompletarDatos:
-                VolverAHorarios();
-                break;
-        }
-    }
-
     private async Task CargarDatosIniciales()
     {
         try
@@ -85,19 +67,29 @@ public partial class Reserva : ComponentBase
                 await JS.InvokeVoidAsync("cambiarFavicon", "");
                 return;
             }
+
             if (!string.IsNullOrEmpty(negocio.LogoUrl))
             {
                 await JS.InvokeVoidAsync("cambiarFavicon", negocio.LogoUrl);
             }
+
             sedesDisponibles = await _sedeService.GetPublicByNegocio(negocio.Id);
 
+            // 🎯 MAGIA DE UX: Si viene un SedeId en la URL, buscamos la sede y la seleccionamos.
+            if (SedeId.HasValue)
+            {
+                var sedeDirecta = sedesDisponibles.FirstOrDefault(s => s.Id == SedeId.Value);
+                if (sedeDirecta != null)
+                {
+                    await SeleccionarSede(sedeDirecta);
+                    return; // Cortamos la ejecución aquí porque SeleccionarSede ya avanza el paso.
+                }
+            }
+
+            // Lógica normal si no hay SedeId en la URL
             if (sedesDisponibles.Count == 1)
             {
-                SeleccionarSede(sedesDisponibles.First());
-            }
-            else if (sedesDisponibles.Count > 1)
-            {
-                pasoActual = PasoReserva.SeleccionarSede;
+                await SeleccionarSede(sedesDisponibles.First());
             }
             else
             {
@@ -111,7 +103,9 @@ public partial class Reserva : ComponentBase
         }
     }
 
-    protected async void SeleccionarSede(SedeReadDto sede)
+    // 🔥 IMPORTANTE: Cambiar "async void" por "async Task" 
+    // Esto es una buena práctica en Blazor para evitar que la UI parpadee
+    protected async Task SeleccionarSede(SedeReadDto sede)
     {
         sedeSeleccionada = sede;
         pasoActual = PasoReserva.Cargando;

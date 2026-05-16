@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Zenda.Client.Services;
 using Zenda.Core.DTOs;
 
@@ -6,6 +7,7 @@ namespace Zenda.Client.Pages.Sedes;
 
 public partial class Sedes : ComponentBase
 {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private SedeClient SedeService { get; set; } = default!;
     [Inject] private AppState State { get; set; } = default!; 
     [Inject] private NavigationManager Nav { get; set; } = default!; 
@@ -195,6 +197,27 @@ public partial class Sedes : ComponentBase
 
         accionPendiente = null;
     }
+    // Método para copiar el enlace al portapapeles
+    protected async Task CopiarEnlaceReserva(SedeReadDto sede)
+    {
+        try
+        {
+            // Construimos la URL apuntando a la vista pública de reservas.
+            // Asumo que State.CurrentNegocio tiene un Slug, si no, usa su ID.
+            var url = $"{Nav.BaseUri}reservar/{State.CurrentNegocio!.Slug}/sede/{sede.Id}";
 
+            // Usamos la API del navegador para copiar silenciosamente
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+
+            // Opcional: Mostrar un mensajito de éxito al usuario (Toast/Alerta)
+            tituloAlerta = "¡Enlace copiado!";
+            mensajeAlerta = $"El enlace directo para la sede {sede.Nombre} está en tu portapapeles. ¡Pégalo en Instagram!";
+            mostrarAlerta = true;
+        }
+        catch (Exception)
+        {
+            errorMessage = "No se pudo copiar el enlace. Tu navegador bloqueó la acción.";
+        }
+    }
     protected void CerrarAlerta() => mostrarAlerta = false;
 }
