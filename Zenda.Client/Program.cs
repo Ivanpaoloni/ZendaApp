@@ -70,9 +70,12 @@ builder.Services.AddHttpClient<ReporteClient>(client => client.BaseAddress = new
 
 builder.Services.AddHttpClient<AdminClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>()
-    .AddHttpMessageHandler<UnauthorizedResponseHandler>(); 
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
 
-// 4. Configuración de Auth y LocalStorage
+// Cliente PÃšBLICO (Sin seguridad, para el widget de reservas)
+builder.Services.AddHttpClient<SedePublicClient>(client => client.BaseAddress = new Uri(apiUrl));
+
+// 4. ConfiguraciÃ³n de Auth y LocalStorage
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
@@ -80,9 +83,9 @@ builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>
 // 5. Estado global de la App
 builder.Services.AddScoped<AppState>();
 
-// 6. HttpClient Genérico (OPCIONAL)
-// Solo por si algún componente inyecta HttpClient directamente en lugar de un Client específico.
-// Este NO lleva el interceptor (útil para llamadas públicas).
+// 6. HttpClient GenÃ©rico (OPCIONAL)
+// Solo por si algÃºn componente inyecta HttpClient directamente en lugar de un Client especÃ­fico.
+// Este NO lleva el interceptor (Ãºtil para llamadas pÃºblicas).
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiUrl) });
 
 var culture = new System.Globalization.CultureInfo("es-AR");

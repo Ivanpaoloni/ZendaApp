@@ -17,7 +17,7 @@ public partial class Reserva : ComponentBase
     // --- INYECCIONES ---
     [Inject] protected NavigationManager Nav { get; set; } = default!;
     [Inject] protected PrestadorClient _prestadorService { get; set; } = default!;
-    [Inject] protected SedeClient _sedeService { get; set; } = default!;
+    [Inject] protected SedePublicClient _sedeService { get; set; } = default!;
     [Inject] protected NegocioClient _negocioClient { get; set; } = default!;
     [Inject] protected ServicioClient _servicioClient { get; set; } = default!;
     [Inject] protected TurnoClient TurnoService { get; set; } = default!;
