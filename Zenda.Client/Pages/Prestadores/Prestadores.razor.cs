@@ -18,8 +18,10 @@ public partial class Prestadores : ComponentBase
     protected string tituloConfirmacion = string.Empty;
     protected string mensajeConfirmacion = string.Empty;
     private Func<Task>? accionPendiente = null;
-    protected bool puedeAgregarMas = true;
     protected bool mostrarModalUpgrade = false;
+
+    protected bool puedeAgregarMas => prestadores != null && State.CurrentNegocio != null
+                                  && prestadores.Count < State.CurrentNegocio.MaxProfesionales;
 
     protected override async Task OnInitializedAsync()
     {
@@ -27,7 +29,7 @@ public partial class Prestadores : ComponentBase
         
         if (prestadores != null && State.CurrentNegocio != null)
         {
-            puedeAgregarMas = prestadores.Count < State.CurrentNegocio.MaxProfesionales;
+            //puedeAgregarMas = prestadores.Count < State.CurrentNegocio.MaxProfesionales;
         }
     }
     protected void ManejarClickNuevo()
@@ -44,6 +46,9 @@ public partial class Prestadores : ComponentBase
     private async Task CargarPrestadores()
     {
         prestadores = await PrestadorService.GetAll();
+        // No necesitamos actualizar 'puedeAgregarMas' manualmente, 
+        // la propiedad computada lo hará automáticamente al renderizar.
+        StateHasChanged();
     }
 
     protected void IrAAgenda(PrestadorReadDto p)
