@@ -4,30 +4,48 @@
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
 
-@* 1. FIJAMOS LA PANTALLA: h-screen y overflow-hidden evitan que el navegador haga scroll global *@
-<div class="h-screen w-screen bg-slate-950 text-slate-300 font-body flex flex-col md:flex-row overflow-hidden">
+@* Agregamos h-screen y overflow-hidden general para que el scroll solo viva en el main *@
+<div class="h-screen w-screen flex flex-col md:flex-row bg-slate-950 text-slate-300 overflow-hidden relative">
 
-    @* SIDEBAR OSCURO *@
-    @* 2. ALTURA CONTROLADA: En mobile fluye, en md se congela al alto total de la pantalla *@
-    <aside class="w-full md:w-64 md:h-full bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col shrink-0 z-20">
-        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+    @* NAVBAR MOBILE (Visible solo en mobile) *@
+    <div class="md:hidden h-16 p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0 z-40">
+        <span class="font-bold text-white font-headline tracking-widest">ZENDY <span class="text-blue-500">ADMIN</span></span>
+        <button @onclick="ToggleMenu" class="material-symbols-outlined text-white p-1 hover:bg-slate-800 rounded-lg">
+            @(mostrarMenu ? "close" : "menu")
+        </button>
+    </div>
+
+    @* FONDO OSCURO DETRÁS DEL MENÚ (Backdrop en Mobile) *@
+    @if (mostrarMenu)
+    {
+        <div class="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40" @onclick="ToggleMenu"></div>
+    }
+
+    @* SIDEBAR (Corregido con coordenadas fixed para mobile y transiciones suaves) *@
+    <aside class="@(mostrarMenu ? "translate-x-0" : "-translate-x-full") md:translate-x-0 fixed md:sticky top-0 left-0 z-50 md:z-30 w-64 h-screen bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 transition-transform duration-300 ease-in-out">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-800 shrink-0">
             <span class="text-xl font-bold text-white tracking-widest font-headline">
                 ZENDY <span class="text-blue-500">ADMIN</span>
             </span>
+            @* Botón de cerrar visible solo en mobile dentro del menú *@
+            <button @onclick="ToggleMenu" class="md:hidden material-symbols-outlined text-slate-400 hover:text-white">
+                close
+            </button>
         </div>
 
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-            <NavLink href="admin" Match="NavLinkMatch.All" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" ActiveClass="bg-blue-600/10 text-blue-500 font-bold">
+            @* Al hacer clic en un NavLink, ejecutamos CERRAR el menú en mobile *@
+            <NavLink @onclick="CerrarMenuMobile" href="admin" Match="NavLinkMatch.All" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" ActiveClass="bg-blue-600/10 text-blue-500 font-bold">
                 <span class="material-symbols-outlined text-[20px]">domain</span>
                 Negocios
             </NavLink>
-            <NavLink href="/admin/monitoreo" Match="NavLinkMatch.All" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" ActiveClass="bg-blue-600/10 text-blue-500 font-bold">
+            <NavLink @onclick="CerrarMenuMobile" href="admin/monitoreo" Match="NavLinkMatch.All" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 hover:text-white transition-colors" ActiveClass="bg-blue-600/10 text-blue-500 font-bold">
                 <span class="material-symbols-outlined text-[20px]">monitor_heart</span>
                 Monitoreo
             </NavLink>
         </nav>
 
-        <div class="p-4 border-t border-slate-800">
+        <div class="p-4 border-t border-slate-800 shrink-0">
             <button @onclick="CerrarSesion" class="w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors">
                 <span class="material-symbols-outlined text-[20px]">logout</span>
                 Cerrar Sesión
@@ -36,9 +54,8 @@
     </aside>
 
     @* CONTENIDO PRINCIPAL *@
-    @* 3. EL TRUCO DEL SCROLL: md:h-full y overflow-y-auto confinan el scroll de tus tablas/dashboards acá *@
-    <main class="flex-1 h-full overflow-x-hidden overflow-y-auto bg-slate-950">
-        <div class="p-6 md:p-10 max-w-7xl mx-auto pb-24">
+    <main class="flex-1 h-full overflow-x-hidden overflow-y-auto bg-slate-950 w-full">
+        <div class="p-4 md:p-10 max-w-7xl mx-auto pb-24">
             @Body
         </div>
     </main>
@@ -46,6 +63,12 @@
 </div>
 
 @code {
+    private bool mostrarMenu = false;
+
+    private void ToggleMenu() => mostrarMenu = !mostrarMenu;
+
+    private void CerrarMenuMobile() => mostrarMenu = false;
+
     private async Task CerrarSesion()
     {
         await LocalStorage.RemoveItemAsync("authToken");

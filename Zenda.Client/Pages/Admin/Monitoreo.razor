@@ -8,27 +8,32 @@
 <PageTitle>Monitoreo del Sistema - Zendy</PageTitle>
 
 <div class="space-y-6 animate-in fade-in duration-500 pb-10">
-    
+
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-white font-headline">Estado del Sistema</h1>
-                <p class="text-slate-400 mt-1">Monitoreo en tiempo real de la base de datos, APIs externas y memoria.</p>
+        <div>
+            <h1 class="text-3xl font-bold text-white font-headline tracking-tighter">Estado del Sistema</h1>
+            <p class="text-slate-400 mt-1 text-sm">Monitoreo en tiempo real de la base de datos, APIs externas y memoria.</p>
         </div>
     </div>
 
-    @* Contenedor del Dashboard *@
-    <div class="w-full h-[800px] bg-white rounded-[2.5rem] border border-surface-container-high editorial-shadow overflow-hidden relative">
-        
-        @* Animación de carga de fondo por si el iframe tarda un segundo *@
-        <div class="absolute inset-0 flex items-center justify-center -z-10 bg-surface-container-lowest">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    @* 1. CONTENEDOR PADRE: Agregamos 'overflow-x-auto' y 'scrolling-touch'.
+       Esto crea la "ventana" responsiva y habilita el scroll suave con el dedo en móviles.
+    *@
+    <div class="w-full h-[550px] md:h-[850px] bg-slate-900 rounded-2xl md:rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-x-auto overflow-y-hidden webkit-overflow-scrolling-touch relative">
+
+        @* Animación de carga de fondo *@
+        <div class="absolute inset-0 flex items-center justify-center -z-10 bg-slate-900">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
         </div>
 
-        @* El iframe que carga la UI que ya tienes en el backend *@
-        <iframe src="@($"{Config["BaseApiUrl"]!.TrimEnd('/')}/health-dash")" 
-                class="w-full h-full border-0 z-10 bg-transparent"
+        @* 2. EL IFRAME: En pantallas chicas (mobile), le forzamos un 'min-w-[1000px]' (o el ancho que desees).
+           Al hacer esto, el iframe se dibuja grande internamente, obligando al contenedor de arriba a activar el scroll horizontal.
+           En escritorio (md:min-w-full), vuelve a ocupar el 100% normal.
+        *@
+        <iframe src="@($"{Config["BaseApiUrl"]!.TrimEnd('/')}/health-dash")"
+                class="w-full h-full border-0 z-10 bg-transparent min-w-[950px] md:min-w-full"
                 title="Panel de Monitoreo Zendy">
         </iframe>
-        
+
     </div>
 </div>
