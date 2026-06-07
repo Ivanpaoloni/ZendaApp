@@ -6,6 +6,7 @@ namespace Zenda.Core.Interfaces;
 
 public interface IZendaDbContext
 {
+    DbSet<Aviso> Avisos { get; set; }
     DbSet<Negocio> Negocios { get; set; }
     DbSet<Cliente> Clientes { get; set; }
     DbSet<Sede> Sedes { get; set; }

@@ -14,6 +14,7 @@ namespace Zenda.Infrastructure
         {
             _tenantService = tenantService;
         }
+        public DbSet<Aviso> Avisos { get; set; }
         public DbSet<BloqueoAgenda> BloqueosAgenda { get; set; }
         public DbSet<CategoriaServicio> CategoriasServicio { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
@@ -55,6 +56,14 @@ namespace Zenda.Infrastructure
             // ==============================================
             // CONFIGURACIÓN DE ENTIDADES
             // ==============================================
+
+            modelBuilder.Entity<Aviso>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Titulo).IsRequired().HasMaxLength(150);
+                entity.Property(a => a.ContenidoHtml).IsRequired(); // Se mapea como nvarchar(max)
+                entity.Property(a => a.ImageUrl).HasMaxLength(500);
+            });
 
             // --- Configuración de Cliente ---
             modelBuilder.Entity<Cliente>(entity =>

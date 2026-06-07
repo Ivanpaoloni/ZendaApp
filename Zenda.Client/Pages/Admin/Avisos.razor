@@ -1,0 +1,376 @@
+﻿@page "/admin/avisos"
+@layout AdminLayout
+@using Microsoft.AspNetCore.Authorization
+@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@attribute [Authorize]
+@inject AvisoClient AvisoClient
+@inject IJSRuntime JS
+
+<PageTitle>Zendy Admin - Avisos Globales</PageTitle>
+
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-white font-headline">Avisos Globales</h1>
+        <p class="text-slate-400 mt-1">Gestión de comunicados para los paneles de negocios.</p>
+    </div>
+
+    <button class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-2"
+            @onclick="AbrirNuevo">
+        <span class="material-symbols-outlined text-[20px]">add</span>
+        Nuevo Aviso
+    </button>
+</div>
+
+@if (isLoading)
+{
+    <div class="flex justify-center py-20">
+        <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+}
+else if (!avisos.Any())
+{
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center">
+        <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">campaign</span>
+        <h3 class="text-lg font-bold text-white">No hay avisos creados</h3>
+        <p class="text-slate-400">Crea tu primer anuncio para comunicarte con los clientes.</p>
+    </div>
+}
+else
+{
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @foreach (var aviso in avisos)
+        {
+            <div class="bg-slate-900 border @(aviso.Activo ? "border-blue-500 shadow-lg shadow-blue-500/10" : "border-slate-800") rounded-3xl overflow-hidden flex flex-col transition-all hover:border-slate-700 group">
+
+                @* Imagen del Aviso *@
+                @if (!string.IsNullOrEmpty(aviso.ImageUrl))
+                {
+                    <img src="@aviso.ImageUrl" alt="Banner" class="w-full h-32 object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                }
+                else
+                {
+                    <div class="w-full h-32 bg-slate-800 flex items-center justify-center text-slate-600">
+                        <span class="material-symbols-outlined text-4xl">image</span>
+                    </div>
+                }
+
+                <div class="p-5 flex-1 flex flex-col">
+                    <div class="flex justify-between items-start mb-2 gap-2">
+                        <h4 class="font-bold text-lg text-white line-clamp-2">@aviso.Titulo</h4>
+                        @if (aviso.Activo)
+                        {
+                            <span class="text-emerald-400 flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold bg-emerald-400/10 shrink-0 px-2 py-1 rounded-md">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
+                            </span>
+                        }
+                    </div>
+
+                    <p class="text-sm text-slate-400 mb-6 line-clamp-3">
+                        @* Mostramos texto plano o un placeholder *@
+                        Contenido enriquecido (HTML)...
+                    </p>
+
+                    <div class="mt-auto pt-4 border-t border-slate-800 flex justify-between items-center gap-2">
+                        @if (!aviso.Activo)
+                        {
+                            <button class="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+                                    @onclick="() => ActivarAviso(aviso.Id)">
+                                <span class="material-symbols-outlined text-[16px]">publish</span> Publicar
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="text-xs text-slate-500 flex items-center gap-1 font-bold">
+                                <span class="material-symbols-outlined text-[16px] text-emerald-500">visibility</span>
+                                Visible
+                            </div>
+                        }
+
+                        <div class="flex gap-2">
+                            <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-blue-400 hover:bg-slate-700 transition-all"
+                                    @onclick="() => AbrirEditar(aviso)" title="Editar">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            <button class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-slate-700 transition-all"
+                                    @onclick="() => EliminarAviso(aviso.Id)" title="Eliminar">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* MODAL DEL FORMULARIO DE AVISOS *@
+@if (mostrarModal)
+{
+    <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh]">
+
+            <button @onclick="CerrarModal" class="absolute top-6 right-6 text-slate-400 hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+
+            <h3 class="text-xl font-bold text-white mb-6">
+                @(avisoActual.Id == Guid.Empty ? "Crear Nuevo Aviso" : "Editar Aviso")
+            </h3>
+
+            <div class="overflow-y-auto pr-2 space-y-5">
+
+                @* Título *@
+                <div class="bg-slate-800 p-4 rounded-xl">
+                    <label class="block text-slate-400 text-xs font-bold mb-2">Título del Aviso</label>
+                    <input type="text" @bind="avisoActual.Titulo"
+                           class="bg-slate-900 border border-slate-700 text-white rounded-lg block w-full p-2.5 focus:border-blue-500 focus:ring-blue-500 focus:outline-none placeholder-slate-600"
+                           placeholder="Ej: ¡Nuevas funciones disponibles!" />
+                </div>
+
+                @* URL / Subida de Imagen *@
+                <div class="bg-slate-800 p-4 rounded-xl">
+                    <label class="block text-slate-400 text-xs font-bold mb-3">Imagen del Aviso (Opcional)</label>
+
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center justify-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg cursor-pointer transition-colors text-sm font-bold shadow-sm">
+                            <span class="material-symbols-outlined text-[18px]">cloud_upload</span>
+                            Subir Imagen
+                            <InputFile OnChange="SubirImagen" accept="image/png, image/jpeg, image/webp" class="hidden" />
+                        </label>
+
+                        @if (isUploadingImage)
+                        {
+                            <div class="flex items-center gap-2 text-slate-400 text-xs font-bold animate-pulse">
+                                <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
+                                Subiendo a la nube...
+                            </div>
+                        }
+                    </div>
+
+                    @* Vista Previa *@
+                    @if (!string.IsNullOrEmpty(avisoActual.ImageUrl))
+                    {
+                        <div class="mt-4 rounded-xl overflow-hidden border border-slate-700 h-32 w-full relative group">
+                            <img src="@avisoActual.ImageUrl" class="absolute inset-0 w-full h-full object-cover" alt="Vista previa" />
+
+                            @* Botón flotante para remover la imagen *@
+                            <button type="button" @onclick="RemoverImagen"
+                                    class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-500/90 hover:bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all shadow-md">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @* Contenido HTML *@
+                <div class="bg-slate-800 p-4 rounded-xl flex flex-col flex-1">
+                    <label class="block text-slate-400 text-xs font-bold mb-2">Contenido (HTML permitido)</label>
+                    <textarea @bind="avisoActual.ContenidoHtml" rows="6"
+                              class="bg-slate-900 border border-slate-700 text-white rounded-lg block w-full p-2.5 focus:border-blue-500 focus:ring-blue-500 focus:outline-none placeholder-slate-600 font-mono text-sm"
+                              placeholder="<p>Escribe aquí el cuerpo del mensaje...</p>"></textarea>
+                    <p class="text-xs text-slate-500 mt-2">Usa etiquetas como &lt;b&gt;, &lt;p&gt;, &lt;br&gt; para dar formato.</p>
+                </div>
+
+                @if (!string.IsNullOrEmpty(mensajeError))
+                {
+                    <div class="p-3 bg-red-900/30 border border-red-800 text-red-400 rounded-lg text-sm flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">error</span>
+                        @mensajeError
+                    </div>
+                }
+            </div>
+
+            @* Botones del Modal *@
+            <div class="flex gap-3 mt-6 pt-4 border-t border-slate-800 shrink-0">
+                <button @onclick="CerrarModal" class="flex-1 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors">
+                    Cancelar
+                </button>
+                <button @onclick="GuardarAviso" disabled="@isSaving" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 flex justify-center items-center gap-2">
+                    @if (isSaving)
+                    {
+                        <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                        <span>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span>Guardar Aviso</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<AvisoDto> avisos = new();
+    private bool isLoading = true;
+
+    private bool mostrarModal = false;
+    private bool isSaving = false;
+    private string mensajeError = "";
+    private AvisoDto avisoActual = new();
+    private bool isUploadingImage = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAvisos();
+    }
+
+    private async Task CargarAvisos()
+    {
+        isLoading = true;
+        try
+        {
+            avisos = await AvisoClient.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"Error al cargar avisos: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AbrirNuevo()
+    {
+        avisoActual = new AvisoDto();
+        mensajeError = "";
+        mostrarModal = true;
+    }
+
+    private void AbrirEditar(AvisoDto aviso)
+    {
+        avisoActual = new AvisoDto
+        {
+            Id = aviso.Id,
+            Titulo = aviso.Titulo,
+            ContenidoHtml = aviso.ContenidoHtml,
+            ImageUrl = aviso.ImageUrl,
+            Activo = aviso.Activo
+        };
+        mensajeError = "";
+        mostrarModal = true;
+    }
+
+    private void CerrarModal()
+    {
+        mostrarModal = false;
+    }
+
+    private async Task GuardarAviso()
+    {
+        if (string.IsNullOrWhiteSpace(avisoActual.Titulo) || string.IsNullOrWhiteSpace(avisoActual.ContenidoHtml))
+        {
+            mensajeError = "El título y el contenido son obligatorios.";
+            return;
+        }
+
+        isSaving = true;
+        mensajeError = "";
+
+        try
+        {
+            if (avisoActual.Id == Guid.Empty)
+            {
+                await AvisoClient.CreateAsync(avisoActual);
+            }
+            else
+            {
+                await AvisoClient.UpdateAsync(avisoActual.Id, avisoActual);
+            }
+
+            mostrarModal = false;
+            await CargarAvisos();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ActivarAviso(Guid id)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", "¿Publicar este aviso? Los demás avisos activos se ocultarán automáticamente.");
+        if (!confirm) return;
+
+        try
+        {
+            await AvisoClient.ActivarAsync(id);
+            await CargarAvisos();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    private async Task EliminarAviso(Guid id)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", "¿Estás seguro de eliminar este aviso permanentemente?");
+        if (!confirm) return;
+
+        try
+        {
+            await AvisoClient.DeleteAsync(id);
+            await CargarAvisos();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", ex.Message);
+        }
+    }
+
+    private async Task SubirImagen(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // Validación de seguridad y UX: Límite de 2MB
+        long maxFileSize = 1024 * 1024 * 2;
+        if (file.Size > maxFileSize)
+        {
+            mensajeError = "La imagen es demasiado pesada. El tamaño máximo es 2MB.";
+            return;
+        }
+
+        isUploadingImage = true;
+        mensajeError = "";
+        StateHasChanged();
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            // OpenReadStream requiere el límite de tamaño por seguridad en Blazor Server/WASM
+            using var fileStream = file.OpenReadStream(maxAllowedSize: maxFileSize);
+            using var streamContent = new StreamContent(fileStream);
+
+            streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            content.Add(streamContent, "file", file.Name);
+
+            // Llamada a la API
+            avisoActual.ImageUrl = await AvisoClient.UploadImageAsync(content);
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al subir la imagen: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingImage = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoverImagen()
+    {
+        avisoActual.ImageUrl = string.Empty;
+    }
+}

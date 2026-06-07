@@ -75,11 +75,16 @@ public class NegociosController : ControllerBase
     [Authorize]
     [HttpPost("perfil/logo")]
     public async Task<ActionResult> UploadLogo(IFormFile file,
-        [FromServices] IStorageService storageService,
-        [FromServices] ITenantService tenantService)
+    [FromServices] IStorageService storageService,
+    [FromServices] ITenantService tenantService)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No se envió ningún archivo." });
+
+        // 🛡️ VALIDACIÓN DE TAMAÑO CORRECTA EN BACKEND (Usando file.Length en bytes)
+        const long maxFileSize = 1024 * 1024 * 5; // 5MB
+        if (file.Length > maxFileSize)
+            return BadRequest(new { message = "La imagen supera el límite permitido de 5MB." });
 
         var tenantId = tenantService.GetCurrentTenantId()?.ToString();
         if (tenantId == null) return Unauthorized();
@@ -90,16 +95,15 @@ public class NegociosController : ControllerBase
         if (!allowedExtensions.Contains(extension))
             return BadRequest(new { message = "Formato no permitido." });
 
-        using var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream);
-        var fileBytes = memoryStream.ToArray();
-
         try
         {
-            // 1. Subimos la foto al servidor web (API)
-            var urlLogo = await storageService.SubirLogoAsync(fileBytes, extension, tenantId);
+            // 1. Abrimos el stream nativo sin parámetros
+            using var stream = file.OpenReadStream();
 
-            // 2. Guardamos la URL en la base de datos (PostgreSQL/Neon)
+            // 2. Usamos el método unificado SubirArchivoAsync
+            var urlLogo = await storageService.SubirArchivoAsync(stream, file.FileName, "logos");
+
+            // 3. Guardamos la URL en la base de datos
             await _service.UpdateLogoUrlAsync(urlLogo);
 
             return Ok(new { url = urlLogo });

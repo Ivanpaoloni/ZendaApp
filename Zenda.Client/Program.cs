@@ -20,6 +20,10 @@ builder.Services.AddScoped<AuthMessageHandler>();
 builder.Services.AddTransient<UnauthorizedResponseHandler>();
 
 // 3. Registramos los Clientes Tipados con la CADENA DE DEFENSA COMPLETA
+builder.Services.AddHttpClient<AvisoClient>(client => client.BaseAddress = new Uri(apiUrl))
+    .AddHttpMessageHandler<AuthMessageHandler>()
+    .AddHttpMessageHandler<UnauthorizedResponseHandler>();
+
 builder.Services.AddHttpClient<NegocioClient>(client => client.BaseAddress = new Uri(apiUrl))
     .AddHttpMessageHandler<AuthMessageHandler>()
     .AddHttpMessageHandler<UnauthorizedResponseHandler>();

@@ -1,0 +1,88 @@
+﻿@using Zenda.Core.DTOs
+@using Zenda.Client.Services
+@inject AvisoClient AvisoClient
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+@if (mostrarModal && avisoActivo != null)
+{
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
+         @onclick="CerrarModal">
+
+        <div class="relative bg-white rounded-[2rem] max-w-md w-full editorial-shadow animate-in zoom-in-95 duration-300 flex flex-col overflow-hidden"
+             @onclick:stopPropagation="true">
+
+            <button @onclick="CerrarModal" class="absolute top-4 right-4 md:top-6 md:right-6 w-8 h-8 flex items-center justify-center rounded-full bg-white/80 backdrop-blur text-on-surface-variant hover:bg-white hover:text-primary transition-colors z-10 shadow-sm">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(avisoActivo.ImageUrl))
+            {
+                <img src="@avisoActivo.ImageUrl" alt="Aviso ZendaApp" class="w-full h-48 md:h-56 object-cover" />
+            }
+
+            <div class="p-6 md:p-8 flex flex-col items-center text-center">
+
+                @if (string.IsNullOrWhiteSpace(avisoActivo.ImageUrl))
+                {
+                    <div class="w-16 h-16 md:w-20 md:h-20 bg-primary/10 text-primary rounded-full flex shrink-0 items-center justify-center mx-auto mb-4">
+                        <span class="material-symbols-outlined text-3xl md:text-4xl font-bold">campaign</span>
+                    </div>
+                }
+
+                <h3 class="font-headline font-bold text-xl md:text-2xl text-primary mb-4 mt-2">@avisoActivo.Titulo</h3>
+
+                <div class="text-on-surface-variant text-sm mb-8 w-full">
+                    @((MarkupString)avisoActivo.ContenidoHtml)
+                </div>
+
+                <button @onclick="CerrarModal" class="w-full py-3.5 bg-primary text-white font-bold rounded-2xl hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                    ¡Entendido!
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private AvisoDto? avisoActivo;
+    private bool mostrarModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // 1. Buscamos el aviso activo desde la API
+            avisoActivo = await AvisoClient.GetAvisoActivoAsync();
+
+            if (avisoActivo != null)
+            {
+                // 2. Verificamos en LocalStorage si ESTE aviso en particular ya fue visto
+                // Vinculamos la key al ID único del aviso (Guid)
+                var key = $"aviso_visto_{avisoActivo.Id}";
+                var visto = await LocalStorage.GetItemAsync<string>(key);
+
+                if (string.IsNullOrEmpty(visto))
+                {
+                    mostrarModal = true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Si falla la petición (ej. no hay internet), ignoramos el error en silencio
+            // para que no interrumpa la carga de la aplicación principal.
+            Console.WriteLine($"Error silencioso al cargar Aviso Global: {ex.Message}");
+        }
+    }
+
+    private async Task CerrarModal()
+    {
+        mostrarModal = false;
+
+        if (avisoActivo != null)
+        {
+            // 3. Registramos en el dispositivo que este aviso ya fue consumido
+            await LocalStorage.SetItemAsync($"aviso_visto_{avisoActivo.Id}", "true");
+        }
+    }
+}

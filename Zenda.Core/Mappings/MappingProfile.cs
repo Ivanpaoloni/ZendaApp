@@ -18,6 +18,12 @@ public class MappingProfile : Profile
 
         #endregion
 
+        #region Avisos
+
+        CreateMap<Aviso, AvisoDto>().ReverseMap();
+
+        #endregion
+
         #region Disponibilidad
 
         CreateMap<DisponibilidadCreateDto, Disponibilidad>();

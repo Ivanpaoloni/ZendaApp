@@ -69,6 +69,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddHttpContextAccessor();
 
 // Registro de los Servicios Core
+builder.Services.AddScoped<IAvisoService, AvisoService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDisponibilidadService, DisponibilidadService>();
 builder.Services.AddScoped<INegocioService, NegocioService>();

@@ -1,7 +1,4 @@
-﻿namespace Zenda.Core.Interfaces
+﻿public interface IStorageService
 {
-    public interface IStorageService
-    {
-        Task<string> SubirLogoAsync(byte[] fileBytes, string extension, string negocioId);
-    }
+    Task<string> SubirArchivoAsync(Stream fileStream, string fileName, string folder);
 }

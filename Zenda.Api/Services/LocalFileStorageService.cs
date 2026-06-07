@@ -12,36 +12,25 @@ public class LocalFileStorageService : IStorageService
         _env = env;
         _httpContextAccessor = httpContextAccessor;
     }
-
-    public async Task<string> SubirLogoAsync(byte[] fileBytes, string extension, string negocioId)
+    public async Task<string> SubirArchivoAsync(Stream fileStream, string fileName, string folder)
     {
-        // 1. Definimos la carpeta física en el servidor: wwwroot/uploads/logos
+        using var ms = new MemoryStream();
+        await fileStream.CopyToAsync(ms);
+        var fileBytes = ms.ToArray();
+        var extension = Path.GetExtension(fileName);
+
+        // Reutilizamos tu lógica de guardado local pero con la firma unificada
         var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+        var targetFolder = Path.Combine(webRoot, "uploads", folder);
 
-        var uploadsFolder = Path.Combine(webRoot, "uploads", "logos");
-        // Si la carpeta no existe, la creamos
-        if (!Directory.Exists(uploadsFolder))
-            Directory.CreateDirectory(uploadsFolder);
+        if (!Directory.Exists(targetFolder)) Directory.CreateDirectory(targetFolder);
 
-        // 2. Generamos el nombre del archivo (pisamos el anterior si existe)
-        // Le agregamos un timestamp para evitar problemas de caché en el navegador
-        var fileName = $"{negocioId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{extension}";
-        var filePath = Path.Combine(uploadsFolder, fileName);
+        var finalFileName = $"{Guid.NewGuid()}{extension}";
+        var filePath = Path.Combine(targetFolder, finalFileName);
 
-        // 3. Opcional: Borrar el logo viejo de este negocio para no acumular basura
-        var archivosViejos = Directory.GetFiles(uploadsFolder, $"{negocioId}_*.*");
-        foreach (var viejo in archivosViejos)
-        {
-            File.Delete(viejo);
-        }
-
-        // 4. Guardamos el archivo físico en el disco
         await File.WriteAllBytesAsync(filePath, fileBytes);
 
-        // 5. Armamos la URL pública para devolverla
         var request = _httpContextAccessor.HttpContext!.Request;
-        var baseUrl = $"{request.Scheme}://{request.Host}";
-
-        return $"{baseUrl}/uploads/logos/{fileName}";
+        return $"{request.Scheme}://{request.Host}/uploads/{folder}/{finalFileName}";
     }
 }
