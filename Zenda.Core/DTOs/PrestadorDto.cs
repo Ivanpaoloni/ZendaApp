@@ -24,6 +24,7 @@ namespace Zenda.Core.DTOs
 
         public bool TieneCalendarioVinculado { get; set; }
         public string SedeNombre { get; set; } = string.Empty;
+        public bool TieneGoogleCalendarVinculado { get; set; }
         public List<DisponibilidadReadDto> Horarios { get; set; } = new();
         public List<ServicioReadDto> Servicios { get; set; } = new();
     }

@@ -11,9 +11,10 @@ public class MappingProfile : Profile
         #region Prestadores
 
         CreateMap<Prestador, PrestadorReadDto>()
-            .ForMember(dest => dest.SedeNombre, opt => opt.MapFrom(src => src.Sede != null ? src.Sede.Nombre : ""));
+            .ForMember(dest => dest.SedeNombre, opt => opt.MapFrom(src => src.Sede != null ? src.Sede.Nombre : ""))
+            .ForMember(dest => dest.TieneGoogleCalendarVinculado, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.GoogleRefreshToken)));
 
-        CreateMap<PrestadorCreateDto, Prestador>();
+    CreateMap<PrestadorCreateDto, Prestador>();
         CreateMap<PrestadorUpdateDto, Prestador>();
 
         #endregion

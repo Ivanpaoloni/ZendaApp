@@ -98,7 +98,7 @@
                             <p class="text-sm text-on-surface-variant/50 italic mt-1">Sin servicios asignados</p>
                         }
 
-                        <div class="mt-4 space-y-2">
+                        <div class="mt-4 flex flex-wrap gap-2">
                             @* EJEMPLO: Sede (Badge) *@
                             @if (!string.IsNullOrEmpty(p.SedeNombre))
                             {
@@ -108,6 +108,20 @@
                                 </div>
                             }
 
+                            @* NUEVO: Etiqueta de Google Calendar Sincronizado *@
+                            @* NUEVO: Etiqueta Oficial de Google Calendar Sincronizado (Igual a la edición) *@
+                            @if (p.TieneGoogleCalendarVinculado)
+                            {
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-container-low border border-surface-container-high text-xs font-bold text-on-surface-variant shadow-sm"
+                                     title="Agenda sincronizada con Google Calendar">
+
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg"
+                                         alt="Google Calendar Logo"
+                                         class="w-3.5 h-3.5 object-contain" />
+
+                                    <span class="tracking-tight">Google Calendar</span>
+                                </div>
+                            }
                         </div>
                     </div>
 
