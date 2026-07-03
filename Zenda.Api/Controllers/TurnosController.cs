@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Zenda.Application.Services;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
@@ -10,25 +9,22 @@ using Zenda.Core.Interfaces;
 public class TurnosController : ControllerBase
 {
     private readonly ITurnosService _turnosService;
-    private readonly IEmailService _emailService;
 
-    public TurnosController(ITurnosService turnosService, IEmailService emailService)
+    public TurnosController(ITurnosService turnosService)
     {
         _turnosService = turnosService;
-        _emailService = emailService;
     }
 
     [AllowAnonymous]
     [HttpPost]
     public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
     {
-        // 1. Tu lógica actual de guardar en la DB...
         var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
 
         // 2. Mandamos el mail "en segundo plano" (sin bloquear la respuesta)
         // No usamos 'await' acá si no queremos que el cliente espere a que el mail salga,
         // pero por ahora para probar, usalo:
-        
+
         return nuevoTurno;
     }
 
@@ -37,10 +33,10 @@ public class TurnosController : ControllerBase
     {
         return Ok(await _turnosService.GetDtoByPrestadorAsync(prestadorId));
     }
-   
+
     [AllowAnonymous]
     [HttpGet("disponibilidad")]
-    public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad([FromQuery] Guid sedeId,[FromQuery] DateTime fecha,[FromQuery] Guid servicioId,[FromQuery] Guid? prestadorId = null)
+    public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad([FromQuery] Guid sedeId, [FromQuery] DateTime fecha, [FromQuery] Guid servicioId, [FromQuery] Guid? prestadorId = null)
     {
         return Ok(await _turnosService.GetDisponibilidadDtoAsync(prestadorId, sedeId, fecha, servicioId));
     }
@@ -52,18 +48,18 @@ public class TurnosController : ControllerBase
     }
 
     [HttpGet("rango")]
-        public async Task<ActionResult<List<TurnoReadDto>>> GetByRango([FromQuery] DateTime desde, [FromQuery] DateTime hasta, [FromQuery] Guid? prestadorId)
+    public async Task<ActionResult<List<TurnoReadDto>>> GetByRango([FromQuery] DateTime desde, [FromQuery] DateTime hasta, [FromQuery] Guid? prestadorId)
+    {
+        try
         {
-            try
-            {
-                var turnos = await _turnosService.GetByRangoFechasAsync(desde, hasta, prestadorId);
-                return Ok(turnos);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error interno: {ex.Message}");
-            }
+            var turnos = await _turnosService.GetByRangoFechasAsync(desde, hasta, prestadorId);
+            return Ok(turnos);
         }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Error interno: {ex.Message}");
+        }
+    }
 
     [Authorize]
     [HttpPatch("{id}/estado")]
@@ -87,7 +83,6 @@ public class TurnosController : ControllerBase
     {
         try
         {
-            // Usamos un nuevo método en el servicio que no chequee el TenantId
             var exito = await _turnosService.CancelarPorClienteAsync(id);
             if (!exito) return NotFound("Turno no encontrado.");
 
@@ -103,7 +98,6 @@ public class TurnosController : ControllerBase
     [HttpGet("{id}/resumen")]
     public async Task<ActionResult<TurnoReadDto>> GetResumenTurnoPublico(Guid id)
     {
-        // Necesitamos un método que traiga los datos para mostrar en la pantalla de gestión
         var turno = await _turnosService.GetResumenPublicoAsync(id);
         if (turno == null) return NotFound();
         return Ok(turno);
@@ -155,17 +149,15 @@ public class TurnosController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Atrapamos los choques de horario o validaciones de negocio
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            // Errores generales
-            return StatusCode(500, new { message = "Ocurrió un error interno al intentar agendar el turno." });
+            return BadRequest(new { success = false, message = "Ocurrió un error interno al intentar agendar el turno. " + ex.Message });
         }
     }
     public class CobrarTurnoRequest
     {
-        public Zenda.Core.Enums.MedioPagoEnum MedioPago { get; set; }
+        public MedioPagoEnum MedioPago { get; set; }
     }
 }
