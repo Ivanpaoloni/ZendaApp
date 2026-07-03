@@ -253,7 +253,7 @@ public class AuthService : IAuthService
         var confirmLink = $"{frontUrl}/confirmar-email?uid={user.Id}&t={encodedToken}";
 
         // Acá usás tu servicio de email (asumiendo que tenés un método para esto)
-        await _emailService.EnviarEmailConfirmacionAsync(user.Email, user.Nombre, confirmLink);
+        await _emailService.EnviarEmailConfirmacionAsync(user.Email!, user.Nombre, confirmLink);
 
         return new AuthResponseDto { Success = true, Message = "Email reenviado correctamente." };
     }
@@ -262,8 +262,6 @@ public class AuthService : IAuthService
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
-        // Si el usuario no existe o no tiene el email confirmado, no hacemos nada,
-        // pero devolvemos éxito para no dar pistas a posibles atacantes.
         if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
         {
             return new AuthResponseDto { Success = true, Message = "Si el correo existe, recibirás un enlace." };
@@ -271,10 +269,7 @@ public class AuthService : IAuthService
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // Codificamos el token para la URL
         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-
-        // CORRECCIÓN: Usamos _config en lugar de _configuration
         var frontendUrl = _config["FrontendUrl"] ?? "https://app.zendy.com.ar";
         var resetLink = $"{frontendUrl}/restablecer-contrasena?email={request.Email}&token={encodedToken}";
 

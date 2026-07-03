@@ -57,11 +57,11 @@ public class TurnosService : ITurnosService
         if (prestadorId.HasValue) queryPrestadores = queryPrestadores.Where(p => p.Id == prestadorId.Value);
 
         var prestadores = await queryPrestadores.ToListAsync();
-        if (!prestadores.Any()) return respuesta;
+        if (prestadores.Count < 1) return respuesta;
 
         var primerPrestador = prestadores.First();
-        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(primerPrestador.Sede.ZonaHorariaId);
-        int anticipacionHoras = primerPrestador.Negocio.AnticipacionMinimaHoras;
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(primerPrestador.Sede!.ZonaHorariaId);
+        int anticipacionHoras = primerPrestador.Negocio!.AnticipacionMinimaHoras;
 
         var fechaHoraActualSede = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede);
         if (fecha.Date < fechaHoraActualSede.Date) return respuesta;
@@ -87,7 +87,7 @@ public class TurnosService : ITurnosService
 
         foreach (var prestador in prestadores)
         {
-            int intervaloGrillaMinutos = prestador.Negocio.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
+            int intervaloGrillaMinutos = prestador.Negocio!.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
 
             var configuracion = await _context.Disponibilidad
                 .IgnoreQueryFilters().Where(d => d.PrestadorId == prestador.Id && d.DiaSemana == diaBuscado).OrderBy(d => d.HoraInicio).ToListAsync();
@@ -156,34 +156,26 @@ public class TurnosService : ITurnosService
         var fechaUtcDefinitiva = TimeZoneInfo.ConvertTimeToUtc(fechaCruda, zonaSede);
         var fechaFinUtcDefinitiva = fechaUtcDefinitiva.AddMinutes(servicio.DuracionMinutos);
 
-        // ==========================================
         // BARRERAS DE VALIDACIÓN DEL NEGOCIO (BACKEND)
-        // ==========================================
-
         int anticipacion = prestador.Negocio.AnticipacionMinimaHoras;
 
-        // BARRERA 1: Anticipación
         if (fechaUtcDefinitiva < DateTime.UtcNow.AddHours(anticipacion))
         {
             throw new InvalidOperationException($"Debe reservar con al menos {anticipacion} horas de anticipación.");
         }
 
-        // BARRERA 2: Horario de trabajo
         int diaSemana = (int)fechaCruda.DayOfWeek;
         var horaSolicitada = TimeOnly.FromDateTime(fechaCruda);
         var horaFinSolicitada = horaSolicitada.AddMinutes(servicio.DuracionMinutos);
 
         // Validamos que el turno solicitado entre en ALGUNO de los rangos habilitados para ese día
-        bool turnoDentroDeHorario = prestador.Horarios
-            .Where(h => h.DiaSemana == diaSemana)
-            .Any(h => horaSolicitada >= h.HoraInicio && horaFinSolicitada <= h.HoraFin);
+        bool turnoDentroDeHorario = prestador.Horarios.Where(h => h.DiaSemana == diaSemana).Any(h => horaSolicitada >= h.HoraInicio && horaFinSolicitada <= h.HoraFin);
 
         if (!turnoDentroDeHorario)
         {
             throw new InvalidOperationException("El horario solicitado está fuera de la jornada laboral o cae en un horario de descanso.");
         }
 
-        // BARRERA 3: Choque de Turnos
         bool turnoOcupado = await _context.Turnos.IgnoreQueryFilters().AnyAsync(t =>
             t.PrestadorId == dto.PrestadorId &&
             t.Estado != EstadoTurnoEnum.Cancelado &&
@@ -195,7 +187,6 @@ public class TurnosService : ITurnosService
             throw new InvalidOperationException("Lo sentimos, este horario acaba de ser reservado.");
         }
 
-        // 🎯 NUEVA BARRERA 4: Choque de Vacaciones/Bloqueos (Seguridad extra)
         bool chocaConBloqueo = await _context.BloqueosAgenda.IgnoreQueryFilters().AnyAsync(b =>
             b.PrestadorId == dto.PrestadorId &&
             b.InicioUtc < fechaFinUtcDefinitiva &&
@@ -207,9 +198,6 @@ public class TurnosService : ITurnosService
             throw new InvalidOperationException("El horario solicitado se encuentra bloqueado por vacaciones o ausencia del profesional.");
         }
 
-        // ==========================================
-        // SI PASA TODAS LAS BARRERAS, GUARDAMOS
-        // ==========================================
         var emailNormalizado = dto.EmailClienteInvitado.Trim().ToLower();
 
         var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.NegocioId == prestador.NegocioId && c.Email.ToLower() == emailNormalizado);
@@ -222,7 +210,7 @@ public class TurnosService : ITurnosService
                 NegocioId = prestador.NegocioId,
                 Nombre = dto.NombreClienteInvitado.Trim(),
                 Email = emailNormalizado,
-                Telefono = dto.TelefonoClienteInvitado?.Trim()
+                Telefono = dto.TelefonoClienteInvitado.Trim()
             };
             _context.Clientes.Add(cliente);
         }
@@ -352,12 +340,10 @@ public class TurnosService : ITurnosService
         var negocioId = _tenantService.GetCurrentTenantId();
 
         var turno = await _context.Turnos
-            .Include(t => t.Prestador)
-                .ThenInclude(p => p.Sede)
+            .Include(t => t.Prestador).ThenInclude(p => p!.Sede)
             .Include(t => t.Cliente)
-            .Include(t => t.Prestador)
-                .ThenInclude(p => p.Negocio)
-            .FirstOrDefaultAsync(t => t.Id == turnoId && t.Prestador.NegocioId == negocioId);
+            .Include(t => t.Prestador).ThenInclude(p => p!.Negocio)
+            .FirstOrDefaultAsync(t => t.Id == turnoId && t.Prestador!.NegocioId == negocioId);
 
         if (turno == null) return false;
 
@@ -792,7 +778,7 @@ public class TurnosService : ITurnosService
 
         if (dto.ClienteId.HasValue && dto.ClienteId.Value != Guid.Empty)
         {
-            clienteAsignado = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == dto.ClienteId.Value && c.NegocioId == negocioId);
+            clienteAsignado = await _context.Clientes.FirstOrDefaultAsync(c => c.Id == dto.ClienteId && c.NegocioId == negocioId);
             if (clienteAsignado == null) throw new Exception("El cliente seleccionado no existe.");
         }
         else
@@ -806,8 +792,8 @@ public class TurnosService : ITurnosService
                 Id = Guid.CreateVersion7(),
                 NegocioId = negocioId.Value,
                 Nombre = dto.NuevoClienteNombre.Trim(),
-                Email = dto.NuevoClienteEmail?.Trim().ToLower(),
-                Telefono = dto.NuevoClienteTelefono?.Trim()
+                Email = dto.NuevoClienteEmail.Trim().ToLower(),
+                Telefono = dto!.NuevoClienteTelefono!.Trim()
             };
             _context.Clientes.Add(clienteAsignado);
         }
