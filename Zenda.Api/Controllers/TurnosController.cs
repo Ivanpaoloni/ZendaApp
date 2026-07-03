@@ -35,14 +35,14 @@ public class TurnosController : ControllerBase
     [HttpGet("prestador/{prestadorId}")]
     public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetByPrestador(Guid prestadorId)
     {
-        return Ok(await _turnosService.GetByPrestadorAsync(prestadorId));
+        return Ok(await _turnosService.GetDtoByPrestadorAsync(prestadorId));
     }
    
     [AllowAnonymous]
     [HttpGet("disponibilidad")]
     public async Task<ActionResult<DisponibilidadFechaDto>> GetDisponibilidad([FromQuery] Guid sedeId,[FromQuery] DateTime fecha,[FromQuery] Guid servicioId,[FromQuery] Guid? prestadorId = null)
     {
-        return Ok(await _turnosService.GetDisponibilidadAsync(prestadorId, sedeId, fecha, servicioId));
+        return Ok(await _turnosService.GetDisponibilidadDtoAsync(prestadorId, sedeId, fecha, servicioId));
     }
     [HttpGet("fecha/{fecha}")]
     public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetTurnosPorFecha(DateTime fecha)
