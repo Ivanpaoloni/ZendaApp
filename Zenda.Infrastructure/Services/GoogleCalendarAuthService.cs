@@ -6,19 +6,22 @@ using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Oauth2.v2;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Zenda.Infrastructure.Services;
 
 public class GoogleCalendarAuthService : IExternalCalendarAuthService
 {
+    private readonly ILogger<GoogleCalendarAuthService> _logger;
     private readonly IConfiguration _config;
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly string _redirectUri;
 
-    public GoogleCalendarAuthService(IConfiguration config)
+    public GoogleCalendarAuthService(IConfiguration config, ILogger<GoogleCalendarAuthService> logger)
     {
         _config = config;
+        _logger = logger;
         _clientId = _config["GoogleCalendar:ClientId"] ?? throw new ArgumentNullException("Google ClientId no configurado");
         _clientSecret = _config["GoogleCalendar:ClientSecret"] ?? throw new ArgumentNullException("Google ClientSecret no configurado");
         _redirectUri = _config["GoogleCalendar:RedirectUri"] ?? throw new ArgumentNullException("Google RedirectUri no configurado");
@@ -36,10 +39,8 @@ public class GoogleCalendarAuthService : IExternalCalendarAuthService
             Scopes = new[] { CalendarService.Scope.CalendarEvents, Oauth2Service.Scope.UserinfoEmail }
         });
 
-        // 1. Hacemos un cast explícito a GoogleAuthorizationCodeRequestUrl
         var request = (GoogleAuthorizationCodeRequestUrl)flow.CreateAuthorizationCodeRequest(_redirectUri);
 
-        // 2. Ahora el compilador reconocerá estas propiedades
         request.State = state;
         request.AccessType = "offline";
         request.Prompt = "consent";
@@ -47,7 +48,6 @@ public class GoogleCalendarAuthService : IExternalCalendarAuthService
         return request.Build().ToString();
     }
 
-    // En GoogleCalendarAuthService.cs
     public async Task<(string RefreshToken, string Email, string CalendarId)> IntercambiarCodigoAsync(string code)
     {
         var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
@@ -62,14 +62,11 @@ public class GoogleCalendarAuthService : IExternalCalendarAuthService
             taskCancellationToken: CancellationToken.None);
 
         string userEmail = await ObtenerEmailDelUsuarioAsync(tokenResponse);
-
-        // Por ahora usamos "primary", pero lo guardamos para dar flexibilidad a futuro
         string calendarId = "primary";
 
         return (tokenResponse.RefreshToken, userEmail, calendarId);
     }
 
-    // NUEVO MÉTODO para crear el evento
     public async Task<string?> CrearEventoAsync(string refreshToken, string calendarId, string titulo, string descripcion, DateTime inicioUtc, DateTime finUtc)
     {
         try
@@ -86,9 +83,10 @@ public class GoogleCalendarAuthService : IExternalCalendarAuthService
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Zendy App"
-            });
+            }
+            );
 
-            var nuevoEvento = new Google.Apis.Calendar.v3.Data.Event()
+            var nuevoEvento = new Event()
             {
                 Summary = titulo,
                 Description = descripcion,
@@ -102,7 +100,7 @@ public class GoogleCalendarAuthService : IExternalCalendarAuthService
         }
         catch (Exception ex)
         {
-            // Loggear error (Serilog/NLog)
+            _logger.LogError(ex, "Error al crear evento en Google Calendar");
             return null;
         }
     }

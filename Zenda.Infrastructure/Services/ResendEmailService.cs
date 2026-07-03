@@ -8,7 +8,7 @@ public class ResendEmailService : IEmailService
 {
     private readonly IResend _resend;
     private ILogger<ResendEmailService> _logger;
-    
+
     private readonly string _fromEmail = "no-reply@zendy.com.ar";
     private readonly string _adminEmail = "ivanpaoloni@gmail.com";
     public ResendEmailService(IResend resend, ILogger<ResendEmailService> logger)
@@ -17,10 +17,10 @@ public class ResendEmailService : IEmailService
         _logger = logger;
     }
 
-    // 1. CONFIRMACIÓN DE TURNO
+    #region public methods
     public async Task<bool> EnviarConfirmacionTurnoAsync(
-    string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId,
-    string servicioNombre, string profesionalNombre, string sedeNombre, string sedeDireccion)
+        string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId,
+        string servicioNombre, string profesionalNombre, string sedeNombre, string sedeDireccion)
     {
         var baseUrl = "https://app.zendy.com.ar";
 
@@ -62,7 +62,6 @@ public class ResendEmailService : IEmailService
         return response;
     }
 
-    // 2. RECORDATORIO DE TURNO
     public async Task<bool> EnviarRecordatorioProximoTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, Guid turnoId)
     {
         var message = new EmailMessage
@@ -98,7 +97,6 @@ public class ResendEmailService : IEmailService
         return response;
     }
 
-    // 3. BIENVENIDA AL SaaS (ACTUALIZADO CON LINK DE CONFIRMACIÓN)
     public async Task<bool> EnviarBienvenidaRegistroAsync(string emailDestino, string nombreUsuario, string nombreNegocio, string confirmLink)
     {
         var message = new EmailMessage
@@ -132,13 +130,13 @@ public class ResendEmailService : IEmailService
         var response = await SendEmailAsync(message);
         return response;
     }
-    // 4. CONTACTO DESDE LA LANDING PAGE
+
     public async Task<bool> EnviarConsultaContactoAsync(string nombreRemitente, string emailRemitente, string mensaje)
     {
         var message = new EmailMessage
         {
             From = $"Landing Zenda <{_fromEmail}>",
-            To = { _adminEmail }, // ESTE VA HACIA VOS, NO AL CLIENTE
+            To = { _adminEmail }, // Email hacia nosotros
             Subject = $"📩 Nueva consulta de {nombreRemitente} (Landing Page)",
             HtmlBody = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #eaeaea; border-radius: 10px;'>
@@ -164,7 +162,7 @@ public class ResendEmailService : IEmailService
         var response = await SendEmailAsync(message);
         return response;
     }
-    // 5. CONFIRMACIÓN DE CANCELACIÓN
+
     public async Task<bool> EnviarCancelacionTurnoAsync(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurnoLocal, string negocioSlug)
     {
         var baseUrl = "https://app.zendy.com.ar";
@@ -201,7 +199,7 @@ public class ResendEmailService : IEmailService
         var response = await SendEmailAsync(message);
         return response;
     }
-    // 6. REENVÍO DE CONFIRMACIÓN DE EMAIL (NUEVO)
+
     public async Task<bool> EnviarEmailConfirmacionAsync(string emailDestino, string nombreUsuario, string confirmLink)
     {
         var message = new EmailMessage
@@ -233,7 +231,7 @@ public class ResendEmailService : IEmailService
         var response = await SendEmailAsync(message);
         return response;
     }
-    // 7. RECUPERACIÓN DE CONTRASEÑA
+
     public async Task<bool> EnviarRecuperacionClaveAsync(string email, string resetLink)
     {
         var message = new EmailMessage
@@ -267,6 +265,9 @@ public class ResendEmailService : IEmailService
         return response;
     }
 
+    #endregion
+
+    #region internal methods
     private async Task<bool> SendEmailAsync(EmailMessage message)
     {
         try
@@ -275,7 +276,6 @@ public class ResendEmailService : IEmailService
 
             if (!response.Success)
             {
-                // Si la API responde pero indica fallo (ej. email rebotado)
                 _logger.LogWarning("Resend rechazó el envío del email a {Destino}. Motivo desconocido en la respuesta.", string.Join(",", message.To));
             }
 
@@ -283,11 +283,10 @@ public class ResendEmailService : IEmailService
         }
         catch (Exception ex)
         {
-            // Atrapamos cualquier error de red, timeout o malformación
             _logger.LogError(ex, "Excepción crítica al intentar enviar email a {Destino} con asunto '{Asunto}'.", string.Join(",", message.To), message.Subject);
 
-            // Retornamos false para que el flujo principal (ej. Crear Turno) pueda continuar sin explotar
             return false;
         }
     }
+    #endregion
 }

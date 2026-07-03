@@ -21,7 +21,7 @@ public class MercadoPagoService : IMercadoPagoService
         _dbContext = dbContext;
         _logger = logger;
 
-        // Inicializamos el SDK con la credencial secreta guardada en appsettings.json o Variables de Entorno
+        //inicializar sdk
         var accessToken = configuration["MercadoPago:AccessToken"];
         if (string.IsNullOrEmpty(accessToken))
         {
@@ -56,7 +56,8 @@ public class MercadoPagoService : IMercadoPagoService
         var client = new PreferenceClient();
         Preference preference = await client.CreateAsync(request);
 
-        return preference.InitPoint; // Recordá cambiar a InitPoint en producción
+        //para pruebas pasar a sandbox
+        return preference.InitPoint; 
     }
     public async Task ProcesarPagoRecibidoAsync(long paymentId)
     {
@@ -80,7 +81,7 @@ public class MercadoPagoService : IMercadoPagoService
                 var ids = externalReference.Split('|');
                 if (Guid.TryParse(ids[0], out Guid negocioId) && Guid.TryParse(ids[1], out Guid planId))
                 {
-                    // 🎯 1. Buscamos el Negocio y su Suscripción actual (si existe)
+                    // buscar negocio y suscripcion si tuviera
                     var negocio = await _dbContext.Negocios.FirstOrDefaultAsync(n => n.Id == negocioId);
                     if (negocio == null)
                     {
@@ -88,40 +89,36 @@ public class MercadoPagoService : IMercadoPagoService
                         return;
                     }
 
-                    // Buscamos si ya tiene un contrato de suscripción
-                    var suscripcion = await _dbContext.SuscripcionesNegocio
-                        .FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+                    var suscripcion = await _dbContext.SuscripcionesNegocio.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
 
-                    // 🎯 2. Lógica de Renovación o Nuevo Contrato
+                    // renovacion o nuevo contrato
                     if (suscripcion == null)
                     {
-                        // Es un cliente nuevo o primera vez que paga
+                        // si es primer pago
                         suscripcion = new SuscripcionNegocio
                         {
                             NegocioId = negocioId,
                             PlanSuscripcionId = planId,
                             FechaInicio = DateTime.UtcNow,
-                            FechaVencimiento = DateTime.UtcNow.AddMonths(1), // Le damos 1 mes de servicio
+                            FechaVencimiento = DateTime.UtcNow.AddMonths(1), //por defecto 1 mes, luego parametrizar
                             Estado = EstadoSuscripcionEnum.Activa
                         };
                         _dbContext.SuscripcionesNegocio.Add(suscripcion);
                     }
                     else
                     {
-                        // Ya tenía suscripción, hacemos Upgrade o Renovación
+                        // si ya tenia se actualiza
                         suscripcion.PlanSuscripcionId = planId;
                         suscripcion.Estado = EstadoSuscripcionEnum.Activa;
 
-                        // Si estaba moroso, el mes cuenta desde hoy. Si paga por adelantado, sumamos 1 mes al vencimiento original.
-                        if (suscripcion.FechaVencimiento < DateTime.UtcNow)
-                            suscripcion.FechaVencimiento = DateTime.UtcNow.AddMonths(1);
-                        else
-                            suscripcion.FechaVencimiento = suscripcion.FechaVencimiento.AddMonths(1);
+                        // si estaba en deuda se renueva desde la fecha actual
+                        if (suscripcion.FechaVencimiento < DateTime.UtcNow) suscripcion.FechaVencimiento = DateTime.UtcNow.AddMonths(1);
+                        // si paga por adelantado se suma un mes al vto original
+                        else suscripcion.FechaVencimiento = suscripcion.FechaVencimiento.AddMonths(1);
 
                         _dbContext.SuscripcionesNegocio.Update(suscripcion);
                     }
-
-                    // 🎯 3. Dejamos registro en el Historial Contable
+                    // registrar historial de pagos
                     var montoPagado = payment.TransactionAmount ?? 0m;
 
                     var historial = new HistorialPago
@@ -132,11 +129,9 @@ public class MercadoPagoService : IMercadoPagoService
                         MercadoPagoPaymentId = paymentId.ToString(),
                         DetalleRecibo = "Aprobado vía MP"
                     };
+
                     _dbContext.HistorialPagos.Add(historial);
 
-                    // 🔥 ELIMINAMOS EL PASO 4 ANTERIOR (negocio.PlanSuscripcionId = planId)
-
-                    // 🎯 4. Guardamos TODO en una sola transacción a la BD
                     await _dbContext.SaveChangesAsync();
 
                     _logger.LogInformation("¡Éxito! Negocio {NegocioId} procesó el pago y actualizó suscripción al plan {PlanId}.", negocioId, planId);

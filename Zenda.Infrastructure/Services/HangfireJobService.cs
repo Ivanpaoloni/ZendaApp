@@ -7,13 +7,10 @@ public class HangfireJobService : IJobService
 {
     public string ProgramarRecordatorioEmail(string emailDestino, string nombreCliente, string nombreNegocio, DateTime fechaTurno, DateTime fechaEjecucion, Guid turnoId)
     {
-        // Hangfire es tan inteligente que sabe buscar IEmailService en tu contenedor de inyección
-        // No hace falta instanciarlo acá. Solo le decimos qué método ejecutar.
-
-        var jobId = BackgroundJob.Schedule<IEmailService>(
-            emailService => emailService.EnviarRecordatorioProximoTurnoAsync(emailDestino, nombreCliente, nombreNegocio, fechaTurno, turnoId), // Acá a futuro podés hacer un EnviarRecordatorioAsync específico
-            fechaEjecucion
-        );
+        // No hace falta instanciar IEmailService. Solo le decimos qué método ejecutar.
+        var jobId = BackgroundJob.Schedule<IEmailService>(emailService => emailService.EnviarRecordatorioProximoTurnoAsync(emailDestino, nombreCliente, nombreNegocio, fechaTurno, turnoId), fechaEjecucion);
+        
+        // A futuro se puede hacer un EnviarRecordatorioAsync específico
 
         return jobId;
     }
