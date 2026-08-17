@@ -17,7 +17,6 @@ public class TenantService : ITenantService
         if (user == null || !user.Identity!.IsAuthenticated)
             return null;
 
-        // Buscamos el claim que vamos a crear más adelante llamado "NegocioId"
         var tenantClaim = user.FindFirst("NegocioId")?.Value;
 
         if (Guid.TryParse(tenantClaim, out Guid tenantId))

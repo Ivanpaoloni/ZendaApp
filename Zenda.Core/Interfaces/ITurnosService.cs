@@ -6,11 +6,11 @@ namespace Zenda.Core.Interfaces;
 public interface ITurnosService
 {
     //get
-    Task<TurnoReadDto> GetByIdAsync(Guid id);
-    Task<IEnumerable<TurnoReadDto>> GetByPrestadorAsync(Guid prestadorId); 
-    Task<DisponibilidadFechaDto> GetDisponibilidadAsync(Guid? prestadorId, Guid sedeId, DateTime fecha, Guid servicioId);
+    Task<TurnoReadDto> GetDtoAsync(Guid id);
+    Task<IEnumerable<TurnoReadDto>> GetDtoByPrestadorAsync(Guid prestadorId); 
+    Task<DisponibilidadFechaDto> GetDisponibilidadDtoAsync(Guid? prestadorId, Guid sedeId, DateTime fecha, Guid servicioId);
     Task<IEnumerable<TurnoReadDto>> GetTurnosByFechaAsync(DateTime fecha);
-    Task<TurnoReadDto> GetResumenPublicoAsync(Guid turnoId);
+    Task<TurnoReadDto?> GetResumenPublicoAsync(Guid turnoId);
     Task<DashboardResumenDto> GetDashboardResumenAsync();
     Task<List<TurnoReadDto>> GetByRangoFechasAsync(DateTime desdeLocal, DateTime hastaLocal, Guid? prestadorId);
 
