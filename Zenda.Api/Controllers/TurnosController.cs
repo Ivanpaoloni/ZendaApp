@@ -117,6 +117,7 @@ public class TurnosController : ControllerBase
         try
         {
             var exito = await _turnosService.FinalizarYCobrarTurnoAsync(id, request.MedioPago);
+            
             if (exito) return Ok();
 
             return BadRequest("No se pudo procesar el cobro.");
@@ -133,9 +134,7 @@ public class TurnosController : ControllerBase
     {
         var excelBytes = await _turnosService.GenerarReporteExcelAsync(desde, hasta);
 
-        return File(excelBytes,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
+        return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Turnos_Zendy_{DateTime.Now:yyyyMMdd_HHmm}.xlsx");
     }
 
     [HttpPost("admin")]
