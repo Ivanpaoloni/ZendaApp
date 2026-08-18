@@ -19,13 +19,25 @@ public class TurnosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TurnoReadDto>> Create(TurnoCreateDto dto)
     {
-        var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
+        try
+        {
 
-        // 2. Mandamos el mail "en segundo plano" (sin bloquear la respuesta)
-        // No usamos 'await' acá si no queremos que el cliente espere a que el mail salga,
-        // pero por ahora para probar, usalo:
+            var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
 
-        return nuevoTurno;
+            // 2. Mandamos el mail "en segundo plano" (sin bloquear la respuesta)
+            // No usamos 'await' acá si no queremos que el cliente espere a que el mail salga,
+            // pero por ahora para probar, usalo:
+
+            return nuevoTurno;
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { success = false, message = "Ocurrió un error interno al intentar agendar el turno. " + ex.Message });
+        }
     }
 
     [HttpGet("prestador/{prestadorId}")]
@@ -117,7 +129,7 @@ public class TurnosController : ControllerBase
         try
         {
             var exito = await _turnosService.FinalizarYCobrarTurnoAsync(id, request.MedioPago);
-            
+
             if (exito) return Ok();
 
             return BadRequest("No se pudo procesar el cobro.");

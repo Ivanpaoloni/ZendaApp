@@ -99,7 +99,6 @@ else
                                 }
                             </td>
 
-                            @* 5. Estado (Corregido: ahora es la 5ta columna) *@
                             <td class="p-5">
                                 <div class="flex justify-center">
                                     @if (n.IsActive)
@@ -281,8 +280,7 @@ else
         {
             var query = string.IsNullOrWhiteSpace(filtroBusqueda)
                 ? TodosLosNegocios
-                : TodosLosNegocios?.Where(n => n.NombreNegocio.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) ||
-                                               n.OwnerName.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
+                : TodosLosNegocios?.Where(n => n.NombreNegocio.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase) || n.OwnerName.Contains(filtroBusqueda, StringComparison.OrdinalIgnoreCase));
 
             if (query == null) return null;
 
@@ -302,13 +300,12 @@ else
     {
         try
         {
-            // 🔥 Validación manual "a prueba de Blazor"
+            // Validación manual
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var esSuperAdmin = authState.User.Claims.Any(c => c.Value == "SuperAdmin");
 
             if (!esSuperAdmin)
             {
-                // Si un cliente normal escribe /admin en la URL, lo pateamos a su panel
                 Nav.NavigateTo("/");
                 return;
             }
@@ -359,7 +356,7 @@ else
 
         try
         {
-            // EL FIX: Solo mandamos null si el usuario dejó el campo vacío (o un valor negativo inválido)
+            // Solo mandamos null si el usuario dejó el campo vacío (o un valor negativo inválido)
             // Si escribió 0, queremos que el servidor reciba 0.
             if (negocioEnEdicion.PrecioMensualPersonalizado < 0)
                 negocioEnEdicion.PrecioMensualPersonalizado = null;

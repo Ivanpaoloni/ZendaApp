@@ -142,8 +142,7 @@ public partial class Configuracion : ComponentBase, IDisposable
         if (plan.PrecioMensual == 0)
         {
             // Comparamos el uso actual con los límites del nuevo plan
-            if (resumenFacturacion.SedesUsadas > plan.MaxSedes ||
-                resumenFacturacion.ProfesionalesUsados > plan.MaxProfesionales)
+            if (resumenFacturacion.SedesUsadas > plan.MaxSedes || resumenFacturacion.ProfesionalesUsados > plan.MaxProfesionales)
             {
                 mensajeError = $"Para usar el plan {plan.Nombre}, debés tener como máximo {plan.MaxSedes} sede(s) y {plan.MaxProfesionales} profesional(es). Por favor, ajustá tu negocio o contactá a soporte.";
 

@@ -14,12 +14,13 @@ public class TurnosService : ITurnosService
     private readonly IZendaDbContext _context;
     private readonly IEmailService _emailService;
     private readonly ITenantService _tenantService;
+    private readonly IPlanService _planService;
     private readonly IMapper _mapper;
     private readonly IJobService _jobService;
     private readonly IExternalCalendarAuthService _googleCalendarService;
     private readonly ILogger<TurnosService> _logger;
 
-    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService, IJobService jobService, IExternalCalendarAuthService googleCalendarService, ILogger<TurnosService> logger)
+    public TurnosService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IEmailService emailService, IJobService jobService, IExternalCalendarAuthService googleCalendarService, ILogger<TurnosService> logger, IPlanService planService)
     {
         _context = context;
         _mapper = mapper;
@@ -28,6 +29,7 @@ public class TurnosService : ITurnosService
         _jobService = jobService;
         _googleCalendarService = googleCalendarService;
         _logger = logger;
+        _planService = planService;
     }
 
     public async Task<TurnoReadDto> GetDtoAsync(Guid id)
@@ -135,6 +137,13 @@ public class TurnosService : ITurnosService
     }
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
+        var puedeCrear = await _planService.PuedeCrearTurnoAsync(dto.Inicio);
+        if (!puedeCrear)
+        {
+            // Lanzamos una excepción de negocio limpia (puedes atraparla en tu ExceptionMiddleware)
+            throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito.");
+        }
+
         var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);
 
         if (servicio == null)
@@ -387,7 +396,7 @@ public class TurnosService : ITurnosService
                 }
                 catch (Exception ex)
                 {
-                     _logger.LogWarning(ex, "Falló el envío de correo de cancelación al cliente.");
+                    _logger.LogWarning(ex, "Falló el envío de correo de cancelación al cliente.");
                 }
             }
         }
@@ -738,6 +747,13 @@ public class TurnosService : ITurnosService
     }
     public async Task<TurnoReadDto> CrearTurnoAdminAsync(TurnoAdminCreateDto dto)
     {
+        var puedeCrear = await _planService.PuedeCrearTurnoAsync(dto.FechaHoraInicio);
+        if (!puedeCrear)
+        {
+            // Lanzamos una excepción de negocio limpia (puedes atraparla en tu ExceptionMiddleware)
+            throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito.");
+        }
+
         var negocioId = _tenantService.GetCurrentTenantId();
         if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
 
@@ -863,17 +879,7 @@ public class TurnosService : ITurnosService
         return _mapper.Map<TurnoReadDto>(nuevoTurno);
     }
 
-    private void DispararSincronizacionGoogle(
-    string? refreshToken,
-    string? calendarId,
-    string nombreCliente,
-    string? telefonoCliente,
-    string? emailCliente,
-    string nombreServicio,
-    DateTime inicioUtc,
-    DateTime finUtc,
-    Guid prestadorId,
-    bool esReservaManualAdmin)
+    private void DispararSincronizacionGoogle(string? refreshToken, string? calendarId, string nombreCliente, string? telefonoCliente, string? emailCliente, string nombreServicio, DateTime inicioUtc, DateTime finUtc, Guid prestadorId, bool esReservaManualAdmin)
     {
         if (string.IsNullOrEmpty(refreshToken)) return;
 
@@ -904,7 +910,7 @@ public class TurnosService : ITurnosService
     {
         var entity = await FindAsync(id);
 
-        if (entity is null) 
+        if (entity is null)
             throw new Exception("Turno no encontrado");
 
         return entity;

@@ -148,7 +148,7 @@
             </div>
         </div>
 
-        @* 🔥 BANNER DE VERIFICACIÓN 🔥 *@
+        @* BANNER DE VERIFICACION *@
         <AuthorizeView>
             <Authorized>
                 @if (!context.User.HasClaim(c => c.Type == "email_verified" && c.Value == "true"))
@@ -169,6 +169,24 @@
                                     class="text-[10px] font-black uppercase tracking-widest text-orange-700 hover:text-orange-900 hover:underline whitespace-nowrap transition-all disabled:opacity-50">
                                 @(reenviandoEmail ? "Enviando..." : "Reenviar enlace")
                             </button>
+                        </div>
+                    </div>
+                }
+
+                @* 🔥 BANNER DE UPGRADE *@
+                @if (State.CurrentNegocio?.PlanNombre == "Single")
+                {
+                    <div class="bg-indigo-50 border-b border-indigo-200 px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm shrink-0">
+                        <div class="flex items-center gap-3 text-indigo-800 text-xs font-medium">
+                            <span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+                            <span>Estás usando el <strong>Plan Gratis</strong> (límite de 50 turnos mensuales). Mejorá tu plan para obtener reservas ilimitadas y más beneficios.</span>
+                        </div>
+
+                        <div class="flex items-center mt-2 sm:mt-0 shrink-0">
+                            <NavLink href="configuracion?tab=facturacion" class="flex items-center gap-1 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm">
+                                <span class="material-symbols-outlined text-[14px]">bolt</span>
+                                Ver Planes
+                            </NavLink>
                         </div>
                     </div>
                 }

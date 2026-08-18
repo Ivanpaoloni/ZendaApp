@@ -272,12 +272,20 @@ public partial class Reserva : ComponentBase
             }
             else
             {
-                errorReserva = "No pudimos confirmar la reserva. El turno pudo haber sido ocupado recientemente.";
+                errorReserva = $"No pudimos confirmar la reserva. El turno pudo haber sido ocupado recientemente. Si el problema persiste, contactese con {negocio!.Nombre}. ";
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            errorReserva = "El horario seleccionado ya no está disponible. Por favor, elegí otro.";
+            if (ex.Message.Contains("límite", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("plan", StringComparison.OrdinalIgnoreCase))
+            {
+                errorReserva = "Ocurrio un error ajeno a nosotros!. por favor contactate directamente vía WhatsApp.";
+            }
+            else
+            {
+                // Si es un error de validación o el horario se ocupó, mostramos el mensaje del backend
+                errorReserva = ex.Message ?? "El horario seleccionado ya no está disponible. Por favor, elegí otro.";
+            }
         }
 
         enviandoReserva = false;

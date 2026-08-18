@@ -22,10 +22,7 @@ public class PlanService : IPlanService
         if (negocioId == null) return false;
 
         // 1. Buscamos la SUSCRIPCIÓN ACTIVA como Única Fuente de Verdad
-        var suscripcionActiva = await _context.SuscripcionesNegocio
-            .Include(s => s.PlanSuscripcion)
-            .FirstOrDefaultAsync(s => s.NegocioId == negocioId
-                                   && s.Estado == EstadoSuscripcionEnum.Activa);
+        var suscripcionActiva = await ObtenerSuscripcionActiva(negocioId);
 
         // Si no hay suscripción activa o no tiene plan, bloqueamos la acción por seguridad (Fail-Fast)
         if (suscripcionActiva?.PlanSuscripcion == null) return false;
@@ -43,10 +40,7 @@ public class PlanService : IPlanService
         if (negocioId == null) return false;
 
         // Misma lógica: consultamos la suscripción activa
-        var suscripcionActiva = await _context.SuscripcionesNegocio
-            .Include(s => s.PlanSuscripcion)
-            .FirstOrDefaultAsync(s => s.NegocioId == negocioId
-                                   && s.Estado == EstadoSuscripcionEnum.Activa);
+        var suscripcionActiva = await ObtenerSuscripcionActiva(negocioId);
 
         return suscripcionActiva?.PlanSuscripcion?.HabilitaRecordatoriosHangfire ?? false;
     }
@@ -55,7 +49,7 @@ public class PlanService : IPlanService
     {
         var planes = await _context.PlanesSuscripcion.ToListAsync();
 
-        return planes.Select(p => new PlanVistaDto
+        var planesActivos = planes.Select(p => new PlanVistaDto
         {
             Id = p.Id,
             Nombre = p.Nombre,
@@ -64,8 +58,52 @@ public class PlanService : IPlanService
             PrecioMensual = p.PrecioMensual,
             PrecioTexto = p.PrecioMensual == 0 ? "Gratis" : $"${p.PrecioMensual:N0}",
             HabilitaRecordatorios = p.HabilitaRecordatoriosHangfire
-        })
-        .OrderBy(p => p.PrecioMensual)
-        .ToList();
+        }).OrderBy(p => p.PrecioMensual).ToList();
+
+        return planesActivos;
+    }
+
+    public async Task<bool> PuedeCrearTurnoAsync(DateTime fechaHoraInicioTurno)
+    {
+        var negocioId = _tenantService.GetCurrentTenantId();
+
+        if (negocioId == null) 
+            return false;
+
+        SuscripcionNegocio? suscripcionActiva = await ObtenerSuscripcionActiva(negocioId);
+
+        if (suscripcionActiva?.PlanSuscripcion == null) 
+            return false;
+
+        if (suscripcionActiva.PlanSuscripcion.Nombre != "Single")
+            return true;
+
+        //var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+        //var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
+        //var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
+
+        // la hardcodeo para no consultarla al pedo
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Buenos_Aires");
+
+        var fechaTurnoLocal = TimeZoneInfo.ConvertTimeFromUtc(fechaHoraInicioTurno, zonaSede);
+        var inicioMesLocal = new DateTime(fechaTurnoLocal.Year, fechaTurnoLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
+        var inicioMesSiguienteLocal = inicioMesLocal.AddMonths(1);
+
+        var inicioMesUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesLocal, zonaSede);
+        var finMesUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesSiguienteLocal, zonaSede);
+
+        var turnosDelMes = await _context.Turnos
+            .CountAsync(t => t.NegocioId == negocioId
+                          && t.FechaHoraInicioUtc >= inicioMesUtc
+                          && t.FechaHoraInicioUtc < finMesUtc
+                          && t.Estado != EstadoTurnoEnum.Cancelado);
+
+        return turnosDelMes < 50;
+    }
+
+    private async Task<SuscripcionNegocio?> ObtenerSuscripcionActiva(Guid? negocioId)
+    {
+        var suscripcion = await _context.SuscripcionesNegocio.Include(s => s.PlanSuscripcion).FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.Estado == EstadoSuscripcionEnum.Activa);
+        return suscripcion;
     }
 }
