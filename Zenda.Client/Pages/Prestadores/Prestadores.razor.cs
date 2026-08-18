@@ -20,8 +20,7 @@ public partial class Prestadores : ComponentBase
     private Func<Task>? accionPendiente = null;
     protected bool mostrarModalUpgrade = false;
 
-    protected bool puedeAgregarMas => prestadores != null && State.CurrentNegocio != null
-                                  && prestadores.Count < State.CurrentNegocio.MaxProfesionales;
+    protected bool puedeAgregarMas => prestadores != null && State.CurrentNegocio != null && prestadores.Count < State.CurrentNegocio.MaxProfesionales;
 
     protected override async Task OnInitializedAsync()
     {
