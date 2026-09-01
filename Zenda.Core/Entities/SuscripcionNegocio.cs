@@ -16,4 +16,5 @@ public class SuscripcionNegocio : BaseEntity
 
     public string? MercadoPagoPreapprovalId { get; set; } // Si aplica
     public decimal? PrecioMensualPersonalizado { get; set; }
+    public bool EsSuscripcionActiva => Estado == EstadoSuscripcionEnum.Activa && FechaVencimiento >= DateTime.UtcNow;
 }

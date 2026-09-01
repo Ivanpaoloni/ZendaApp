@@ -1,4 +1,6 @@
-﻿namespace Zenda.Core.DTOs.Admin;
+﻿using Zenda.Core.Enums;
+
+namespace Zenda.Core.DTOs.Admin;
 
 public class NegocioAdminListDto
 {
@@ -12,6 +14,8 @@ public class NegocioAdminListDto
     public bool IsActive { get; set; }
     public DateTime FechaVencimiento { get; set; }
     public decimal MontoMensual { get; set; }
+    // Agrega esta propiedad calculada. Así el backend envía el estado real considerando la fecha.
+    public bool EsSuscripcionVigente => FechaVencimiento >= DateTime.UtcNow;
 
     // DATOS DEL DUEÑO Y NEGOCIO
     public string OwnerName { get; set; } = string.Empty;

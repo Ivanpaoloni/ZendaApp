@@ -101,17 +101,17 @@ else
 
                             <td class="p-5">
                                 <div class="flex justify-center">
-                                    @if (n.IsActive)
+                                    @if (n.FechaVencimiento >= DateTime.Today)
                                     {
-                                        <span class="text-emerald-400 flex items-center gap-1 text-xs font-bold bg-emerald-400/10 w-fit px-2 py-1 rounded-md">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Activo
-                                        </span>
+                                        <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-bold">Activo</span>
+                                    }
+                                    else if (n.FechaVencimiento.AddDays(7) >= DateTime.Today)
+                                    {
+                                        <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full text-xs font-bold" title="Vencido hace menos de 7 días">Período de Gracia</span>
                                     }
                                     else
                                     {
-                                        <span class="text-red-400 flex items-center gap-1 text-xs font-bold bg-red-400/10 w-fit px-2 py-1 rounded-md">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Suspendido
-                                        </span>
+                                        <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1 rounded-full text-xs font-bold">Vencido</span>
                                     }
                                 </div>
                             </td>

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Timers;
+using Zenda.Client.Components;
 using Zenda.Client.Services;
 using Zenda.Core.DTOs;
 
@@ -45,6 +46,7 @@ public partial class Configuracion : ComponentBase, IDisposable
     protected PlanVistaDto? planSeleccionado;
     protected bool mostrarModalUpgrade = false;
     private bool mostrarModalQr = false;
+    private ConfirmDialog _confirmDialog = default!;
     public class PlanVista
     {
         public Guid Id { get; set; }
@@ -380,21 +382,58 @@ public partial class Configuracion : ComponentBase, IDisposable
             await EjecutarSubidaDeLogo();
         }
     }
-    // 🎯 Ejecuta la renovación del plan actual directamente
-    protected void RenovarPlanActual()
+
+    protected async Task RenovarPlanActual()
     {
         if (resumenFacturacion == null || resumenFacturacion.PlanActualId == Guid.Empty) return;
 
-        planSeleccionado = new PlanVistaDto
+        // Utilizamos el nuevo método asíncrono para una UI lineal y sin fricción
+        
+        var confirmado = await _confirmDialog.ShowAsync(
+            "Renovar Suscripción",
+            $"¿Deseas ir a Mercado Pago para renovar tu plan {resumenFacturacion.PlanActualNombre} por un mes más?",
+            textoConfirmar: "Ir a Mercado Pago",
+            esAccionDestructiva: false // Esto hará que el botón y el icono se pinten de azul/primario
+        );
+        if (confirmado)
         {
-            Id = resumenFacturacion.PlanActualId,
-            Nombre = resumenFacturacion.PlanActualNombre,
-            PrecioMensual = resumenFacturacion.PlanActualPrecio,
-            PrecioTexto = $"${resumenFacturacion.PlanActualPrecio:N0}"
-        };
+            cargando = true; // Utilizamos el loader global de la vista
+            mensajeError = null;
+            StateHasChanged(); // Forzamos el renderizado del spinner
 
-        mostrarModalUpgrade = true;
+            try
+            {
+                // Reutilizamos el endpoint existente asumiendo SRP en tu backend
+                var request = new GenerarLinkDto
+                {
+                    PlanId = resumenFacturacion.PlanActualId,
+                    NombrePlan = resumenFacturacion.PlanActualNombre,
+                    Precio = resumenFacturacion.PlanActualPrecio
+                };
+
+                var response = await NegocioService.GenerarLinkDePagoAsync(request);
+
+                if (!string.IsNullOrEmpty(response?.UrlCheckout))
+                {
+                    Nav.NavigateTo(response.UrlCheckout);
+                }
+                else
+                {
+                    mensajeError = "No pudimos conectar con Mercado Pago. Intentá de nuevo.";
+                }
+            }
+            catch (Exception)
+            {
+                mensajeError = "Ocurrió un error al procesar la renovación.";
+            }
+            finally
+            {
+                cargando = false;
+                StateHasChanged();
+            }
+        }
     }
+
     private async Task EjecutarSubidaDeLogo()
     {
         if (logoSeleccionado == null) return;

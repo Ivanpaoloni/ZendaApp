@@ -3,9 +3,9 @@
     <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
         <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full editorial-shadow animate-in zoom-in-95 duration-300 text-center">
 
-            @* Icono de Alerta *@
-            <div class="w-16 h-16 bg-error/10 text-error rounded-full flex items-center justify-center mx-auto mb-4">
-                <span class="material-symbols-outlined text-3xl">warning</span>
+            @* Icono Dinámico (Rojo para error/eliminar, Azul/Primario para renovar) *@
+            <div class="w-16 h-16 @ColorIconoFondo @ColorIconoTexto rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl">@Icono</span>
             </div>
 
             <h3 class="font-headline font-bold text-xl text-primary mb-2">@Titulo</h3>
@@ -13,10 +13,10 @@
 
             <div class="flex gap-3">
                 <button @onclick="Cancelar" class="flex-1 py-3.5 bg-surface-container-low text-primary font-bold rounded-2xl hover:brightness-95 transition-all">
-                    Cancelar
+                    @TextoCancelar
                 </button>
-                <button @onclick="Confirmar" class="flex-1 py-3.5 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">
-                    Sí, eliminar
+                <button @onclick="Confirmar" class="flex-1 py-3.5 @ColorBotonConfirmar text-white font-bold rounded-2xl hover:brightness-110 transition-all shadow-lg">
+                    @TextoConfirmar
                 </button>
             </div>
         </div>
@@ -28,16 +28,80 @@
     [Parameter] public string Titulo { get; set; } = "¿Estás seguro?";
     [Parameter] public string Mensaje { get; set; } = "Esta acción no se puede deshacer.";
 
-    // Este evento le avisa a la página padre qué botón se tocó
+    // Mantenemos la retrocompatibilidad con las vistas que ya usan el evento
     [Parameter] public EventCallback<bool> OnRespuesta { get; set; }
+
+    // Propiedades dinámicas para UX (OCP) - Por defecto se comporta como "Eliminar"
+    private string TextoConfirmar { get; set; } = "Sí, eliminar";
+    private string TextoCancelar { get; set; } = "Cancelar";
+    private string Icono { get; set; } = "warning";
+    private string ColorBotonConfirmar { get; set; } = "bg-red-600";
+    private string ColorIconoFondo { get; set; } = "bg-error/10";
+    private string ColorIconoTexto { get; set; } = "text-error";
+
+    // Encapsula la promesa asíncrona
+    private TaskCompletionSource<bool>? _tcs;
+
+    /// <summary>
+    /// Despliega el modal y pausa la ejecución de la UI hasta que el usuario responda.
+    /// </summary>
+    public Task<bool> ShowAsync(
+        string titulo,
+        string mensaje,
+        string textoConfirmar = "Confirmar",
+        bool esAccionDestructiva = false)
+    {
+        Titulo = titulo;
+        Mensaje = mensaje;
+        TextoConfirmar = textoConfirmar;
+        TextoCancelar = "Cancelar";
+
+        // Ajuste dinámico de UX según la intención de la acción
+        if (esAccionDestructiva)
+        {
+            Icono = "warning";
+            ColorBotonConfirmar = "bg-red-600";
+            ColorIconoFondo = "bg-error/10";
+            ColorIconoTexto = "text-error";
+        }
+        else
+        {
+            Icono = "info";
+            ColorBotonConfirmar = "bg-primary"; // O usa "bg-blue-600" según tu paleta
+            ColorIconoFondo = "bg-primary/10";
+            ColorIconoTexto = "text-primary";
+        }
+
+        Visible = true;
+        StateHasChanged();
+
+        // Inicializamos la tarea que esperará la respuesta del usuario
+        _tcs = new TaskCompletionSource<bool>();
+        return _tcs.Task;
+    }
 
     private async Task Cancelar()
     {
-        await OnRespuesta.InvokeAsync(false);
+        Visible = false;
+        StateHasChanged();
+
+        // Resuelve la Task devolviendo 'false' de forma imperativa
+        _tcs?.TrySetResult(false);
+
+        // Dispara el evento para los componentes legacy
+        if (OnRespuesta.HasDelegate)
+            await OnRespuesta.InvokeAsync(false);
     }
 
     private async Task Confirmar()
     {
-        await OnRespuesta.InvokeAsync(true);
+        Visible = false;
+        StateHasChanged();
+
+        // Resuelve la Task devolviendo 'true' de forma imperativa
+        _tcs?.TrySetResult(true);
+
+        if (OnRespuesta.HasDelegate)
+            await OnRespuesta.InvokeAsync(true);
     }
 }
