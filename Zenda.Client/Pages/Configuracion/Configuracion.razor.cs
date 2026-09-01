@@ -380,7 +380,21 @@ public partial class Configuracion : ComponentBase, IDisposable
             await EjecutarSubidaDeLogo();
         }
     }
+    // 🎯 Ejecuta la renovación del plan actual directamente
+    protected void RenovarPlanActual()
+    {
+        if (resumenFacturacion == null || resumenFacturacion.PlanActualId == Guid.Empty) return;
 
+        planSeleccionado = new PlanVistaDto
+        {
+            Id = resumenFacturacion.PlanActualId,
+            Nombre = resumenFacturacion.PlanActualNombre,
+            PrecioMensual = resumenFacturacion.PlanActualPrecio,
+            PrecioTexto = $"${resumenFacturacion.PlanActualPrecio:N0}"
+        };
+
+        mostrarModalUpgrade = true;
+    }
     private async Task EjecutarSubidaDeLogo()
     {
         if (logoSeleccionado == null) return;

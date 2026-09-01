@@ -305,23 +305,50 @@
                                 <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Plan Actual</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-2xl font-black text-primary font-headline">@resumenFacturacion.PlanActualNombre</span>
-                                    <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">@resumenFacturacion.Estado</span>
+
+                                    @if (resumenFacturacion.Estado == "Vencido")
+                                    {
+                                        <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-md">Vencido</span>
+                                    }
+                                    else if (resumenFacturacion.ProximoAVencer)
+                                    {
+                                        <span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">Próximo a Vencer</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">@resumenFacturacion.Estado</span>
+                                    }
                                 </div>
+
                                 @if (resumenFacturacion.PlanActualNombre != "Single")
                                 {
-                                    <p class="text-xs text-on-surface-variant mt-1">Próximo vencimiento: <strong>@resumenFacturacion.FechaVencimiento.ToString("dd/MM/yyyy")</strong></p>
+                                    <p class="text-xs text-on-surface-variant mt-1">
+                                        Vencimiento: <strong>@resumenFacturacion.FechaVencimiento.ToString("dd/MM/yyyy")</strong>
+                                    </p>
                                 }
                             </div>
 
-                            <div class="flex justify-center md:justify-end gap-4 md:gap-6 w-full md:w-auto">
-                                <div class="text-center md:text-right">
-                                    <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Sedes Usadas</p>
-                                    <p class="text-lg font-bold text-primary">@resumenFacturacion.SedesUsadas <span class="text-sm text-on-surface-variant font-normal">/ @resumenFacturacion.SedesMaximas</span></p>
-                                </div>
-                                <div class="w-px bg-surface-container-high"></div>
-                                <div class="text-center md:text-right">
-                                    <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Profesionales</p>
-                                    <p class="text-lg font-bold text-primary">@resumenFacturacion.ProfesionalesUsados <span class="text-sm text-on-surface-variant font-normal">/ @resumenFacturacion.ProfesionalesMaximos</span></p>
+                            <div class="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
+                                @* 🎯 BOTÓN DE RENOVACIÓN DE SUSCRIPCIÓN *@
+                                @if (resumenFacturacion.ProximoAVencer && resumenFacturacion.PlanActualPrecio > 0)
+                                {
+                                    <button @onclick="RenovarPlanActual"
+                                            class="w-full md:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 animate-pulse">
+                                        <span class="material-symbols-outlined text-[20px]">autorenew</span>
+                                        Renovar Suscripción
+                                    </button>
+                                }
+
+                                <div class="flex justify-center md:justify-end gap-4 md:gap-6 w-full md:w-auto">
+                                    <div class="text-center md:text-right">
+                                        <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Sedes Usadas</p>
+                                        <p class="text-lg font-bold text-primary">@resumenFacturacion.SedesUsadas <span class="text-sm text-on-surface-variant font-normal">/ @resumenFacturacion.SedesMaximas</span></p>
+                                    </div>
+                                    <div class="w-px bg-surface-container-high"></div>
+                                    <div class="text-center md:text-right">
+                                        <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Profesionales</p>
+                                        <p class="text-lg font-bold text-primary">@resumenFacturacion.ProfesionalesUsados <span class="text-sm text-on-surface-variant font-normal">/ @resumenFacturacion.ProfesionalesMaximos</span></p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -333,12 +360,10 @@
                                 // Solo marcamos como recomendado el Business si NO es el plan actual
                                 bool esRecomendado = plan.Nombre == "Business" && !esPlanActual;
 
-                                <div class="flex flex-col relative bg-white rounded-[2rem] p-6 transition-all hover:shadow-lg
-                                                        @(esPlanActual ? "border-[3px] border-primary shadow-xl ring-4 ring-primary/5 scale-[1.02]" :
-                                                                                                                                     esRecomendado ? "border-2 border-primary/40 shadow-md" : "border border-surface-container-high")">
+                                <div class="flex flex-col relative bg-white rounded-[2rem] p-6 transition-all hover:shadow-lg @(esPlanActual ? "border-[3px] border-primary shadow-xl ring-4 ring-primary/5 scale-[1.02]" : esRecomendado ? "border-2 border-primary/40 shadow-md" : "border border-surface-container-high")">
 
-                        @* BADGE FLOTANTE *@
-                        @if (esPlanActual)
+                                    @* BADGE FLOTANTE *@
+                                    @if (esPlanActual)
                                     {
                                         <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg border-2 border-white">Plan Actual</div>
                                     }
@@ -349,36 +374,48 @@
                                         </div>
                                     }
 
-                                <h3 class="text-xl font-bold text-primary mb-2 mt-2">@plan.Nombre</h3>
-                                <div class="mb-4">
-                                    <span class="text-3xl font-black font-headline">@plan.PrecioTexto</span>
-                                </div>
+                                    <h3 class="text-xl font-bold text-primary mb-2 mt-2">@plan.Nombre</h3>
+                                    <div class="mb-4">
+                                        <span class="text-3xl font-black font-headline">@plan.PrecioTexto</span>
+                                    </div>
 
-                                <ul class="space-y-3 mb-8 text-sm text-on-surface-variant flex-grow">
-                                    <li class="flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
-                                        Hasta <strong>@plan.MaxSedes</strong> sede@(plan.MaxSedes > 1 ? "s" : "")
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
-                                        Hasta <strong>@plan.MaxProfesionales</strong> profesional@(plan.MaxProfesionales > 1 ? "es" : "")
-                                    </li>
-                                    <li class="flex items-center gap-2 @(plan.HabilitaRecordatorios ? "" : "opacity-40")">
-                                        <span class="material-symbols-outlined text-[18px] @(plan.HabilitaRecordatorios ? "text-green-600" : "text-on-surface-variant")">
-                                            @(plan.HabilitaRecordatorios ? "check_circle" : "cancel")
-                                        </span>
-                                        Recordatorios WhatsApp
-                                    </li>
-                                </ul>
-
-                                <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual"
-                                        class="w-full mt-auto py-3 rounded-xl font-bold transition-all
-                                                                       @(esPlanActual ? "bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed" :
-                                                                                                                                                                         esRecomendado ? "bg-primary text-white hover:brightness-110 shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20")">
-                            @(esPlanActual ? "Plan Actual" : (plan.PrecioMensual > 0 ? "Mejorar Plan" : "Cambiar Plan"))
-                        </button>
-                    </div>
+                                    <ul class="space-y-3 mb-8 text-sm text-on-surface-variant flex-grow">
+                                        @if (plan.Nombre == "Single")
+                                        {
+                                            <li class="flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                                <strong>Hasta 50</strong> Reservas por mes.
+                                            </li>
                                         }
+                                        else
+                                        {
+                                            <li class="flex items-center gap-2">
+                                                <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                                Reservas Ilimitadas.
+                                            </li>
+                                        }
+                                        <li class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                            Hasta <strong>@plan.MaxSedes</strong> sede@(plan.MaxSedes > 1 ? "s" : "")
+                                        </li>
+                                        <li class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                                            Hasta <strong>@plan.MaxProfesionales</strong> profesional@(plan.MaxProfesionales > 1 ? "es" : "")
+                                        </li>
+                                        <li class="flex items-center gap-2 @(plan.HabilitaRecordatorios ? "" : "opacity-40")">
+                                            <span class="material-symbols-outlined text-[18px] @(plan.HabilitaRecordatorios ? "text-green-600" : "text-on-surface-variant")">
+                                                @(plan.HabilitaRecordatorios ? "check_circle" : "cancel")
+                                            </span>
+                                            Recordatorios WhatsApp
+                                        </li>
+                                    </ul>
+
+                                    <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual" class="w-full mt-auto py-3 rounded-xl font-bold transition-all
+                                                        @(esPlanActual ? "bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed" : esRecomendado ? "bg-primary text-white hover:brightness-110 shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20")">
+                                        @(esPlanActual ? "Plan Actual" : (plan.PrecioMensual > 0 ? "Mejorar Plan" : "Cambiar Plan"))
+                                    </button>
+                                </div>
+                            }
                         </div>
 
                         <hr class="border-surface-container-high my-8" />

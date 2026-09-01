@@ -296,7 +296,7 @@
 
 <AvisoModal />
 <SupportWidget />
-
+<PaymentWarningModal ShowModal=@showPaymentWarning DiasRestantes="@diasRestantes" FechaVencimiento="@fechaVencimiento"/>
 <style>
     /* Estilos del Sidebar (PC) */
     .nav-sidebar {
@@ -349,6 +349,10 @@
     private bool reenviandoEmail = false;
     private bool refrescando = false;
     private bool mostrarMenuMovil = false;
+    // suscripcion
+    private bool showPaymentWarning = false;
+    private int diasRestantes = 0;
+    private DateTime fechaVencimiento;
 
     protected override async Task OnInitializedAsync()
     {
@@ -388,8 +392,22 @@
                 {
                     try
                     {
-                        State.CurrentNegocio = await NegocioService.GetPerfilAsync();
+                        var negocio = await NegocioService.GetPerfilAsync();
+                        if(negocio?.PlanSuscripcionId != null)
+                        {
+                            fechaVencimiento =negocio.PlanSuscripcionFechaVencimiento;
+                            if(fechaVencimiento.AddDays(7) < DateTime.Now)
+                            {
+                                // Suscripción vencida, forzamos cierre de sesión
+                                await ForzarCierreSesion();
+                                return;
+                            }
 
+                            diasRestantes = (fechaVencimiento.AddDays(7) - DateTime.Now).Days;
+                            showPaymentWarning = diasRestantes <= 7; // Mostrar advertencia si quedan 5 días o menos
+                        }
+
+                        State.CurrentNegocio = negocio;
                         // Si por algún motivo devuelve null, también lo pateamos
                         if (State.CurrentNegocio == null)
                         {
@@ -417,8 +435,7 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (e.Location.Contains("/login", StringComparison.OrdinalIgnoreCase) ||
-            e.Location.Contains("/register", StringComparison.OrdinalIgnoreCase))
+        if (e.Location.Contains("/login", StringComparison.OrdinalIgnoreCase) || e.Location.Contains("/register", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }

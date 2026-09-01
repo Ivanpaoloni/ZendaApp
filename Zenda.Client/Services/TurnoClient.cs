@@ -15,11 +15,10 @@ public class TurnoClient : BaseClient
         var fechaStr = fecha.ToString("yyyy-MM-dd");
         var prestadorQuery = prestadorId.HasValue ? $"&prestadorId={prestadorId.Value}" : "";
 
-        return await _http.GetFromJsonAsync<DisponibilidadFechaDto>(
-            $"api/Turnos/disponibilidad?sedeId={sedeId}&fecha={fechaStr}&servicioId={servicioId}{prestadorQuery}"
+        return await _http.GetFromJsonAsync<DisponibilidadFechaDto>($"api/Turnos/disponibilidad?sedeId={sedeId}&fecha={fechaStr}&servicioId={servicioId}{prestadorQuery}"
         );
     }
-    
+
     public async Task<List<TurnoReadDto>> GetByRango(DateTime desde, DateTime hasta, Guid? prestadorId = null)
     {
         try
@@ -45,9 +44,26 @@ public class TurnoClient : BaseClient
 
     public async Task<TurnoReadDto?> Reservar(TurnoCreateDto dto)
     {
-        var response = await _http.PostAsJsonAsync("api/turnos", dto);
-        if (response.IsSuccessStatusCode)
-            return await response.Content.ReadFromJsonAsync<TurnoReadDto>();
+        try
+        {
+
+            var response = await _http.PostAsJsonAsync("api/turnos", dto);
+
+            if (!response.IsSuccessStatusCode && response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                // Captura el cuerpo del mensaje enviado por el servidor
+                string mensajeError = await response.Content.ReadAsStringAsync();
+                Console.WriteLine(mensajeError);
+                throw new Exception(mensajeError);
+            }
+
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<TurnoReadDto>();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception(ex.Message);
+        }
 
         return null;
     }

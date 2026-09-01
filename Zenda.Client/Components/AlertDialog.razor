@@ -24,8 +24,8 @@
     [Parameter] public string Mensaje { get; set; } = "";
     [Parameter] public EventCallback OnCerrar { get; set; }
 
-    private async Task Cerrar()
+    private void Cerrar()
     {
-        await OnCerrar.InvokeAsync();
+        Visible = false;
     }
 }

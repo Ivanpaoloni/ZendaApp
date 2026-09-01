@@ -73,5 +73,9 @@ public class MappingProfile : Profile
         CreateMap<Servicio, ServicioReadDto>();
         CreateMap<ServicioCreateDto, Servicio>();
         #endregion
+        #region PlanesSuscripcion
+        CreateMap<PlanSuscripcion, PlanVistaDto>();
+        CreateMap<SuscripcionNegocio, SuscripcionNegocioDto>();
+        #endregion
     }
 }

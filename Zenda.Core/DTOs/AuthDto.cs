@@ -27,6 +27,9 @@ public class AuthResponseDto
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
     public string? Token { get; set; }
+    public DateTime FechaVencimientoSuscripcion { get; set; }
+    public int DiasRestantesSuscripcion => (FechaVencimientoSuscripcion - DateTime.UtcNow).Days;
+    public bool RequiereAlertaPago => DiasRestantesSuscripcion <= 7 && DiasRestantesSuscripcion >= 0;
 }
 
 public class ForgotPasswordRequest

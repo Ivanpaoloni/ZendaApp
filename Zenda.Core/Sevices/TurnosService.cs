@@ -141,7 +141,7 @@ public class TurnosService : ITurnosService
         if (!puedeCrear)
         {
             // Lanzamos una excepción de negocio limpia (puedes atraparla en tu ExceptionMiddleware)
-            throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito.");
+            throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito o la suscripción esta vencida.");
         }
 
         var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);

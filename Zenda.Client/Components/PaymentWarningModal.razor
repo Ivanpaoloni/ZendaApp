@@ -1,0 +1,51 @@
+﻿@inject NavigationManager Nav
+
+@if (ShowModal)
+{
+    <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999;"
+         class="flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+         @onclick="CloseModal">
+
+        <div class="relative bg-white rounded-[2.5rem] p-6 md:p-8 w-full max-w-sm border border-surface-container-high shadow-2xl flex flex-col max-h-[90vh] overflow-y-auto" @onclick:stopPropagation="true">
+
+            <button @onclick="CloseModal" class="absolute top-4 right-4 md:top-6 md:right-6 w-8 h-8 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+
+            <div class="w-16 h-16 md:w-20 md:h-20 bg-orange-50 text-orange-600 rounded-full flex shrink-0 items-center justify-center mx-auto mb-4">
+                <span class="material-symbols-outlined text-3xl md:text-4xl font-bold">payments</span>
+            </div>
+
+            <h3 class="font-headline font-bold text-xl md:text-2xl text-primary mb-2 text-center">Aviso de Vencimiento</h3>
+
+            <div class="text-on-surface-variant text-sm mb-4 flex-grow text-center">
+                <p>Tu suscripción vencio el dia @FechaVencimiento.ToShortDateString() y te quedan <strong>@DiasRestantes días</strong> de actividad.</p>
+                <p>Para evitar la pérdida de acceso a la plataforma, por favor realiza el pago manual correspondiente.</p>
+            </div>
+
+            <button class="mt-4 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors w-full py-2 rounded-xl hover:bg-surface-container-low" @onclick="CloseModal">
+                Recordarme luego
+            </button>
+            <button class="mt-4 text-sm font-bold text-on-surface-variant hover:text-primary transition-colors w-full py-2 rounded-xl hover:bg-surface-container-low" @onclick="GoToManualPayment">
+                Ir a Pagar
+            </button>
+
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool ShowModal { get; set; }
+    [Parameter] public int DiasRestantes { get; set; }
+    [Parameter] public DateTime FechaVencimiento { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnProceedToPayment { get; set; }
+
+    private void CloseModal() => ShowModal = false;
+
+    private void GoToManualPayment()
+    {
+        ShowModal = false;
+        Nav.NavigateTo("/configuracion?tab=facturacion", forceLoad: true);
+    }
+}

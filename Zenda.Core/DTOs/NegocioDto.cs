@@ -15,6 +15,7 @@ public class NegocioReadDto
     // Para mostrar info del plan actual sin necesidad de hacer otro endpoint o consulta extra
     public Guid PlanSuscripcionId { get; set; }
     public string PlanNombre { get; set; } = string.Empty;
+    public DateTime PlanSuscripcionFechaVencimiento { get; set; }
     public int MaxProfesionales { get; set; }
     public int MaxSedes { get; set; }
     public string? Telefono { get; set; }

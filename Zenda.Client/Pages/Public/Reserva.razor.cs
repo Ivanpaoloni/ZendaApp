@@ -279,7 +279,7 @@ public partial class Reserva : ComponentBase
         {
             if (ex.Message.Contains("límite", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("plan", StringComparison.OrdinalIgnoreCase))
             {
-                errorReserva = "Ocurrio un error ajeno a nosotros!. por favor contactate directamente vía WhatsApp.";
+                errorReserva = $"Ocurrio un error ajeno a nosotros!. por favor contactate con {negocio!.Nombre} directamente vía WhatsApp.";
             }
             else
             {

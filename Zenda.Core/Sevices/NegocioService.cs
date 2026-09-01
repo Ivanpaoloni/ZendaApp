@@ -11,12 +11,14 @@ public class NegocioService : INegocioService
     private readonly IZendaDbContext _context;
     private readonly IMapper _mapper;
     private readonly ITenantService _tenantService;
+    private readonly IPlanService _planService;
 
-    public NegocioService(IZendaDbContext context, IMapper mapper, ITenantService tenantService)
+    public NegocioService(IZendaDbContext context, IMapper mapper, ITenantService tenantService, IPlanService planService)
     {
         _context = context;
         _mapper = mapper;
         _tenantService = tenantService;
+        _planService = planService;
     }
 
     public async Task<NegocioReadDto?> GetPerfilAsync()
@@ -31,9 +33,9 @@ public class NegocioService : INegocioService
             // 🔥 EL FIX 1: Cambiamos .Include(n => n.PlanSuscripcion) 
             // por un Include anidado a través del historial de suscripciones.
             // Solo traemos la suscripción activa para no saturar la memoria.
-            .Include(n => n.Suscripciones.Where(s => s.Estado == EstadoSuscripcionEnum.Activa))
-                .ThenInclude(s => s.PlanSuscripcion)
-            .FirstOrDefaultAsync(n => n.Id == tenantId);
+
+            .Include(n => n.Suscripciones.Where(s => s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7)))
+                .ThenInclude(s => s.PlanSuscripcion).FirstOrDefaultAsync(n => n.Id == tenantId);
 
         if (negocio == null)
             return null;
@@ -51,6 +53,7 @@ public class NegocioService : INegocioService
         if (suscripcionActiva?.PlanSuscripcion != null)
         {
             dto.PlanNombre = suscripcionActiva.PlanSuscripcion.Nombre;
+            dto.PlanSuscripcionFechaVencimiento = suscripcionActiva.FechaVencimiento;
             dto.PlanSuscripcionId = suscripcionActiva.PlanSuscripcion.Id; // Usamos el ID del plan, no de la suscripción
             dto.MaxProfesionales = suscripcionActiva.PlanSuscripcion.MaxProfesionales;
             dto.MaxSedes = suscripcionActiva.PlanSuscripcion.MaxSedes;
@@ -173,10 +176,8 @@ public class NegocioService : INegocioService
         }
 
         // 3. Modificar la Suscripción 
-        // 🔥 EL FIX 3: Ya no modificamos el Negocio, solo la SuscripcionNegocio.
-        var suscripcionActual = await _context.SuscripcionesNegocio
-            .FirstOrDefaultAsync(s => s.NegocioId == tenantId && s.Estado == EstadoSuscripcionEnum.Activa);
-
+        var suscripcionActual = await _context.SuscripcionesNegocio.OrderByDescending(s => s.FechaVencimiento).FirstOrDefaultAsync(s => s.NegocioId == tenantId && s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7));
+        
         if (suscripcionActual != null)
         {
             // Opción A: Actualizar la suscripción existente (ideal para planes gratis)
@@ -214,7 +215,7 @@ public class NegocioService : INegocioService
 
         var suscripcion = await _context.SuscripcionesNegocio
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.Estado == EstadoSuscripcionEnum.Activa);
+            .FirstOrDefaultAsync(s => s.NegocioId == negocioId);
 
         if (suscripcion == null)
         {
@@ -266,5 +267,21 @@ public class NegocioService : INegocioService
 
         await _context.SaveChangesAsync();
         return true;
+    }
+
+    internal async Task<Negocio> GetAsync(Guid id)
+    {
+        var entity = await FindAsync(id);
+
+        if (entity is null)
+            throw new Exception("Negocio no encontrado");
+
+        return entity;
+    }
+
+    internal async Task<Negocio?> FindAsync(Guid id)
+    {
+        var entity = await _context.Negocios.FindAsync(id);
+        return entity;
     }
 }

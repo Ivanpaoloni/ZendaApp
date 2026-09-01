@@ -21,7 +21,6 @@ public class TurnosController : ControllerBase
     {
         try
         {
-
             var nuevoTurno = await _turnosService.ReservarTurnoAsync(dto);
 
             // 2. Mandamos el mail "en segundo plano" (sin bloquear la respuesta)
@@ -52,6 +51,7 @@ public class TurnosController : ControllerBase
     {
         return Ok(await _turnosService.GetDisponibilidadDtoAsync(prestadorId, sedeId, fecha, servicioId));
     }
+
     [HttpGet("fecha/{fecha}")]
     public async Task<ActionResult<IEnumerable<TurnoReadDto>>> GetTurnosPorFecha(DateTime fecha)
     {

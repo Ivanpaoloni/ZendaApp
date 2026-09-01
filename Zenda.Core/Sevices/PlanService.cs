@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
 using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
@@ -9,11 +11,13 @@ public class PlanService : IPlanService
 {
     private readonly IZendaDbContext _context;
     private readonly ITenantService _tenantService;
+    private readonly IMapper _mapper;
 
-    public PlanService(IZendaDbContext context, ITenantService tenantService)
+    public PlanService(IZendaDbContext context, ITenantService tenantService, IMapper mapper)
     {
         _context = context;
         _tenantService = tenantService;
+        _mapper = mapper;
     }
 
     public async Task<bool> PuedeAgregarProfesionalAsync()
@@ -101,9 +105,18 @@ public class PlanService : IPlanService
         return turnosDelMes < 50;
     }
 
+    public async Task<SuscripcionNegocioDto?> ObtenerSuscripcionActivaByNegocioId(Guid negocioId)
+    {
+        var suscripcion = await ObtenerSuscripcionActiva(negocioId);
+
+        return _mapper.Map<SuscripcionNegocioDto>(suscripcion);
+    }
     private async Task<SuscripcionNegocio?> ObtenerSuscripcionActiva(Guid? negocioId)
     {
-        var suscripcion = await _context.SuscripcionesNegocio.Include(s => s.PlanSuscripcion).FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.Estado == EstadoSuscripcionEnum.Activa);
+        var suscripcion = await _context.SuscripcionesNegocio
+            .Include(s => s.PlanSuscripcion)
+            .OrderByDescending(s => s.FechaVencimiento).FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7));
+
         return suscripcion;
     }
 }

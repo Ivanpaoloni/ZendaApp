@@ -30,9 +30,7 @@ namespace Zenda.Core.Sevices
                 .Include(s => s.PlanSuscripcion)
                 .FirstOrDefaultAsync(s => s.NegocioId == negocioId);
 
-            // 2. Calculamos los profesionales usados (SOLO LOS ACTIVOS)
             var profesionalesUsados = await _context.Prestadores
-                // Asumiendo que agregamos una propiedad 'IsDeleted' o 'Activo' a la entidad
                 .CountAsync(p => p.NegocioId == negocioId && !p.IsDeleted);
 
             var historial = await _context.HistorialPagos
@@ -50,12 +48,25 @@ namespace Zenda.Core.Sevices
                 })
                 .ToListAsync();
 
+            // 🎯 Lógica de estados de vencimiento
+            var fechaVencimiento = suscripcion?.FechaVencimiento ?? DateTime.UtcNow;
+            var hoy = DateTime.UtcNow;
+
+            // Consideramos "próximo a vencer" si quedan 7 días o menos
+            bool estaVencido = fechaVencimiento < hoy;
+            bool proximoAVencer = estaVencido || (fechaVencimiento - hoy).TotalDays <= 7;
+
+            string estado = estaVencido ? "Vencido" : (proximoAVencer ? "Por Vencer" : "Activa");
+
             return new FacturacionDto
             {
+                PlanActualId = suscripcion?.PlanSuscripcionId ?? Guid.Empty,
                 PlanActualNombre = suscripcion?.PlanSuscripcion?.Nombre ?? "Single",
-                Estado = suscripcion?.Estado.ToString() ?? "Activa",
-                FechaVencimiento = suscripcion?.FechaVencimiento ?? DateTime.UtcNow.AddYears(1),
-                SedesUsadas = negocio.Sedes.Count(),
+                PlanActualPrecio = suscripcion?.PlanSuscripcion?.PrecioMensual ?? 0m,
+                Estado = estado,
+                FechaVencimiento = fechaVencimiento,
+                ProximoAVencer = proximoAVencer,
+                SedesUsadas = negocio.Sedes.Count,
                 SedesMaximas = suscripcion?.PlanSuscripcion?.MaxSedes ?? 1,
                 ProfesionalesUsados = profesionalesUsados,
                 ProfesionalesMaximos = suscripcion?.PlanSuscripcion?.MaxProfesionales ?? 1,

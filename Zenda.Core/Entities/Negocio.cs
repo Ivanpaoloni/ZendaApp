@@ -20,6 +20,6 @@ public class Negocio : BaseEntity
     public string? NotasAdmin { get; set; }
     public SuscripcionNegocio? ObtenerSuscripcionActiva()
     {
-        return Suscripciones.FirstOrDefault(s => s.Estado == Enums.EstadoSuscripcionEnum.Activa);
+        return Suscripciones.OrderByDescending(s => s.FechaVencimiento).FirstOrDefault(s => s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7));
     }
 }

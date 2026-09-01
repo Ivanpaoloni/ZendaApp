@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Zenda.Application.DTOs.Auth;
+using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 
@@ -20,6 +21,7 @@ public class AuthService : IAuthService
     private readonly IConfiguration _config;
     private readonly IEmailService _emailService;
     private readonly INegocioService _negocioService;
+    private readonly IPlanService _planService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
@@ -27,7 +29,8 @@ public class AuthService : IAuthService
         IZendaDbContext context,
         IConfiguration config,
         IEmailService emailService,
-        INegocioService negocioService)
+        INegocioService negocioService,
+        IPlanService planService)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -35,6 +38,7 @@ public class AuthService : IAuthService
         _config = config;
         _emailService = emailService;
         _negocioService = negocioService;
+        _planService = planService;
     }
 
     public async Task<AuthResponseDto> RegisterOwnerAsync(RegisterOwnerDto dto)
@@ -129,17 +133,15 @@ public class AuthService : IAuthService
             return new AuthResponseDto { Success = false, Message = "Credenciales inválidas." };
         }
 
-        // ==========================================
-        // 🔥 2. EL CANDADO: CHEQUEO DE SUSPENSIÓN
-        // ==========================================
+        NegocioReadDto negocio =  new NegocioReadDto();
+        var fechaVencimientoSuscripcion = DateTime.MinValue;
         if (user.NegocioId != null)
         {
-            // Buscamos si el negocio está activo. Usamos Select para no cargar todo el objeto en memoria.
-            var negocioActivo = await _context.Negocios
-                .IgnoreQueryFilters()
-                .Where(n => n.Id == user.NegocioId)
-                .Select(n => n.IsActive)
-                .FirstOrDefaultAsync();
+            Guid id = (Guid)user.NegocioId;
+            negocio = await _negocioService.GetByIdAsync(id);
+            var suscripcion = await _planService.ObtenerSuscripcionActivaByNegocioId(id);
+            bool negocioActivo = suscripcion != null;
+            fechaVencimientoSuscripcion = negocioActivo ? suscripcion!.FechaVencimiento : DateTime.MinValue;
 
             // Si dio false, lo rebotamos antes de darle el token
             if (!negocioActivo)
@@ -160,7 +162,9 @@ public class AuthService : IAuthService
         {
             Success = true,
             Message = "Login exitoso.",
-            Token = token
+            Token = token,
+            FechaVencimientoSuscripcion = fechaVencimientoSuscripcion
+
         };
     }
 

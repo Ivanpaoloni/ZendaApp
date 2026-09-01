@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using Zenda.Core.DTOs;
 using Zenda.Core.Interfaces;
 
@@ -20,7 +19,7 @@ public class NegociosController : ControllerBase
         return negocio == null ? NotFound() : Ok(negocio);
     }
 
-    [Authorize] // Solo el dueño logueado
+    [Authorize]
     [HttpGet("perfil")]
     public async Task<ActionResult<NegocioReadDto>> GetMiNegocio()
     {
@@ -29,7 +28,7 @@ public class NegociosController : ControllerBase
         return Ok(negocio);
     }
 
-    
+
     [HttpGet("validar-slug")]
     public async Task<ActionResult<bool>> ValidarSlug([FromQuery] string slug)
     {
@@ -39,7 +38,6 @@ public class NegociosController : ControllerBase
         return Ok(disponible);
     }
 
-    // 🎯 NUEVO: Para guardar los cambios
     [HttpPut("perfil")]
     public async Task<ActionResult> UpdateMiNegocio(NegocioUpdateDto dto)
     {
@@ -56,7 +54,7 @@ public class NegociosController : ControllerBase
         }
     }
 
-    [Authorize] // Gestión administrativa
+    [Authorize]
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<NegocioReadDto>> GetById(Guid id)
     {
@@ -64,24 +62,22 @@ public class NegociosController : ControllerBase
         return negocio == null ? NotFound() : Ok(negocio);
     }
 
-    [Authorize] // Solo personal autorizado
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<NegocioReadDto>> Create(NegocioCreateDto dto)
     {
         var result = await _service.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
-    // 🎯 NUEVO: Endpoint exclusivo para subir el logo
+
     [Authorize]
     [HttpPost("perfil/logo")]
-    public async Task<ActionResult> UploadLogo(IFormFile file,
-    [FromServices] IStorageService storageService,
-    [FromServices] ITenantService tenantService)
+    public async Task<ActionResult> UploadLogo(IFormFile file, [FromServices] IStorageService storageService, [FromServices] ITenantService tenantService)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new { message = "No se envió ningún archivo." });
 
-        // 🛡️ VALIDACIÓN DE TAMAÑO CORRECTA EN BACKEND (Usando file.Length en bytes)
+        // VALIDACIÓN DE TAMANO CORRECTA EN BACKEND (Usando file.Length en bytes)
         const long maxFileSize = 1024 * 1024 * 5; // 5MB
         if (file.Length > maxFileSize)
             return BadRequest(new { message = "La imagen supera el límite permitido de 5MB." });
@@ -97,13 +93,10 @@ public class NegociosController : ControllerBase
 
         try
         {
-            // 1. Abrimos el stream nativo sin parámetros
             using var stream = file.OpenReadStream();
 
-            // 2. Usamos el método unificado SubirArchivoAsync
             var urlLogo = await storageService.SubirArchivoAsync(stream, file.FileName, "logos");
 
-            // 3. Guardamos la URL en la base de datos
             await _service.UpdateLogoUrlAsync(urlLogo);
 
             return Ok(new { url = urlLogo });
@@ -128,7 +121,6 @@ public class NegociosController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // Capturamos el error de límite excedido lanzado por el servicio
             return BadRequest(new { mensaje = ex.Message });
         }
     }
