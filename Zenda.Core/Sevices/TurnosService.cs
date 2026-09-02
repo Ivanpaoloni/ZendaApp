@@ -137,18 +137,8 @@ public class TurnosService : ITurnosService
     }
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
-        var puedeCrear = await _planService.PuedeCrearTurnoAsync(dto.Inicio);
-        if (!puedeCrear)
-        {
-            // Lanzamos una excepción de negocio limpia (puedes atraparla en tu ExceptionMiddleware)
-            throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito o la suscripción esta vencida.");
-        }
-
-        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);
-
-        if (servicio == null)
-            throw new Exception("El servicio seleccionado no existe o no está disponible.");
-
+        // 1. OBTENER IDENTIDAD DEL TENANT PRIMERO:
+        // Al ser una ruta pública, ignoramos los filtros globales para hallar al prestador.
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
@@ -158,6 +148,19 @@ public class TurnosService : ITurnosService
 
         if (prestador?.Sede == null || prestador?.Negocio == null)
             throw new InvalidOperationException("Prestador, Sede o Negocio no encontrados.");
+
+        // 2. VALIDAR SUSCRIPCIÓN CON DEPENDENCIA EXPLÍCITA
+        var puedeCrear = await _planService.PuedeCrearTurnoAsync(prestador.NegocioId, dto.Inicio);
+
+        if (!puedeCrear)
+        {
+            throw new InvalidOperationException("El comercio ha alcanzado su límite mensual de turnos o su suscripción se encuentra inactiva.");
+        }
+
+        var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId);
+
+        if (servicio == null)
+            throw new Exception("El servicio seleccionado no existe o no está disponible.");
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(prestador.Sede.ZonaHorariaId);
 
@@ -747,15 +750,15 @@ public class TurnosService : ITurnosService
     }
     public async Task<TurnoReadDto> CrearTurnoAdminAsync(TurnoAdminCreateDto dto)
     {
-        var puedeCrear = await _planService.PuedeCrearTurnoAsync(dto.FechaHoraInicio);
+        var negocioId = _tenantService.GetCurrentTenantId();
+        if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
+
+        var puedeCrear = await _planService.PuedeCrearTurnoAsync(negocioId.Value, dto.FechaHoraInicio);
         if (!puedeCrear)
         {
             // Lanzamos una excepción de negocio limpia (puedes atraparla en tu ExceptionMiddleware)
             throw new InvalidOperationException("Has alcanzado el límite de 50 turnos mensuales de tu plan gratuito.");
         }
-
-        var negocioId = _tenantService.GetCurrentTenantId();
-        if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
 
         var servicio = await _context.Servicios.FirstOrDefaultAsync(s => s.Id == dto.ServicioId && s.NegocioId == negocioId);
         if (servicio == null) throw new Exception("El servicio seleccionado no existe.");

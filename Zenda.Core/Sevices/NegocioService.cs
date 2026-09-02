@@ -28,14 +28,13 @@ public class NegocioService : INegocioService
         if (tenantId == null)
             return null;
 
+        // 1. Acceso a Datos: Extraemos el negocio con su historial sin filtrar por fechas en BD.
+        // Garantiza que los planes gratuitos antiguos se carguen en memoria.
         var negocio = await _context.Negocios
             .Include(n => n.Sedes)
-            // 🔥 EL FIX 1: Cambiamos .Include(n => n.PlanSuscripcion) 
-            // por un Include anidado a través del historial de suscripciones.
-            // Solo traemos la suscripción activa para no saturar la memoria.
-
-            .Include(n => n.Suscripciones.Where(s => s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7)))
-                .ThenInclude(s => s.PlanSuscripcion).FirstOrDefaultAsync(n => n.Id == tenantId);
+            .Include(n => n.Suscripciones)
+                .ThenInclude(s => s.PlanSuscripcion)
+            .FirstOrDefaultAsync(n => n.Id == tenantId);
 
         if (negocio == null)
             return null;
@@ -47,16 +46,29 @@ public class NegocioService : INegocioService
 
         var dto = _mapper.Map<NegocioReadDto>(negocio);
 
-        // 🔥 EL FIX 2: Buscamos el plan activo a través del método auxiliar que definimos en la entidad
-        var suscripcionActiva = negocio.ObtenerSuscripcionActiva();
+        // 2. Obtenemos la última suscripción cronológicamente
+        var ultimaSuscripcion = negocio.Suscripciones
+            .OrderByDescending(s => s.FechaVencimiento)
+            .FirstOrDefault();
 
-        if (suscripcionActiva?.PlanSuscripcion != null)
+        if (ultimaSuscripcion?.PlanSuscripcion != null)
         {
-            dto.PlanNombre = suscripcionActiva.PlanSuscripcion.Nombre;
-            dto.PlanSuscripcionFechaVencimiento = suscripcionActiva.FechaVencimiento;
-            dto.PlanSuscripcionId = suscripcionActiva.PlanSuscripcion.Id; // Usamos el ID del plan, no de la suscripción
-            dto.MaxProfesionales = suscripcionActiva.PlanSuscripcion.MaxProfesionales;
-            dto.MaxSedes = suscripcionActiva.PlanSuscripcion.MaxSedes;
+            dto.PlanNombre = ultimaSuscripcion.PlanSuscripcion.Nombre;
+            dto.PlanSuscripcionFechaVencimiento = ultimaSuscripcion.FechaVencimiento;
+            dto.PlanSuscripcionPrecioMensual = ultimaSuscripcion.PlanSuscripcion.PrecioMensual;
+            dto.PlanSuscripcionId = ultimaSuscripcion.PlanSuscripcion.Id;
+            dto.MaxProfesionales = ultimaSuscripcion.PlanSuscripcion.MaxProfesionales;
+            dto.MaxSedes = ultimaSuscripcion.PlanSuscripcion.MaxSedes;
+
+            // 3. Dominio Rico: El dominio evalúa el PrecioMensual == 0 y los días de gracia
+            dto.EsSuscripcionActiva = ultimaSuscripcion.EsSuscripcionActiva;
+            dto.EsPeriodoDeGracia = ultimaSuscripcion.EsPeriodoDeGracia;
+        }
+        else
+        {
+            // Fallback defensivo por si la base de datos está inconsistente
+            dto.EsSuscripcionActiva = false;
+            dto.EsPeriodoDeGracia = false;
         }
 
         return dto;
@@ -64,7 +76,6 @@ public class NegocioService : INegocioService
 
     public async Task<NegocioReadDto?> GetPublicBySlugAsync(string slug)
     {
-        // 1. Consulta pública del negocio
         var negocio = await _context.Negocios
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(n => n.Slug == slug);
@@ -73,14 +84,12 @@ public class NegocioService : INegocioService
 
         var dto = _mapper.Map<NegocioReadDto>(negocio);
 
-        // 2. 🎯 MAGIA DE IDENTITY: Usamos _context.Users (disponible gracias a IdentityDbContext)
         var usuarioDueño = await _context.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.NegocioId == negocio.Id);
 
         if (usuarioDueño != null)
         {
-            // Identity usa "PhoneNumber" de forma nativa
             dto.Telefono = usuarioDueño.PhoneNumber;
         }
 
@@ -161,7 +170,7 @@ public class NegocioService : INegocioService
         var tenantId = _tenantService.GetCurrentTenantId();
         if (tenantId == null) return false;
 
-        // 1. Obtener el plan gratuito y validar que realmente sea gratis por seguridad
+        // 1. Obtener el plan gratuito y validar
         var planGratuito = await _context.PlanesSuscripcion.FindAsync(planId);
         if (planGratuito == null || planGratuito.PrecioMensual > 0)
             return false;
@@ -175,22 +184,19 @@ public class NegocioService : INegocioService
             throw new InvalidOperationException($"El uso actual supera los límites del plan {planGratuito.Nombre}. Ajustá tu negocio primero.");
         }
 
-        // 3. Modificar la Suscripción 
-        var suscripcionActual = await _context.SuscripcionesNegocio.OrderByDescending(s => s.FechaVencimiento).FirstOrDefaultAsync(s => s.NegocioId == tenantId && s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7));
-        
+        // 3. Modificar la Suscripción: SIN filtro de fechas en la BD
+        var suscripcionActual = await _context.SuscripcionesNegocio
+            .OrderByDescending(s => s.FechaVencimiento)
+            .FirstOrDefaultAsync(s => s.NegocioId == tenantId);
+
         if (suscripcionActual != null)
         {
-            // Opción A: Actualizar la suscripción existente (ideal para planes gratis)
             suscripcionActual.PlanSuscripcionId = planGratuito.Id;
+            // Extendemos la fecha nominalmente; el dominio igualmente la validará como activa al ser $0
             suscripcionActual.FechaVencimiento = DateTime.UtcNow.AddYears(1);
-
-            // Opción B (Más estricta para auditoría): 
-            // suscripcionActual.Estado = EstadoSuscripcionEnum.Cancelada;
-            // Luego crearías un new SuscripcionNegocio con el plan gratis.
         }
         else
         {
-            // Fallback por si la base de datos estaba inconsistente y no tenía suscripción
             var nuevaSuscripcion = new SuscripcionNegocio
             {
                 NegocioId = tenantId.Value,
@@ -205,6 +211,7 @@ public class NegocioService : INegocioService
         await _context.SaveChangesAsync();
         return true;
     }
+
     public async Task<bool> ActualizarSuscripcionAdminAsync(Guid negocioId, AdminUpdateNegocioDto dto)
     {
         var negocio = await _context.Negocios

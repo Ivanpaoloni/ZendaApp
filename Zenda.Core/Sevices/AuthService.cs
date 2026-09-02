@@ -133,30 +133,28 @@ public class AuthService : IAuthService
             return new AuthResponseDto { Success = false, Message = "Credenciales inválidas." };
         }
 
-        NegocioReadDto negocio =  new NegocioReadDto();
+        NegocioReadDto negocio = new NegocioReadDto();
         var fechaVencimientoSuscripcion = DateTime.MinValue;
+        bool tieneAcceso = false; // Bandera de autorización
+
         if (user.NegocioId != null)
         {
             Guid id = (Guid)user.NegocioId;
             negocio = await _negocioService.GetByIdAsync(id);
+
+            // Trae la última suscripción sin filtrar por fechas en BD
             var suscripcion = await _planService.ObtenerSuscripcionActivaByNegocioId(id);
-            bool negocioActivo = suscripcion != null;
-            fechaVencimientoSuscripcion = negocioActivo ? suscripcion!.FechaVencimiento : DateTime.MinValue;
 
-            // Si dio false, lo rebotamos antes de darle el token
-            if (!negocioActivo)
-            {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Tu cuenta ha sido suspendida. Contactate con soporte."
-                };
-            }
+            // FIX ARQUITECTÓNICO: El usuario tiene permisos transaccionales si su plan 
+            // está estrictamente activo O si está consumiendo sus días de gracia.
+            tieneAcceso = suscripcion != null &&
+                         (suscripcion.EsSuscripcionActiva || suscripcion.EsPeriodoDeGracia);
+
+            fechaVencimientoSuscripcion = suscripcion != null ? suscripcion.FechaVencimiento : DateTime.MinValue;
         }
-        // ==========================================
 
-        // 3. Si pasó todo, le damos el token
-        var token = await GenerateJwtToken(user);
+        // 3. Le damos el token inyectándole el estado consolidado
+        var token = await GenerateJwtToken(user, tieneAcceso);
 
         return new AuthResponseDto
         {
@@ -164,11 +162,11 @@ public class AuthService : IAuthService
             Message = "Login exitoso.",
             Token = token,
             FechaVencimientoSuscripcion = fechaVencimientoSuscripcion
-
         };
     }
 
-    private async Task<string> GenerateJwtToken(ApplicationUser user)
+    // Agregamos el parámetro booleano con un valor por defecto
+    private async Task<string> GenerateJwtToken(ApplicationUser user, bool suscripcionVigente = true)
     {
         // 1. Definimos los Claims (los datos que viajan dentro del token)
         var claims = new List<Claim>
@@ -177,7 +175,10 @@ public class AuthService : IAuthService
             new Claim(ClaimTypes.Email, user.Email!),
             new Claim(ClaimTypes.GivenName, user.Nombre),
             new Claim("NegocioId", user.NegocioId.ToString() ?? string.Empty),
-            new Claim("email_verified", user.EmailConfirmed.ToString().ToLower())
+            new Claim("email_verified", user.EmailConfirmed.ToString().ToLower()),
+            
+            // MAGIA DE ARQUITECTURA SAAS: Inyectamos el estado de pago en el token
+            new Claim("SuscripcionVigente", suscripcionVigente.ToString())
         };
 
         // Agregar los roles del usuario a los claims
@@ -204,7 +205,7 @@ public class AuthService : IAuthService
 
         return tokenHandler.WriteToken(token);
     }
-
+    
     public async Task<AuthResponseDto> RefreshTokenAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);

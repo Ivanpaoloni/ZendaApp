@@ -16,9 +16,12 @@ public class NegocioReadDto
     public Guid PlanSuscripcionId { get; set; }
     public string PlanNombre { get; set; } = string.Empty;
     public DateTime PlanSuscripcionFechaVencimiento { get; set; }
+    public decimal PlanSuscripcionPrecioMensual { get; set; }
     public int MaxProfesionales { get; set; }
     public int MaxSedes { get; set; }
     public string? Telefono { get; set; }
+    public bool EsSuscripcionActiva { get; set; }
+    public bool EsPeriodoDeGracia { get; set; }
 }
 
 public class NegocioCreateDto

@@ -1,4 +1,5 @@
-﻿using Zenda.Core.Enums;
+﻿using System;
+using Zenda.Core.Enums;
 
 namespace Zenda.Core.DTOs
 {
@@ -16,5 +17,9 @@ namespace Zenda.Core.DTOs
 
         public string? MercadoPagoPreapprovalId { get; set; }
         public decimal? PrecioMensualPersonalizado { get; set; }
+
+        // Propiedades de negocio resueltas desde el Dominio
+        public bool EsPeriodoDeGracia { get; set; }
+        public bool EsSuscripcionActiva { get; set; }
     }
 }

@@ -305,18 +305,21 @@
                                 <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Plan Actual</p>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="text-2xl font-black text-primary font-headline">@resumenFacturacion.PlanActualNombre</span>
+                                    @if (resumenFacturacion.PlanActualNombre != "Single")
+                                    {
 
-                                    @if (resumenFacturacion.Estado == "Vencido")
-                                    {
-                                        <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-md">Vencido</span>
-                                    }
-                                    else if (resumenFacturacion.ProximoAVencer)
-                                    {
-                                        <span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">Próximo a Vencer</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">@resumenFacturacion.Estado</span>
+                                        @if (resumenFacturacion.Estado == "Vencido")
+                                        {
+                                            <span class="px-2 py-1 bg-red-100 text-red-700 text-[10px] font-bold rounded-md">Vencido</span>
+                                        }
+                                        else if (resumenFacturacion.ProximoAVencer)
+                                        {
+                                            <span class="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-md">Próximo a Vencer</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">Activo</span>
+                                        }
                                     }
                                 </div>
 
@@ -411,7 +414,7 @@
                                     </ul>
 
                                     <button @onclick="() => IniciarCambioPlan(plan)" disabled="@esPlanActual" class="w-full mt-auto py-3 rounded-xl font-bold transition-all
-                                                        @(esPlanActual ? "bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed" : esRecomendado ? "bg-primary text-white hover:brightness-110 shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20")">
+                                                                    @(esPlanActual ? "bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed" : esRecomendado ? "bg-primary text-white hover:brightness-110 shadow-md" : "bg-primary/10 text-primary hover:bg-primary/20")">
                                         @(esPlanActual ? "Plan Actual" : (plan.PrecioMensual > 0 ? "Mejorar Plan" : "Cambiar Plan"))
                                     </button>
                                 </div>

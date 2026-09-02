@@ -190,6 +190,25 @@
                         </div>
                     </div>
                 }
+                @* 💳 BANNER DE PERÍODO DE GRACIA (Soft Block) *@
+                @if (showPaymentWarning)
+                {
+                    <div class="bg-amber-50 border-b border-amber-200 px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm shrink-0 animate-in slide-in-from-top-2">
+                        <div class="flex items-center gap-3 text-amber-800 text-xs font-medium">
+                            <span class="material-symbols-outlined text-[20px]">warning</span>
+                            <span>
+                                Tu suscripción venció y estás en <strong>Período de Gracia</strong>. Renová tu plan hoy para evitar la interrupción del servicio y el bloqueo de tu agenda.
+                            </span>
+                        </div>
+
+                        <div class="flex items-center mt-2 sm:mt-0 shrink-0">
+                            <NavLink href="configuracion?tab=facturacion" class="flex items-center gap-1 bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-sm">
+                                <span class="material-symbols-outlined text-[14px]">credit_card</span>
+                                Pagar Renovación
+                            </NavLink>
+                        </div>
+                    </div>
+                }
             </Authorized>
         </AuthorizeView>
 
@@ -296,7 +315,7 @@
 
 <AvisoModal />
 <SupportWidget />
-<PaymentWarningModal ShowModal=@showPaymentWarning DiasRestantes="@diasRestantes" FechaVencimiento="@fechaVencimiento"/>
+
 <style>
     /* Estilos del Sidebar (PC) */
     .nav-sidebar {
@@ -386,29 +405,25 @@
                     return; // Cortamos para que no busque el perfil de negocio
                 }
 
-                // Lógica normal para dueños de peluquerías
-                // 2. Lógica normal para dueños de peluquerías
                 if (State.CurrentNegocio == null)
                 {
                     try
                     {
                         var negocio = await NegocioService.GetPerfilAsync();
-                        if(negocio?.PlanSuscripcionId != null)
+                        
+                        if (negocio != null)
                         {
-                            fechaVencimiento =negocio.PlanSuscripcionFechaVencimiento;
-                            if(fechaVencimiento.AddDays(7) < DateTime.Now)
-                            {
-                                // Suscripción vencida, forzamos cierre de sesión
-                                await ForzarCierreSesion();
-                                return;
-                            }
+                            State.CurrentNegocio = negocio;
 
-                            diasRestantes = (fechaVencimiento.AddDays(7) - DateTime.Now).Days;
-                            showPaymentWarning = diasRestantes <= 7; // Mostrar advertencia si quedan 5 días o menos
+                            showPaymentWarning = negocio.EsPeriodoDeGracia;
+                            fechaVencimiento = negocio.PlanSuscripcionFechaVencimiento;
+
+                            if (showPaymentWarning)
+                            {
+                                diasRestantes = (fechaVencimiento.AddDays(7) - DateTime.Today).Days;
+                            }
                         }
 
-                        State.CurrentNegocio = negocio;
-                        // Si por algún motivo devuelve null, también lo pateamos
                         if (State.CurrentNegocio == null)
                         {
                             await ForzarCierreSesion();
@@ -419,7 +434,6 @@
                     }
                     catch (Exception ex)
                     {
-                        // 🔥 SI SALTA EL ERROR DE "CUENTA_SUSPENDIDA" O CUALQUIER 401
                         Console.WriteLine($"Error de sesión: {ex.Message}");
                         await ForzarCierreSesion();
                         return;
@@ -445,6 +459,14 @@
         if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
         {
             Nav.NavigateTo("/login", forceLoad: true);
+        }
+
+        if (State.CurrentNegocio != null && !State.CurrentNegocio.EsSuscripcionActiva && !State.CurrentNegocio.EsPeriodoDeGracia)
+        {
+            if (!e.Location.Contains("configuracion", StringComparison.OrdinalIgnoreCase))
+            {
+                Nav.NavigateTo("/configuracion?tab=facturacion");
+            }
         }
     }
 

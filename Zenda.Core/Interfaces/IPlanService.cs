@@ -7,7 +7,7 @@ namespace Zenda.Core.Interfaces
         Task<List<PlanVistaDto>> ObtenerPlanesActivosAsync();
         Task<bool> PuedeAgregarProfesionalAsync();
         Task<bool> TieneRecordatoriosAutomaticosAsync();
-        Task<bool> PuedeCrearTurnoAsync(DateTime fechaHoraInicioTurno);
+        Task<bool> PuedeCrearTurnoAsync(Guid negocioId, DateTime fechaTurno);
         Task<SuscripcionNegocioDto?> ObtenerSuscripcionActivaByNegocioId(Guid negocioId);
     }
 }

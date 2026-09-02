@@ -156,6 +156,7 @@ app.UseCors("BlazorPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<SuscripcionCheckMiddleware>();
 // 7. Hangfire Dashboard (Panel visual de tareas)
 app.UseHangfireDashboard();
 

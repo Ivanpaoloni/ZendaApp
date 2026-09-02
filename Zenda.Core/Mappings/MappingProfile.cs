@@ -14,7 +14,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.SedeNombre, opt => opt.MapFrom(src => src.Sede != null ? src.Sede.Nombre : ""))
             .ForMember(dest => dest.TieneGoogleCalendarVinculado, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.GoogleRefreshToken)));
 
-    CreateMap<PrestadorCreateDto, Prestador>();
+        CreateMap<PrestadorCreateDto, Prestador>();
         CreateMap<PrestadorUpdateDto, Prestador>();
 
         #endregion
@@ -38,7 +38,7 @@ public class MappingProfile : Profile
 
         // De Entidad a Lectura: Como nombramos las propiedades igual en ambos lados 
         // (FechaHoraInicioUtc, EmailClienteInvitado, etc.), AutoMapper hace la magia solo.
-        CreateMap<Turno, TurnoReadDto>().ForMember(t => t.NegocioSlug, opt => opt.MapFrom( src => src.Prestador.Sede.Negocio.Slug));
+        CreateMap<Turno, TurnoReadDto>().ForMember(t => t.NegocioSlug, opt => opt.MapFrom(src => src.Prestador.Sede.Negocio.Slug));
 
         // De Creación a Entidad: Ajustado a las nuevas propiedades
         CreateMap<TurnoCreateDto, Turno>()
@@ -77,5 +77,6 @@ public class MappingProfile : Profile
         CreateMap<PlanSuscripcion, PlanVistaDto>();
         CreateMap<SuscripcionNegocio, SuscripcionNegocioDto>();
         #endregion
+
     }
 }

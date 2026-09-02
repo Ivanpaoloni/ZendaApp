@@ -67,42 +67,33 @@ public class PlanService : IPlanService
         return planesActivos;
     }
 
-    public async Task<bool> PuedeCrearTurnoAsync(DateTime fechaHoraInicioTurno)
+    public async Task<bool> PuedeCrearTurnoAsync(Guid negocioId, DateTime fechaTurno)
     {
-        var negocioId = _tenantService.GetCurrentTenantId();
+        // ELIMINAMOS la dependencia de _tenantService aquí.
 
-        if (negocioId == null) 
+        var suscripcion = await ObtenerSuscripcionActivaByNegocioId(negocioId);
+
+        // Permite la reserva si está activa o en sus 7 días de Gracia
+        bool tienePermisoPorSuscripcion = suscripcion != null && (suscripcion.EsSuscripcionActiva || suscripcion.EsPeriodoDeGracia);
+
+        if (!tienePermisoPorSuscripcion)
             return false;
 
-        SuscripcionNegocio? suscripcionActiva = await ObtenerSuscripcionActiva(negocioId);
+        // Validación de límites para el plan "Free"
+        if (suscripcion.PlanSuscripcion != null && suscripcion.PlanSuscripcion.PrecioMensual == 0)
+        {
+            var inicioMes = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
 
-        if (suscripcionActiva?.PlanSuscripcion == null) 
-            return false;
+            var totalTurnosMes = await _context.Turnos
+                .IgnoreQueryFilters() // CRÍTICO: Debe contar turnos sin importar quién llama al endpoint
+                .CountAsync(t => t.NegocioId == negocioId &&
+                                 t.FechaHoraInicioUtc >= inicioMes &&
+                                 t.Estado != EstadoTurnoEnum.Cancelado);
 
-        if (suscripcionActiva.PlanSuscripcion.Nombre != "Single")
-            return true;
+            return totalTurnosMes < 50;
+        }
 
-        //var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
-        //var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
-        //var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
-
-        // la hardcodeo para no consultarla al pedo
-        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById("America/Argentina/Buenos_Aires");
-
-        var fechaTurnoLocal = TimeZoneInfo.ConvertTimeFromUtc(fechaHoraInicioTurno, zonaSede);
-        var inicioMesLocal = new DateTime(fechaTurnoLocal.Year, fechaTurnoLocal.Month, 1, 0, 0, 0, DateTimeKind.Unspecified);
-        var inicioMesSiguienteLocal = inicioMesLocal.AddMonths(1);
-
-        var inicioMesUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesLocal, zonaSede);
-        var finMesUtc = TimeZoneInfo.ConvertTimeToUtc(inicioMesSiguienteLocal, zonaSede);
-
-        var turnosDelMes = await _context.Turnos
-            .CountAsync(t => t.NegocioId == negocioId
-                          && t.FechaHoraInicioUtc >= inicioMesUtc
-                          && t.FechaHoraInicioUtc < finMesUtc
-                          && t.Estado != EstadoTurnoEnum.Cancelado);
-
-        return turnosDelMes < 50;
+        return true;
     }
 
     public async Task<SuscripcionNegocioDto?> ObtenerSuscripcionActivaByNegocioId(Guid negocioId)
@@ -111,12 +102,25 @@ public class PlanService : IPlanService
 
         return _mapper.Map<SuscripcionNegocioDto>(suscripcion);
     }
+
     private async Task<SuscripcionNegocio?> ObtenerSuscripcionActiva(Guid? negocioId)
     {
-        var suscripcion = await _context.SuscripcionesNegocio
-            .Include(s => s.PlanSuscripcion)
-            .OrderByDescending(s => s.FechaVencimiento).FirstOrDefaultAsync(s => s.NegocioId == negocioId && s.FechaVencimiento >= DateTime.UtcNow.AddDays(-7));
+        if (negocioId == null) return null;
 
-        return suscripcion;
+        var ultimaSuscripcion = await _context.SuscripcionesNegocio
+            .Include(s => s.PlanSuscripcion)
+            .OrderByDescending(s => s.FechaVencimiento)
+            .FirstOrDefaultAsync(s => s.NegocioId == negocioId);
+
+        if (ultimaSuscripcion == null) return null;
+
+        bool tienePermisosOperativos = ultimaSuscripcion.EsSuscripcionActiva || ultimaSuscripcion.EsPeriodoDeGracia;
+
+        if (!tienePermisosOperativos)
+        {
+            return null;
+        }
+
+        return ultimaSuscripcion;
     }
 }
