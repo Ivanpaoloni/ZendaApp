@@ -190,21 +190,41 @@
                         </div>
                     </div>
                 }
-                @* 💳 BANNER DE PERÍODO DE GRACIA (Soft Block) *@
-                @if (showPaymentWarning)
+                @* BANNER DE BLOQUEO POR DEUDA (Rojo) *@
+                @if (isBloqueadoPorDeuda)
+                {
+                    <div class="bg-red-50 border-b border-red-200 px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm shrink-0 animate-in slide-in-from-top-2">
+                        <div class="flex items-center gap-3 text-red-800 text-xs font-medium">
+                            <span class="material-symbols-outlined text-[20px]">error</span>
+                            <span>
+                                <strong>Acceso Suspendido.</strong> Tu suscripción y período de gracia han expirado. Por favor, regulariza tu pago para reactivar tu agenda y el acceso al sistema.
+                            </span>
+                        </div>
+
+                        <div class="flex items-center mt-2 sm:mt-0 shrink-0">
+                            <NavLink href="configuracion?tab=facturacion" class="flex items-center gap-1 bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-sm">
+                                <span class="material-symbols-outlined text-[14px]">payment</span>
+                                Pagar Ahora
+                            </NavLink>
+                        </div>
+                    </div>
+                }
+
+                @* BANNER DE PERÍODO DE GRACIA (Ámbar) *@
+                @if (isPeriodoGracia)
                 {
                     <div class="bg-amber-50 border-b border-amber-200 px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-sm shrink-0 animate-in slide-in-from-top-2">
                         <div class="flex items-center gap-3 text-amber-800 text-xs font-medium">
                             <span class="material-symbols-outlined text-[20px]">warning</span>
                             <span>
-                                Tu suscripción venció y estás en <strong>Período de Gracia</strong>. Renová tu plan hoy para evitar la interrupción del servicio y el bloqueo de tu agenda.
+                                Estás en <strong>Período de Gracia</strong>. Te quedan @diasRestantesGracia días. Renová tu plan para evitar la interrupción del servicio.
                             </span>
                         </div>
 
                         <div class="flex items-center mt-2 sm:mt-0 shrink-0">
                             <NavLink href="configuracion?tab=facturacion" class="flex items-center gap-1 bg-amber-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-sm">
                                 <span class="material-symbols-outlined text-[14px]">credit_card</span>
-                                Pagar Renovación
+                                Renovar
                             </NavLink>
                         </div>
                     </div>
@@ -372,6 +392,10 @@
     private bool showPaymentWarning = false;
     private int diasRestantes = 0;
     private DateTime fechaVencimiento;
+    private bool isPlanActivo = false;
+    private bool isPeriodoGracia = false;
+    private bool isBloqueadoPorDeuda = false;
+    private int diasRestantesGracia = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -410,27 +434,31 @@
                     try
                     {
                         var negocio = await NegocioService.GetPerfilAsync();
-                        
                         if (negocio != null)
                         {
                             State.CurrentNegocio = negocio;
 
-                            showPaymentWarning = negocio.EsPeriodoDeGracia;
-                            fechaVencimiento = negocio.PlanSuscripcionFechaVencimiento;
+                            // Extraemos las banderas de negocio de forma limpia
+                            isPlanActivo = negocio.EsSuscripcionActiva;
+                            isPeriodoGracia = negocio.EsPeriodoDeGracia;
 
-                            if (showPaymentWarning)
+                            // Definimos la lógica de negocio para la UI
+                            if (isPeriodoGracia)
                             {
-                                diasRestantes = (fechaVencimiento.AddDays(7) - DateTime.Today).Days;
+                                diasRestantesGracia = (negocio.PlanSuscripcionFechaVencimiento.AddDays(7) - DateTime.Today).Days;
                             }
-                        }
 
-                        if (State.CurrentNegocio == null)
-                        {
-                            await ForzarCierreSesion();
-                            return;
-                        }
+                            // Si NO está activo y NO está en gracia = BLOQUEO
+                            isBloqueadoPorDeuda = !isPlanActivo && !isPeriodoGracia;
 
-                        State.NotifyStateChanged();
+                            if (State.CurrentNegocio == null)
+                            {
+                                await ForzarCierreSesion();
+                                return;
+                            }
+
+                            State.NotifyStateChanged();
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -459,12 +487,16 @@
         if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
         {
             Nav.NavigateTo("/login", forceLoad: true);
+            return;
         }
 
-        if (State.CurrentNegocio != null && !State.CurrentNegocio.EsSuscripcionActiva && !State.CurrentNegocio.EsPeriodoDeGracia)
+        if (State.CurrentNegocio != null)
         {
-            if (!e.Location.Contains("configuracion", StringComparison.OrdinalIgnoreCase))
+            bool bloqueado = !State.CurrentNegocio.EsSuscripcionActiva && !State.CurrentNegocio.EsPeriodoDeGracia;
+
+            if (bloqueado && !e.Location.Contains("configuracion", StringComparison.OrdinalIgnoreCase))
             {
+                // Si intenta ir a otro lado, lo forzamos de vuelta a facturación
                 Nav.NavigateTo("/configuracion?tab=facturacion");
             }
         }
