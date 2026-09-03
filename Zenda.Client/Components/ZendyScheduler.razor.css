@@ -85,9 +85,18 @@
     width: 100%;
     max-height: 70vh;
     overflow-y: auto;
-    overflow-x: auto;
+    /* FIX: overflow-x: auto en vista diaria mostraba scrollbar horizontal
+       innecesaria por 1-2px de desborde del border/padding del grid.
+       Usamos hidden por defecto y lo sobreescribimos solo para .vista-semanal
+       que sí necesita scroll horizontal en pantallas angostas. */
+    overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--border-grid) transparent;
+}
+
+/* Semanal: restaurar scroll horizontal (7 columnas no entran en mobile) */
+.scheduler-scroll-area:has(.vista-semanal) {
+    overflow-x: auto;
 }
 
 /* FIX: box-sizing: border-box agregado. Sin esto, el border de 1px se sumaba
