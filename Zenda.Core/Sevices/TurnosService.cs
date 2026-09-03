@@ -48,15 +48,17 @@ public class TurnosService : ITurnosService
     {
         var respuesta = new DisponibilidadFechaDto { Fecha = fecha.Date };
 
-        // 1. Buscamos prestadores de esta sede que brinden el servicio seleccionado
+        // 1. CORRECCIÓN DEL BUG: Filtrar explícitamente prestadores activos y no eliminados
         var queryPrestadores = _context.Prestadores
             .IgnoreQueryFilters()
             .Include(p => p.Sede)
             .Include(p => p.Negocio)
-            .Where(p => p.SedeId == sedeId && p.Servicios.Any(s => s.Id == servicioId));
+            .Where(p => p.SedeId == sedeId &&
+                        !p.IsDeleted && // Asegura que no sea un borrado lógico (si aplica en tu entidad)
+                        p.Servicios.Any(s => s.Id == servicioId));
 
-        // Si pasaron un ID específico, filtramos solo a ese
-        if (prestadorId.HasValue) queryPrestadores = queryPrestadores.Where(p => p.Id == prestadorId.Value);
+        if (prestadorId.HasValue)
+            queryPrestadores = queryPrestadores.Where(p => p.Id == prestadorId.Value);
 
         var prestadores = await queryPrestadores.ToListAsync();
         if (prestadores.Count < 1) return respuesta;
@@ -74,7 +76,7 @@ public class TurnosService : ITurnosService
         var horaMinimaPermitida = TimeOnly.FromDateTime(barreraAnticipacion);
         bool aplicaBarreraHoy = fecha.Date == barreraAnticipacion.Date;
 
-        int duracionServicio = 30; // Fallback
+        int duracionServicio = 30;
         var servicio = await _context.Servicios.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == servicioId);
         if (servicio != null && servicio.DuracionMinutos > 0) duracionServicio = servicio.DuracionMinutos;
 
@@ -84,24 +86,41 @@ public class TurnosService : ITurnosService
         var finDiaUtc = TimeZoneInfo.ConvertTimeToUtc(finDiaLocal, zonaSede);
         int diaBuscado = (int)fecha.DayOfWeek;
 
-        // Diccionario temporal para guardar Hora -> Prestador (Si 2 prestadores tienen la 10:30, gana el primero que la ofrezca)
+        // 2. OPTIMIZACIÓN N+1: Extraer IDs y traer toda la data de la sede en 3 consultas únicas
+        var prestadoresIds = prestadores.Select(p => p.Id).ToList();
+
+        var configuracionesSede = await _context.Disponibilidad
+            .IgnoreQueryFilters()
+            .Where(d => prestadoresIds.Contains(d.PrestadorId) && d.DiaSemana == diaBuscado)
+            .ToListAsync();
+
+        var turnosOcupadosSede = await _context.Turnos
+            .IgnoreQueryFilters()
+            .Where(t => prestadoresIds.Contains(t.PrestadorId) &&
+                        t.FechaHoraInicioUtc >= inicioDiaUtc &&
+                        t.FechaHoraInicioUtc < finDiaUtc &&
+                        t.Estado != EstadoTurnoEnum.Cancelado)
+            .Select(t => new { t.PrestadorId, t.FechaHoraInicioUtc, t.FechaHoraFinUtc })
+            .ToListAsync();
+
+        var bloqueosSede = await _context.BloqueosAgenda
+            .IgnoreQueryFilters()
+            .Where(b => prestadoresIds.Contains(b.PrestadorId) &&
+                        b.InicioUtc < finDiaUtc &&
+                        b.FinUtc > inicioDiaUtc)
+            .ToListAsync();
+
         var turnosConsolidados = new Dictionary<string, Guid>();
 
+        // 3. Procesamiento seguro en memoria
         foreach (var prestador in prestadores)
         {
             int intervaloGrillaMinutos = prestador.Negocio!.IntervaloTurnosMinutos > 0 ? prestador.Negocio.IntervaloTurnosMinutos : 30;
 
-            var configuracion = await _context.Disponibilidad
-                .IgnoreQueryFilters().Where(d => d.PrestadorId == prestador.Id && d.DiaSemana == diaBuscado).OrderBy(d => d.HoraInicio).ToListAsync();
-
-            var turnosOcupados = await _context.Turnos
-                .IgnoreQueryFilters()
-                .Where(t => t.PrestadorId == prestador.Id && t.FechaHoraInicioUtc >= inicioDiaUtc && t.FechaHoraInicioUtc < finDiaUtc && t.Estado != EstadoTurnoEnum.Cancelado)
-                .Select(t => new { t.FechaHoraInicioUtc, t.FechaHoraFinUtc }).ToListAsync();
-
-            var bloqueos = await _context.BloqueosAgenda
-                .IgnoreQueryFilters()
-                .Where(b => b.PrestadorId == prestador.Id && b.InicioUtc < finDiaUtc && b.FinUtc > inicioDiaUtc).ToListAsync();
+            // Filtrar datos en memoria para este prestador específico
+            var configuracion = configuracionesSede.Where(c => c.PrestadorId == prestador.Id).OrderBy(c => c.HoraInicio);
+            var turnosOcupados = turnosOcupadosSede.Where(t => t.PrestadorId == prestador.Id).ToList();
+            var bloqueos = bloqueosSede.Where(b => b.PrestadorId == prestador.Id).ToList();
 
             foreach (var rango in configuracion)
             {
@@ -120,7 +139,6 @@ public class TurnosService : ITurnosService
 
                     if (!estaOcupado && !estaBloqueado && !muyPronto)
                     {
-                        // Lo agregamos si nadie más cubrió esta hora aún
                         turnosConsolidados.TryAdd(inicioSlot.ToString("HH:mm"), prestador.Id);
                     }
                     inicioSlot = inicioSlot.AddMinutes(intervaloGrillaMinutos);
@@ -135,6 +153,7 @@ public class TurnosService : ITurnosService
 
         return respuesta;
     }
+
     public async Task<TurnoReadDto> ReservarTurnoAsync(TurnoCreateDto dto)
     {
         // 1. OBTENER IDENTIDAD DEL TENANT PRIMERO:

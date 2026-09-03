@@ -101,7 +101,7 @@
                 }
             </button>
 
-            <button @onclick="() => mostrarDrawerTurno = true"
+            <button @onclick="AbrirNuevoTurnoManualmente"
                     class="px-4 py-2 bg-primary text-white rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2 shadow-sm shrink-0 h-9">
                 <span class="material-symbols-outlined text-[18px]">add</span>
                 <span class="hidden sm:inline text-sm">Nuevo</span>
@@ -291,7 +291,8 @@
                     <Zenda.Client.Components.ZendyScheduler Turnos="TurnosPlanosFiltrados"
                                                             @bind-FechaBase="fechaFiltro"
                                                             TimeZoneId="@ObtenerTimeZoneActual()"
-                                                            OnTurnoSeleccionado="OnTurnoSeleccionadoDesdeCalendario" />
+                                                            OnTurnoSeleccionado="OnTurnoSeleccionadoDesdeCalendario"
+                                                            OnSlotVacioSeleccionado="IniciarCreacionTurnoEnSlot" />
                 </div>
             </div>
         }
@@ -443,4 +444,8 @@
     </div>
 }
 
-<NuevoTurnoAdminDrawer @bind-Visible="mostrarDrawerTurno" OnTurnoGuardado="() => CargarTurnosDesdeCero()"></NuevoTurnoAdminDrawer>
+<NuevoTurnoAdminDrawer @bind-Visible="mostrarDrawerTurno"
+                       FechaInicial="fechaPrecargadaDrawer"
+                       HoraInicial="horaPrecargadaDrawer"
+                       OnTurnoGuardado="() => CargarTurnosDesdeCero()">
+</NuevoTurnoAdminDrawer>

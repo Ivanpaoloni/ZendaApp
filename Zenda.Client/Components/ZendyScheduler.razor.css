@@ -1,8 +1,8 @@
-﻿:root {
+:root {
     --bg-color: #ffffff;
     --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
-    --border-soft: #E5E7EB; /* Gris muy claro para bordes de botones/tarjetas */
-    --border-grid: #D1D5DB; /* CORRECCIÓN 1: Gris más oscuro para trazar la grilla */
+    --border-soft: #E5E7EB;
+    --border-grid: #D1D5DB;
 }
 
 .zendy-scheduler-container {
@@ -80,39 +80,100 @@
         background: #F3F4F6;
     }
 
+/* Contenedor con scroll vertical acotado */
 .scheduler-scroll-area {
     width: 100%;
+    max-height: 70vh;
+    overflow-y: auto;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-grid) transparent;
 }
 
-/* ============================================================== */
-/* NUEVA RESOLUCIÓN: 1 MINUTO = 1 PX DE ALTURA                    */
-/* ============================================================== */
+/* FIX: box-sizing: border-box agregado. Sin esto, el border de 1px se sumaba
+   POR FUERA del 100%/min-width del grid, y esos 2px de más alcanzaban para
+   disparar una scrollbar horizontal innecesaria incluso en vista Diaria. */
 .scheduler-grid {
     display: grid;
-    grid-auto-rows: 1px;
-    row-gap: 0px;
-    column-gap: 0px;
     position: relative;
     background: white;
-    padding: 0.5rem 0;
     border-radius: 12px;
     box-shadow: var(--card-shadow);
     border: 1px solid var(--border-soft);
+    box-sizing: border-box;
 }
 
 .vista-diaria {
     grid-template-columns: 50px 1fr;
-    grid-template-rows: 35px repeat(1440, 1px); /* Aumentado a 35px para cabeceras altas */
+    grid-template-rows: 40px 1440px;
     min-width: 100%;
+    box-sizing: border-box;
 }
 
+/* FIX: se restaura un min-width razonable. La versión anterior tenía
+   min-width: 100%, lo que forzaba a comprimir 7 columnas dentro del ancho
+   disponible sin importar cuán angosto fuera — en mobile terminaban
+   ilegibles. Con un mínimo fijo, si no entra, aparece scroll horizontal
+   (correcto y esperado en vista semanal angosta) en vez de aplastar el
+   contenido. La vista Diaria (default en mobile) sigue sin necesitar scroll. */
 .vista-semanal {
     grid-template-columns: 50px repeat(7, 1fr);
-    grid-template-rows: 35px repeat(1440, 1px);
-    min-width: 800px;
+    grid-template-rows: 40px 1440px;
+    min-width: 700px;
+    box-sizing: border-box;
+}
+
+/* FIX: había un typo "grid-row: 1;she" que rompía la declaración siguiente */
+.day-header {
+    grid-row: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #4B5563;
+    border-bottom: 1px solid var(--border-grid);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    z-index: 10;
+    background: white;
+    position: sticky;
+    top: 0;
+}
+
+    .day-header:not(:first-child) {
+        border-left: 1px solid var(--border-grid);
+    }
+
+    .day-header.today {
+        color: #10B981;
+    }
+
+.date-num {
+    font-size: 0.65rem;
+    opacity: 0.7;
+}
+
+.day-column-separator {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+    .day-column-separator:not(:first-child) {
+        border-left: 1px solid var(--border-grid);
+    }
+
+.bg-today {
+    background-color: rgba(16, 185, 129, 0.05);
+}
+
+/* Líneas horizontales de tiempo posicionales */
+.time-label-row {
+    position: absolute;
+    width: 100%;
+    border-top: 1px solid var(--border-grid);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .time-text {
@@ -127,144 +188,185 @@
     background: white;
 }
 
-/* ============================================================== */
-/* TARJETAS DE TURNOS (COMPORTAMIENTO)                            */
-/* ============================================================== */
+/* Crear turnos en slots vacíos */
+.slot-vacio {
+    position: absolute;
+    width: 100%;
+    height: 30px;
+    cursor: pointer;
+    z-index: 5;
+}
+
+    .slot-vacio:hover {
+        background-color: rgba(0,0,0,0.04);
+    }
+
+/* Turnos con posicionamiento absoluto (ahora correctamente acotados a su columna
+   porque el markup siempre manda "grid-column: inicio / fin" — ver .razor) */
 .turno-card {
+    position: absolute;
+    grid-row: 2 / -1;
     border-radius: 4px;
-    padding: 0 4px;
-    margin: 0 4px;
+    padding: 2px 5px;
+    margin: 0 1px;
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-    overflow: hidden;
-    z-index: 10;
-    pointer-events: auto;
-    transition: filter 0.1s ease;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0px;
     box-sizing: border-box;
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+    min-height: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 20;
 }
 
     .turno-card:hover {
-        filter: brightness(1.1);
-        cursor: pointer;
-        z-index: 20;
+        filter: brightness(0.97);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        z-index: 50;
     }
 
-/* Reglas de contracción (Flex-Shrink) */
+/* FIX: turnos cortos (< 40 min, ver EsCompacto en el code-behind) — una sola
+   línea horizontal en vez de apilar hora/cliente/profesional en columna.
+   Eso es lo que se recortaba/ilegible en turnos de 15 min. */
+.turno-card.turno-compacto {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+    .turno-card.turno-compacto .turno-client {
+        flex: 1;
+    }
+
 .turno-time {
-    font-size: 0.6rem;
+    font-size: 0.62rem;
     font-weight: 800;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 .turno-client {
-    font-size: 0.65rem;
-    font-weight: 900;
+    font-size: 0.66rem;
+    font-weight: 700;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    flex-shrink: 1;
 }
 
 .turno-prof {
-    font-size: 0.55rem;
+    font-size: 0.58rem;
     font-weight: 600;
-    opacity: 0.85;
+    opacity: 0.8;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    flex-shrink: 2;
 }
 
-/* ============================================================== */
-/* ESTADOS VISUALES (COLORES SÓLIDOS Y TEXTO BLANCO)              */
-/* ============================================================== */
+.empty-state-msg {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    text-align: center;
+    padding-top: 2rem;
+    color: #6B7280;
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 2;
+    pointer-events: none;
+}
 
-.turno-card.estado-pendiente *,
-.turno-card.estado-confirmado *,
-.turno-card.estado-completado *,
-.turno-card.estado-cancelado *,
-.turno-card.estado-reprogramado * {
-    color: #ffffff !important;
+/* ==================================================================
+   FIX: paleta de estados. Antes era bloque de color sólido + texto
+   blanco — con fuente de 9-10px el contraste ronda 3:1 (por debajo de
+   lo recomendable) y se ve "pesado" cuando hay muchos turnos juntos.
+   Ahora: fondo pastel + texto oscuro del mismo tono + borde de acento
+   más saturado. El texto oscuro sobre claro renderiza más nítido en
+   fuentes chicas, y visualmente es más liviano en una semana llena.
+   ================================================================== */
+.turno-card.estado-pendiente,
+.turno-card.estado-confirmado,
+.turno-card.estado-completado,
+.turno-card.estado-cancelado,
+.turno-card.estado-reprogramado {
+    border-left: 3px solid transparent;
 }
 
 .estado-pendiente {
-    border-left: 3px solid #d97706;
-    background-color: #f59e0b;
+    background-color: #FEF3C7; /* amber-100 */
+    border-left-color: #D97706; /* amber-600 */
+    color: #78350F; /* amber-900 */
 }
 
 .estado-confirmado {
-    border-left: 3px solid #2563eb;
-    background-color: #3b82f6;
+    background-color: #DBEAFE; /* blue-100 */
+    border-left-color: #2563EB; /* blue-600 */
+    color: #1E3A8A; /* blue-900 */
 }
 
 .estado-completado {
-    border-left: 3px solid #059669;
-    background-color: #10b981;
+    background-color: #D1FAE5; /* emerald-100 */
+    border-left-color: #059669; /* emerald-600 */
+    color: #065F46; /* emerald-900 */
 }
 
 .estado-cancelado {
-    border-left: 3px solid #dc2626;
-    background-color: #ef4444;
+    background-color: #FEE2E2; /* red-100 */
+    border-left-color: #DC2626; /* red-600 */
+    color: #7F1D1D; /* red-900 */
     text-decoration: line-through;
-    opacity: 0.85;
+    opacity: 0.8;
 }
 
 .estado-reprogramado {
-    border-left: 3px solid #4f46e5;
-    background-color: #6366f1;
+    background-color: #E0E7FF; /* indigo-100 */
+    border-left-color: #4F46E5; /* indigo-600 */
+    color: #312E81; /* indigo-900 */
 }
 
 .estado-ausente {
-    border-left: 3px solid #4b5563;
-    background-color: #6b7280;
+    background-color: #F3F4F6; /* gray-100 */
+    border-left-color: #4B5563; /* gray-600 */
+    color: #1F2937; /* gray-800 */
 }
 
-    .estado-ausente * {
-        color: #ffffff !important;
-    }
+.turno-card.turno-compacto .turno-prof {
+    opacity: 0.75;
+}
 
-/* ============================================================== */
-/* SEPARADORES VERTICALES Y DÍA ACTUAL                            */
-/* ============================================================== */
-.day-column-separator {
-    border-left: 1px solid var(--border-grid); /* CORRECCIÓN 2: Usar variable de grilla */
+/* Línea Transversal de Hora Actual (ahora acotada a la columna de hoy, ver .razor) */
+.linea-hora-actual {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background-color: #ef4444;
+    z-index: 40;
     pointer-events: none;
-    z-index: 0;
 }
 
-/* Cabeceras de los días */
-.day-header {
-    grid-row: 1;
-    text-align: center;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #4B5563;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border-grid);
-    border-left: 1px solid transparent;
+.circulo-hora {
+    width: 8px;
+    height: 8px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    position: absolute;
+    left: -4px;
+    top: -3px;
 }
 
-    /* Línea izquierda en las cabeceras (para que coincida con la columna) */
-    .day-header:not(:first-child) {
-        border-left: 1px solid var(--border-grid);
-    }
-
-/* Trazado de las horas horizontales en el fondo */
-.time-label-row {
-    grid-column: 1 / -1;
-    border-top: 1px solid var(--border-grid);
-    pointer-events: none;
-    z-index: 1;
+/* UI Clean para WebKit (Chrome, Edge, Safari) */
+.scheduler-scroll-area::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
 }
 
-.day-header.today {
-    color: #10B981; /* CORRECCIÓN 3: Reemplazo por HEX ya que borramos la variable */
-    background-color: rgba(16, 185, 129, 0.05);
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+.scheduler-scroll-area::-webkit-scrollbar-thumb {
+    background-color: var(--border-grid);
+    border-radius: 10px;
+}
+
+.scheduler-scroll-area::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 @media (max-width: 768px) {

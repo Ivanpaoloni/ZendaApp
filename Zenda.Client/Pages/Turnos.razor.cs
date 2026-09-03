@@ -14,7 +14,7 @@ namespace Zenda.Client.Pages
         [Inject] private NegocioClient _negocioService { get; set; } = default!;
         [Inject] private AppState State { get; set; } = default!;
         [Inject] private TurnoClient TurnoService { get; set; } = default!;
-        [Inject] private SedeClient SedeService { get; set; } = default!; // INYECTAMOS SEDE CLIENT
+        [Inject] private SedeClient SedeService { get; set; } = default!;
         [Inject] public IJSRuntime JS { get; set; } = default!;
 
         // Estado Core
@@ -24,7 +24,7 @@ namespace Zenda.Client.Pages
 
         // Memoria caché local
         protected List<TurnoReadDto> turnosDelPeriodo = new();
-        protected List<SedeReadDto> sedesCompletas = new(); // ALMACENA LAS SEDES CON SU TIMEZONE
+        protected List<SedeReadDto> sedesCompletas = new();
 
         // Controladores de UI
         protected string modoVista = "Lista";
@@ -37,7 +37,7 @@ namespace Zenda.Client.Pages
         protected string sedeFiltro = "";
         protected string servicioFiltro = "";
 
-        // Opciones Dropdown
+        // Opciones Combos Desplegables
         protected List<string> listaProfesionalesDropdown = new();
         protected List<string> listaSedesDropdown = new();
         protected List<string> listaServiciosDropdown = new();
@@ -55,6 +55,10 @@ namespace Zenda.Client.Pages
         protected bool exportando = false;
         protected bool mostrarModalDetalle = false;
         protected TurnoReadDto? turnoSeleccionado;
+
+        // Scheduler
+        protected DateTime? fechaPrecargadaDrawer;
+        protected TimeSpan? horaPrecargadaDrawer;
 
         protected int CantidadFiltrosActivos =>
             (!string.IsNullOrWhiteSpace(busquedaCliente) ? 1 : 0) +
@@ -374,6 +378,21 @@ namespace Zenda.Client.Pages
             {
                 exportando = false;
             }
+        }
+
+        //Metodos para calendario
+        protected void AbrirNuevoTurnoManualmente()
+        {
+            fechaPrecargadaDrawer = null;
+            horaPrecargadaDrawer = null;
+            mostrarDrawerTurno = true;
+        }
+
+        protected void IniciarCreacionTurnoEnSlot((DateTime Fecha, TimeSpan Hora) args)
+        {
+            fechaPrecargadaDrawer = args.Fecha;
+            horaPrecargadaDrawer = args.Hora;
+            mostrarDrawerTurno = true;
         }
     }
 }

@@ -4,7 +4,7 @@ using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
 
-namespace Zenda.Application.Services; // Asegurate de que el namespace coincida con el tuyo
+namespace Zenda.Application.Services;
 
 public class DisponibilidadService : IDisponibilidadService
 {

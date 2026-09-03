@@ -168,6 +168,8 @@
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     [Parameter] public EventCallback OnTurnoGuardado { get; set; }
+    [Parameter] public DateTime? FechaInicial { get; set; }
+    [Parameter] public TimeSpan? HoraInicial { get; set; }
 
     private TurnoAdminCreateDto dto = new();
     private bool cargandoCatalogos = true;
@@ -195,6 +197,21 @@
     private DateTime fechaSeleccionada = DateTime.Today;
     private TimeOnly horaSeleccionada = TimeOnly.FromDateTime(DateTime.Now);
 
+    // Interceptar los parámetros para hidratar el formulario
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (FechaInicial.HasValue)
+        {
+            fechaSeleccionada = FechaInicial.Value;
+        }
+
+        if (HoraInicial.HasValue)
+        {
+            horaSeleccionada = TimeOnly.FromTimeSpan(HoraInicial.Value);
+        }
+    }
     protected override async Task OnParametersSetAsync()
     {
         if (Visible && !clientesDb.Any())
