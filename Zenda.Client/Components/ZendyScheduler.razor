@@ -67,7 +67,7 @@
                 @* FIX: antes "grid-column: @CalcularColumna(now)" sin línea de cierre,
                    por lo que la línea roja se estiraba hasta el borde derecho de toda
                    la grilla en vez de quedar acotada al día de hoy. *@
-                <div class="linea-hora-actual" style="top: @(topMinutos)px; grid-column: @GridColumnaAcotada(CalcularColumna(now));">
+                <div id="linea-hora-actual" class="linea-hora-actual" style="top: @(topMinutos)px; grid-column: @GridColumnaAcotada(CalcularColumna(now));">
                     <div class="circulo-hora"></div>
                 </div>
             }
