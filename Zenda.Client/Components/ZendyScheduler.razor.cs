@@ -82,12 +82,36 @@ namespace Zenda.Client.Components
         {
             try
             {
-                await JS.InvokeVoidAsync("zendyUI.scrollToTime", "calendar-scroll-container", 8);
-                await JS.InvokeVoidAsync("zendyUI.scrollToElement", "columna-hoy");
+                // Pequeño delay para asegurar que el DOM ya renderizó la línea roja
+                await Task.Delay(80);
+                await JS.InvokeVoidAsync("eval", @"
+                    (function() {
+                        var contenedor = document.getElementById('calendar-scroll-container');
+                        if (!contenedor) return;
+
+                        // 1. Scroll vertical: centrar la línea de hora actual.
+                        //    Si no existe (día sin línea roja, ej. semana futura),
+                        //    hacer scroll a las 8am como fallback (480px = 8 * 60px/h).
+                        var lineaRoja = document.getElementById('linea-hora-actual');
+                        if (lineaRoja) {
+                            var offsetTop = lineaRoja.offsetTop;
+                            var mitadContenedor = contenedor.clientHeight / 2;
+                            contenedor.scrollTop = offsetTop - mitadContenedor;
+                        } else {
+                            contenedor.scrollTop = 480; // 8am fallback
+                        }
+
+                        // 2. Scroll horizontal: centrar la columna de hoy (solo semanal).
+                        var colHoy = document.getElementById('columna-hoy');
+                        if (colHoy) {
+                            colHoy.scrollIntoView({ inline: 'center', block: 'nearest' });
+                        }
+                    })();
+                ");
             }
             catch
             {
-                // Ignorar si zendyUI todavía no está cargado o estamos en prerender
+                // Ignorar durante prerender o si el DOM aún no está listo
             }
         }
 
