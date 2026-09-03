@@ -305,9 +305,9 @@
 }
 
 .estado-completado {
-    background-color: #D1FAE5; /* emerald-100 */
-    border-left-color: #059669; /* emerald-600 */
-    color: #065F46; /* emerald-900 */
+    background-color: #10b981; /* emerald-500: contraste suficiente con blanco */
+    border-left-color: #047857; /* emerald-700 */
+    color: #ffffff;
 }
 
 .estado-cancelado {
