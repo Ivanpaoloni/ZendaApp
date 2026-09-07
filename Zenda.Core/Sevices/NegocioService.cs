@@ -102,68 +102,67 @@ public class NegocioService : INegocioService
         return _mapper.Map<NegocioReadDto>(negocio);
     }
 
-   public async Task<NegocioReadDto> CreateAsync(NegocioCreateDto dto)
-{
-    // 1. Obtener el plan inicial predeterminado para onboarding (Single o Gratuito)
-    var planInicial = await _context.PlanesSuscripcion
-        .FirstOrDefaultAsync(p => p.Nombre == "Single" || p.PrecioMensual == 0)
-        ?? throw new InvalidOperationException("No se encontró un plan inicial activo configurado en el sistema.");
-
-    using var transaction = await _context.Database.BeginTransactionAsync();
-    try
+    public async Task<NegocioReadDto> CreateAsync(NegocioCreateDto dto)
     {
-        // 2. Mapear y persistir el Negocio
-        var negocio = _mapper.Map<Negocio>(dto);
-        negocio.Id = Guid.CreateVersion7();
-        negocio.Slug = dto.Slug.ToLower().Replace(" ", "-").Trim();
-        negocio.CreatedAtUtc = DateTime.UtcNow;
-        negocio.IsActive = true;
+        var planInicial = await _context.PlanesSuscripcion
+            .FirstOrDefaultAsync(p => p.Nombre == "Single" || p.PrecioMensual == 0)
+            ?? throw new InvalidOperationException("No se encontró un plan inicial activo configurado en el sistema.");
 
-        _context.Negocios.Add(negocio);
-        await _context.SaveChangesAsync();
+        // VALIDACIÓN ARQUITECTÓNICA: ¿Existe ya una transacción gestionada por un Application Service superior (ej. AuthService)?
+        var isOwnTransaction = _context.Database.CurrentTransaction == null;
+        var transaction = isOwnTransaction ? await _context.Database.BeginTransactionAsync() : null;
 
-        // 3. Crear la Suscripción Inicial (Trial o Plan $0)
-        // Si el plan es de costo $0 se otorga un año nominal; si es pago se otorgan días de prueba (ej. 14 días)
-        var esGratuito = planInicial.PrecioMensual == 0;
-        var fechaInicio = DateTime.UtcNow;
-        var fechaVencimiento = esGratuito ? fechaInicio.AddYears(1) : fechaInicio.AddDays(14);
-
-        var suscripcionInicial = new SuscripcionNegocio
+        try
         {
-            Id = Guid.CreateVersion7(),
-            NegocioId = negocio.Id,
-            PlanSuscripcionId = planInicial.Id,
-            Estado = EstadoSuscripcionEnum.Activa,
-            FechaInicio = fechaInicio,
-            FechaVencimiento = fechaVencimiento,
-            CreatedAtUtc = fechaInicio,
-            PrecioMensualPersonalizado = esGratuito ? 0 : null
-        };
+            var negocio = _mapper.Map<Negocio>(dto);
+            negocio.Id = Guid.CreateVersion7();
+            negocio.Slug = dto.Slug.ToLower().Replace(" ", "-").Trim();
+            negocio.CreatedAtUtc = DateTime.UtcNow;
+            negocio.IsActive = true;
 
-        _context.SuscripcionesNegocio.Add(suscripcionInicial);
-        await _context.SaveChangesAsync();
+            _context.Negocios.Add(negocio);
+            await _context.SaveChangesAsync();
 
-        await transaction.CommitAsync();
+            var esGratuito = planInicial.PrecioMensual == 0;
+            var fechaInicio = DateTime.UtcNow;
+            var fechaVencimiento = esGratuito ? fechaInicio.AddYears(1) : fechaInicio.AddDays(14);
 
-        // 4. Retornar DTO mapeado
-        var resultDto = _mapper.Map<NegocioReadDto>(negocio);
-        resultDto.PlanNombre = planInicial.Nombre;
-        resultDto.PlanSuscripcionId = planInicial.Id;
-        resultDto.PlanSuscripcionPrecioMensual = planInicial.PrecioMensual;
-        resultDto.PlanSuscripcionFechaVencimiento = fechaVencimiento;
-        resultDto.MaxProfesionales = planInicial.MaxProfesionales;
-        resultDto.MaxSedes = planInicial.MaxSedes;
-        resultDto.EsSuscripcionActiva = true;
-        resultDto.EsPeriodoDeGracia = false;
+            var suscripcionInicial = new SuscripcionNegocio
+            {
+                Id = Guid.CreateVersion7(),
+                NegocioId = negocio.Id,
+                PlanSuscripcionId = planInicial.Id,
+                Estado = EstadoSuscripcionEnum.Activa,
+                FechaInicio = fechaInicio,
+                FechaVencimiento = fechaVencimiento,
+                CreatedAtUtc = fechaInicio,
+                PrecioMensualPersonalizado = esGratuito ? 0 : null
+            };
 
-        return resultDto;
+            _context.SuscripcionesNegocio.Add(suscripcionInicial);
+            await _context.SaveChangesAsync();
+
+            if (isOwnTransaction && transaction != null)
+            {
+                await transaction.CommitAsync();
+            }
+
+            var resultDto = _mapper.Map<NegocioReadDto>(negocio);
+            resultDto.PlanNombre = planInicial.Nombre;
+            resultDto.EsSuscripcionActiva = true;
+            resultDto.EsPeriodoDeGracia = false;
+
+            return resultDto;
+        }
+        catch
+        {
+            if (isOwnTransaction && transaction != null)
+            {
+                await transaction.RollbackAsync();
+            }
+            throw;
+        }
     }
-    catch
-    {
-        await transaction.RollbackAsync();
-        throw;
-    }
-}
 
     public async Task<bool> IsSlugAvailableAsync(string slug)
     {
