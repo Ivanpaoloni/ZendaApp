@@ -23,7 +23,9 @@ public class ClienteService : IClienteService
     public async Task<IEnumerable<ClienteReadDto>> GetAllAsync()
     {
         var negocioId = _tenantService.GetCurrentTenantId();
-        if (negocioId == null) return Enumerable.Empty<ClienteReadDto>();
+
+        if (negocioId == null) 
+            return Enumerable.Empty<ClienteReadDto>();
 
         var clientes = await _context.Clientes
             .AsNoTracking()
@@ -46,9 +48,10 @@ public class ClienteService : IClienteService
     public async Task<IEnumerable<TurnoReadDto>> GetHistorialTurnosAsync(Guid clienteId)
     {
         var negocioId = _tenantService.GetCurrentTenantId();
-        if (negocioId == null) return Enumerable.Empty<TurnoReadDto>();
 
-        // BARRERA DE SEGURIDAD: Verificamos que el cliente le pertenezca a este negocio
+        if (negocioId == null) 
+            return Enumerable.Empty<TurnoReadDto>();
+
         var clienteValido = await _context.Clientes
             .AnyAsync(c => c.Id == clienteId && c.NegocioId == negocioId);
 
@@ -69,15 +72,11 @@ public class ClienteService : IClienteService
 
     public async Task<byte[]> GenerarReporteExcelAsync()
     {
-        // 1. Obtenemos los clientes usando el método que ya tenés, 
-        // que además ya tiene la lógica de seguridad del Tenant.
         var clientes = await GetAllAsync();
 
-        // 2. Armamos el Excel en memoria
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Clientes");
 
-        // Estilos de la cabecera
         var headerRow = worksheet.Row(1);
         headerRow.Style.Font.Bold = true;
         headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -87,7 +86,6 @@ public class ClienteService : IClienteService
         worksheet.Cell(1, 3).Value = "Email";
         worksheet.Cell(1, 4).Value = "Total Reservas";
 
-        // Llenamos los datos
         var currentRow = 2;
         foreach (var cliente in clientes)
         {
@@ -100,7 +98,6 @@ public class ClienteService : IClienteService
 
         worksheet.Columns().AdjustToContents();
 
-        // 3. Convertimos a Stream y devolvemos los bytes
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();

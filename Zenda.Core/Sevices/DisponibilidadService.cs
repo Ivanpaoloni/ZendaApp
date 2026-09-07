@@ -32,22 +32,22 @@ public class DisponibilidadService : IDisponibilidadService
 
     public async Task<DisponibilidadReadDto> CreateAsync(DisponibilidadCreateDto dto)
     {
-        // 1. Validaciones de Negocio
         if (dto.HoraInicio >= dto.HoraFin)
             throw new ArgumentException("La hora de inicio debe ser menor a la hora de fin.");
 
         var prestador = await _context.Prestadores.AnyAsync(p => p.Id == dto.PrestadorId);
-        if (!prestador) throw new ArgumentException("El prestador no existe.");
 
-        // 2. Validación de Solapamiento (Overlap)
+        if (!prestador)
+            throw new ArgumentException("El prestador no existe.");
+
         bool haySolapamiento = await _context.Disponibilidad.AnyAsync(d =>
             d.PrestadorId == dto.PrestadorId &&
             d.DiaSemana == dto.DiaSemana &&
             dto.HoraInicio < d.HoraFin && d.HoraInicio < dto.HoraFin);
 
-        if (haySolapamiento) throw new ArgumentException("El horario se superpone con uno existente.");
+        if (haySolapamiento)
+            throw new ArgumentException("El horario se superpone con uno existente.");
 
-        // 3. Mapeo y Guardado
         var disponibilidad = _mapper.Map<Disponibilidad>(dto);
         disponibilidad.Id = Guid.CreateVersion7();
 
@@ -68,21 +68,21 @@ public class DisponibilidadService : IDisponibilidadService
 
     public async Task<bool> UpsertAgendaAsync(Guid prestadorId, IEnumerable<DisponibilidadCreateDto> agenda)
     {
-        // Verificamos existencia
         var existePrestador = await _context.Prestadores.AnyAsync(p => p.Id == prestadorId);
-        if (!existePrestador) return false;
 
-        // Limpieza de agenda anterior
+        if (!existePrestador)
+            return false;
+
         var actual = await _context.Disponibilidad
             .Where(d => d.PrestadorId == prestadorId)
             .ToListAsync();
 
         _context.Disponibilidad.RemoveRange(actual);
 
-        // Mapeo masivo e inserción
-        var nuevasDisponibilidades = agenda.Select(item => {
+        var nuevasDisponibilidades = agenda.Select(item =>
+        {
             var d = _mapper.Map<Disponibilidad>(item);
-            d.Id = Guid.CreateVersion7(); // Reemplacé NewGuid por CreateVersion7 para seguir tu estándar
+            d.Id = Guid.CreateVersion7();
             d.PrestadorId = prestadorId;
             return d;
         }).ToList();
@@ -92,17 +92,11 @@ public class DisponibilidadService : IDisponibilidadService
         return await _context.SaveChangesAsync() > 0;
     }
 
-    // ==========================================
-    // SECCIÓN DE BLOQUEOS (AUSENCIAS)
-    // ==========================================
-
     public async Task<bool> CrearBloqueoAsync(BloqueoCreateDto dto)
     {
-        // Validamos que el rango final (que ahora puede abarcar varios días) sea lógico
         if (dto.FinLocal <= dto.InicioLocal)
             throw new ArgumentException("La fecha/hora de fin debe ser posterior a la de inicio.");
 
-        // 1. Buscamos la sede para saber su zona horaria y convertir a UTC
         var prestador = await _context.Prestadores
             .Include(p => p.Sede)
             .FirstOrDefaultAsync(p => p.Id == dto.PrestadorId);
@@ -110,15 +104,10 @@ public class DisponibilidadService : IDisponibilidadService
         if (prestador == null || prestador.Sede == null)
             throw new ArgumentException("Prestador o Sede inválidos.");
 
-        // Obtenemos la zona horaria real (Ej: "Argentina Standard Time" o "America/Argentina/Buenos_Aires")
-        // Si por algún motivo está nula, usamos un fallback a UTC-3
-        string tzId = !string.IsNullOrEmpty(prestador.Sede.ZonaHorariaId)
-            ? prestador.Sede.ZonaHorariaId
-            : "Argentina Standard Time";
+        string tzId = !string.IsNullOrEmpty(prestador.Sede.ZonaHorariaId) ? prestador.Sede.ZonaHorariaId : "Argentina Standard Time";
 
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(tzId);
 
-        // Convertimos las fechas elegidas (que pueden abarcar 15 días) a UTC absoluto
         var inicioCrudo = DateTime.SpecifyKind(dto.InicioLocal, DateTimeKind.Unspecified);
         var finCrudo = DateTime.SpecifyKind(dto.FinLocal, DateTimeKind.Unspecified);
 
@@ -142,12 +131,13 @@ public class DisponibilidadService : IDisponibilidadService
     public async Task<IEnumerable<BloqueoReadDto>> GetBloqueosFuturosAsync(Guid prestadorId)
     {
         var prestador = await _context.Prestadores.Include(p => p.Sede).FirstOrDefaultAsync(p => p.Id == prestadorId);
-        if (prestador == null) return new List<BloqueoReadDto>();
+
+        if (prestador == null)
+            return new List<BloqueoReadDto>();
 
         string tzId = !string.IsNullOrEmpty(prestador.Sede?.ZonaHorariaId) ? prestador.Sede.ZonaHorariaId : "Argentina Standard Time";
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(tzId);
 
-        // Traemos todos los bloqueos que todavía no terminaron
         var bloqueos = await _context.BloqueosAgenda
             .Where(b => b.PrestadorId == prestadorId && b.FinUtc >= DateTime.UtcNow)
             .OrderBy(b => b.InicioUtc)
@@ -159,7 +149,6 @@ public class DisponibilidadService : IDisponibilidadService
             PrestadorId = b.PrestadorId,
             SedeId = b.SedeId,
             Motivo = b.Motivo,
-            // Convertimos la hora UTC de vuelta a la hora local para que la UI diga "Lunes 14:00"
             InicioLocal = TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede),
             FinLocal = TimeZoneInfo.ConvertTimeFromUtc(b.FinUtc, zonaSede)
         });
@@ -179,8 +168,6 @@ public class DisponibilidadService : IDisponibilidadService
         var negocioId = _tenantService.GetCurrentTenantId();
         var ahoraUtc = DateTime.UtcNow;
 
-        // 1. Consulta Rápida: Traemos los bloqueos activos de todos los prestadores del negocio
-        // Filtramos por FinUtc > ahoraUtc para no traer bloqueos viejos
         var bloqueosActivosDb = await _context.BloqueosAgenda
             .Include(b => b.Prestador)
             .ThenInclude(p => p.Sede)
@@ -189,9 +176,6 @@ public class DisponibilidadService : IDisponibilidadService
 
         var ausenciasHoy = new List<BloqueoReadDto>();
 
-        // 2. Filtro Preciso en Memoria (Zona Horaria)
-        // Por qué en memoria? Porque necesitamos la zona horaria específica de CADA sede 
-        // para saber si "Hoy localmente" se cruza con este bloqueo de varios días.
         foreach (var b in bloqueosActivosDb)
         {
             string tzId = !string.IsNullOrEmpty(b.Prestador.Sede?.ZonaHorariaId)
@@ -204,18 +188,15 @@ public class DisponibilidadService : IDisponibilidadService
             var inicioLocal = TimeZoneInfo.ConvertTimeFromUtc(b.InicioUtc, zonaSede);
             var finLocal = TimeZoneInfo.ConvertTimeFromUtc(b.FinUtc, zonaSede);
 
-            // Armamos el inicio del "Día de Hoy" a las 00:00 y fin a las 23:59:59 local
             var inicioDiaLocal = ahoraLocal.Date;
             var finDiaLocal = ahoraLocal.Date.AddDays(1);
 
-            // Fórmula maestra de superposición: (Empieza antes de que termine hoy) Y (Termina después de la hora actual)
             if (inicioLocal < finDiaLocal && finLocal > ahoraLocal)
             {
                 ausenciasHoy.Add(new BloqueoReadDto
                 {
                     Id = b.Id,
                     PrestadorId = b.PrestadorId,
-                    // Devolvemos el nombre para la UI del dashboard
                     Motivo = $"{b.Prestador.Nombre}: {b.Motivo}",
                     InicioLocal = inicioLocal,
                     FinLocal = finLocal

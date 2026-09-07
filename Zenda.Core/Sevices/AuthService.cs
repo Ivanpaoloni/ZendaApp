@@ -43,74 +43,59 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> RegisterOwnerAsync(RegisterOwnerDto dto)
     {
-        // 1. Verificamos si el usuario o el slug ya existen
         if (await _userManager.FindByEmailAsync(dto.Email) != null)
             return new AuthResponseDto { Success = false, Message = "El email ya está registrado." };
 
         if (await _context.Negocios.AnyAsync(n => n.Slug == dto.SlugNegocio))
             return new AuthResponseDto { Success = false, Message = "El slug del negocio ya está en uso." };
 
-        // 2. Usamos el helper transaccional desde la interfaz de nuestro DbContext
         return await _context.ExecuteInTransactionAsync(async () =>
         {
-            // 3. Crear el Negocio
             var nuevoNegocio = new Core.DTOs.NegocioCreateDto
             {
                 Nombre = dto.NombreNegocio,
                 Slug = dto.SlugNegocio,
-                RubroId = dto.RubroId,
-                PlanSuscripcionId = Guid.Parse("11111111-1111-1111-1111-111111111111") // Plan Gratis por defecto
+                RubroId = dto.RubroId
             };
+
             var creadoNegocio = await _negocioService.CreateAsync(nuevoNegocio);
 
-            await _context.SaveChangesAsync();
-
-            // 4. Crear el Usuario (Owner)
             var newUser = new ApplicationUser
             {
                 UserName = dto.Email,
                 Email = dto.Email,
                 Nombre = dto.Nombre,
                 Apellido = dto.Apellido,
-                NegocioId = creadoNegocio.Id // ¡Acá atamos el usuario al tenant!
+                NegocioId = creadoNegocio.Id
             };
 
             var result = await _userManager.CreateAsync(newUser, dto.Password);
 
-            if (result.Succeeded)
-            {
-                try
-                {
-                    // Generar token de Identity y codificarlo para URL
-                    var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
-                    var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
-
-                    var frontUrl = _config["FrontendUrl"]; // ej: https://localhost:5001 configurado en appsettings.json
-                    var confirmLink = $"{frontUrl}/confirmar-email?uid={newUser.Id}&t={encodedToken}";
-
-                    // Asegurate de que tu IEmailService reciba este nuevo parámetro 'confirmLink'
-                    await _emailService.EnviarBienvenidaRegistroAsync(newUser.Email, newUser.Nombre, nuevoNegocio.Nombre, confirmLink);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error enviando email de bienvenida: {ex.Message}");
-                }
-            }
-
             if (!result.Succeeded)
             {
-                // Solo retornamos el error. ¡El helper interceptará que Success es false y hará el Rollback por nosotros!
                 return new AuthResponseDto { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
             }
 
-            // 5. Crear el rol "Owner" si no existe y asignarlo
+            try
+            {
+                var emailToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailToken));
+                var frontUrl = _config["FrontendUrl"];
+                var confirmLink = $"{frontUrl}/confirmar-email?uid={newUser.Id}&t={encodedToken}";
+
+                await _emailService.EnviarBienvenidaRegistroAsync(newUser.Email, newUser.Nombre, nuevoNegocio.Nombre, confirmLink);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error enviando email de bienvenida: {ex.Message}");
+            }
+
             if (!await _roleManager.RoleExistsAsync("Owner"))
                 await _roleManager.CreateAsync(new IdentityRole("Owner"));
 
             await _userManager.AddToRoleAsync(newUser, "Owner");
 
-            // GENERAR TOKEN AUTOMÁTICAMENTE
-            var token = await GenerateJwtToken(newUser);
+            var token = await GenerateJwtToken(newUser, suscripcionVigente: true);
 
             return new AuthResponseDto
             {
@@ -119,7 +104,6 @@ public class AuthService : IAuthService
                 Token = token
             };
         },
-        // Le indicamos al helper qué propiedad debe revisar para decidir si hace Commit o Rollback
         result => result.Success);
     }
 

@@ -1,9 +1,5 @@
-﻿using DocumentFormat.OpenXml.Drawing;
-using DocumentFormat.OpenXml.Spreadsheet;
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using System.Net;
-using Zenda.Client.Pages;
-using Zenda.Client.Pages.Clientes;
 
 namespace Zenda.Client.Handlers;
 

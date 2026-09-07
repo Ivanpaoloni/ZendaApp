@@ -18,13 +18,16 @@ namespace Zenda.Core.Sevices
         public async Task<FacturacionDto?> GetResumenAsync()
         {
             var negocioId = _tenantService.GetCurrentTenantId();
-            if (negocioId == null) return null;
+
+            if (negocioId == null) 
+                return null;
 
             var negocio = await _context.Negocios
                 .Include(n => n.Sedes)
                 .FirstOrDefaultAsync(n => n.Id == negocioId);
 
-            if (negocio == null) return null;
+            if (negocio == null) 
+                return null;
 
             var suscripcion = await _context.SuscripcionesNegocio
                 .Include(s => s.PlanSuscripcion)
@@ -48,11 +51,9 @@ namespace Zenda.Core.Sevices
                 })
                 .ToListAsync();
 
-            // 🎯 Lógica de estados de vencimiento
             var fechaVencimiento = suscripcion?.FechaVencimiento ?? DateTime.UtcNow;
             var hoy = DateTime.UtcNow;
 
-            // Consideramos "próximo a vencer" si quedan 7 días o menos
             bool estaVencido = fechaVencimiento < hoy;
             bool proximoAVencer = estaVencido || (fechaVencimiento - hoy).TotalDays <= 7;
 

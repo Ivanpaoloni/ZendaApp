@@ -1,9 +1,5 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
@@ -46,7 +42,6 @@ namespace Zenda.Core.Services
         {
             var aviso = _mapper.Map<Aviso>(avisoDto);
 
-            // Por defecto, un aviso nuevo nace inactivo para poder revisarlo antes de publicarlo
             aviso.Activo = false;
 
             _context.Avisos.Add(aviso);
@@ -58,15 +53,16 @@ namespace Zenda.Core.Services
         public async Task<AvisoDto> UpdateAsync(Guid id, AvisoDto avisoDto)
         {
             var aviso = await _context.Avisos.FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
-            if (aviso == null) throw new Exception("Aviso no encontrado");
+            
+            if (aviso == null) 
+                throw new Exception("Aviso no encontrado");
 
             aviso.Titulo = avisoDto.Titulo;
             aviso.ContenidoHtml = avisoDto.ContenidoHtml;
             aviso.ImageUrl = avisoDto.ImageUrl;
 
-            // No actualizamos 'Activo' por este método para forzar el uso de ActivarAvisoAsync
-
             await _context.SaveChangesAsync();
+
             return _mapper.Map<AvisoDto>(aviso);
         }
 
@@ -75,7 +71,7 @@ namespace Zenda.Core.Services
             var aviso = await _context.Avisos.FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
             if (aviso != null)
             {
-                aviso.IsDeleted = true; // Soft Delete
+                aviso.IsDeleted = true;
                 if (aviso.Activo) aviso.Activo = false;
                 await _context.SaveChangesAsync();
             }
@@ -83,18 +79,18 @@ namespace Zenda.Core.Services
 
         public async Task ActivarAvisoAsync(Guid id)
         {
-            // 1. Buscamos el aviso que queremos activar
             var avisoAActivar = await _context.Avisos.FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
-            if (avisoAActivar == null) throw new Exception("Aviso no encontrado");
+            
+            if (avisoAActivar == null) 
+                throw new Exception("Aviso no encontrado");
 
-            // 2. Buscamos si hay algún otro aviso activo actualmente y lo desactivamos
             var avisosActivos = await _context.Avisos.Where(a => a.Activo && a.Id != id).ToListAsync();
+
             foreach (var activo in avisosActivos)
             {
                 activo.Activo = false;
             }
 
-            // 3. Activamos el nuevo
             avisoAActivar.Activo = true;
 
             await _context.SaveChangesAsync();

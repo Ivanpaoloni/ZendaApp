@@ -22,30 +22,21 @@ public class ReporteService : IReporteService
         var negocioId = _tenantService.GetCurrentTenantId();
         if (negocioId == null) throw new UnauthorizedAccessException("Tenant no identificado.");
 
-        // =========================================================
-        // 🔥 FIX: TimeZone Shift y Date Boundaries (Alinear con el Home)
-        // =========================================================
         var sede = await _context.Sedes.FirstOrDefaultAsync(s => s.NegocioId == negocioId);
         var zonaHorariaId = sede?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires";
         var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(zonaHorariaId);
 
-        // 1. Tomamos las fechas puras del frontend y las forzamos a locales
         var inicioLocal = DateTime.SpecifyKind(fechaInicioUtc.Date, DateTimeKind.Unspecified);
 
-        // 2. MAGIA: Extendemos el límite superior para abarcar todo el último día hasta el último tick
         var finLocal = DateTime.SpecifyKind(fechaFinUtc.Date.AddDays(1).AddTicks(-1), DateTimeKind.Unspecified);
 
-        // 3. Convertimos a UTC estricto para hacer la consulta segura en BD
         var inicioUtc = TimeZoneInfo.ConvertTimeToUtc(inicioLocal, zonaSede);
         var finUtc = TimeZoneInfo.ConvertTimeToUtc(finLocal, zonaSede);
 
         var reporte = new ReporteDashboardDto();
 
-        // ==========================================
-        // 1. MÉTRICAS DE TURNOS (Directo a SQL)
-        // ==========================================
         var turnosAgrupados = await _context.Turnos
-            .Where(t => t.FechaHoraInicioUtc >= inicioUtc && t.FechaHoraInicioUtc <= finUtc) // Usamos las fechas UTC corregidas
+            .Where(t => t.FechaHoraInicioUtc >= inicioUtc && t.FechaHoraInicioUtc <= finUtc)
             .GroupBy(t => t.Estado)
             .Select(g => new { Estado = g.Key, Cantidad = g.Count() })
             .ToListAsync();
@@ -55,9 +46,6 @@ public class ReporteService : IReporteService
         reporte.TurnosCancelados = turnosAgrupados.FirstOrDefault(x => x.Estado == EstadoTurnoEnum.Cancelado)?.Cantidad ?? 0;
         reporte.TurnosAusentes = turnosAgrupados.FirstOrDefault(x => x.Estado == EstadoTurnoEnum.Ausente)?.Cantidad ?? 0;
 
-        // ==========================================
-        // 2. MÉTRICAS DE CAJA Y FINANZAS
-        // ==========================================
         var queryIngresos = _context.MovimientosCaja
             .Where(m => m.CreatedAtUtc >= inicioUtc
                      && m.CreatedAtUtc <= finUtc
@@ -74,13 +62,9 @@ public class ReporteService : IReporteService
             })
             .ToListAsync();
 
-        // Cálculos generales
         reporte.IngresosTotales = datosIngresos.Sum(x => x.Monto);
         reporte.CantidadTurnosCobrados = datosIngresos.Count(x => x.EsTurno);
 
-        // ==========================================
-        // 3. ARMADO DE GRÁFICOS (Agrupaciones en memoria)
-        // ==========================================
         reporte.IngresosPorMedioPago = datosIngresos
             .GroupBy(x => x.MedioPago)
             .Select(g => new DatoGraficoDto { Etiqueta = g.Key.ToString(), Valor = g.Sum(x => x.Monto) })
@@ -106,21 +90,17 @@ public class ReporteService : IReporteService
 
     public async Task<byte[]> GenerarReporteExcelAsync(DateTime fechaInicioUtc, DateTime fechaFinUtc)
     {
-        // 1. Obtenemos las métricas exactas que ve en pantalla
         var metricas = await GetDashboardMetricsAsync(fechaInicioUtc, fechaFinUtc);
 
-        // 2. Armamos el Excel en memoria
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add("Métricas y Caja");
 
-        // --- Estilos Generales ---
         var titleRow = worksheet.Row(1);
         titleRow.Style.Font.Bold = true;
         titleRow.Style.Font.FontSize = 14;
         worksheet.Cell(1, 1).Value = "REPORTE DE RENDIMIENTO ZENDY";
         worksheet.Cell(2, 1).Value = $"Período evaluado: {fechaInicioUtc:dd/MM/yyyy} al {fechaFinUtc:dd/MM/yyyy}";
 
-        // --- SECCIÓN 1: RESUMEN GENERAL ---
         worksheet.Cell(4, 1).Value = "RESUMEN GENERAL";
         worksheet.Cell(4, 1).Style.Font.Bold = true;
         worksheet.Cell(4, 1).Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -143,7 +123,6 @@ public class ReporteService : IReporteService
         worksheet.Cell(9, 1).Value = "Turnos Ausentes";
         worksheet.Cell(9, 2).Value = metricas.TurnosAusentes;
 
-        // --- SECCIÓN 2: FACTURACIÓN POR PROFESIONAL ---
         worksheet.Cell(11, 1).Value = "FACTURACIÓN POR PROFESIONAL";
         worksheet.Cell(11, 1).Style.Font.Bold = true;
         worksheet.Cell(11, 1).Style.Fill.BackgroundColor = XLColor.LightGray;
@@ -162,7 +141,6 @@ public class ReporteService : IReporteService
             currentRow++;
         }
 
-        // --- SECCIÓN 3: SERVICIOS MÁS SOLICITADOS ---
         currentRow++;
         worksheet.Cell(currentRow, 1).Value = "SERVICIOS MÁS SOLICITADOS";
         worksheet.Cell(currentRow, 1).Style.Font.Bold = true;
@@ -184,7 +162,6 @@ public class ReporteService : IReporteService
 
         worksheet.Columns().AdjustToContents();
 
-        // 3. Convertimos a Stream y devolvemos los bytes
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();

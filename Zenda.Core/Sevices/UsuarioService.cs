@@ -2,6 +2,7 @@
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
 using Zenda.Core.Interfaces;
+
 namespace Zenda.Application.Services;
 
 public class UsuarioService : IUsuarioService

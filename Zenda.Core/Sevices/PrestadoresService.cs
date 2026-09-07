@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Zenda.Core.DTOs;
 using Zenda.Core.Entities;
+using Zenda.Core.Enums;
 using Zenda.Core.Interfaces;
 
 namespace Zenda.Application.Services;
@@ -58,7 +59,9 @@ public class PrestadoresService : IPrestadoresService
     public async Task<PrestadorReadDto?> GetByIdAsync(Guid id)
     {
         var negocioId = _tenantService.GetCurrentTenantId();
-        if (negocioId == null) return null;
+
+        if (negocioId == null) 
+            return null;
 
         var prestador = await _context.Prestadores
             .Include(p => p.Horarios)
@@ -71,7 +74,6 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task<PrestadorReadDto> CreateAsync(PrestadorCreateDto dto)
     {
-        // Validamos el límite del plan antes de hacer nada
         if (!await _planService.PuedeAgregarProfesionalAsync())
         {
             throw new Exception("Has alcanzado el límite de profesionales de tu plan actual.");
@@ -79,7 +81,9 @@ public class PrestadoresService : IPrestadoresService
         var prestador = _mapper.Map<Prestador>(dto);
 
         var tenantId = _tenantService.GetCurrentTenantId();
-        if (tenantId == null) throw new UnauthorizedAccessException("Contexto de negocio no identificado.");
+
+        if (tenantId == null) 
+            throw new UnauthorizedAccessException("Contexto de negocio no identificado.");
 
         prestador.NegocioId = tenantId.Value;
         prestador.Id = Guid.CreateVersion7();
@@ -93,7 +97,8 @@ public class PrestadoresService : IPrestadoresService
             prestador.Servicios = serviciosAsignados;
         }
 
-        if (prestador.DuracionTurnoMinutos <= 0) prestador.DuracionTurnoMinutos = 30;
+        if (prestador.DuracionTurnoMinutos <= 0) 
+            prestador.DuracionTurnoMinutos = 30;
 
         _context.Prestadores.Add(prestador);
         await _context.SaveChangesAsync();
@@ -104,15 +109,16 @@ public class PrestadoresService : IPrestadoresService
     public async Task<bool> UpdateAsync(Guid id, PrestadorUpdateDto dto)
     {
         var tenantId = _tenantService.GetCurrentTenantId();
-        if (tenantId == null) return false;
+        if (tenantId == null) 
+            return false;
 
         var prestadorDb = await _context.Prestadores
             .Include(p => p.Horarios)
             .Include(p => p.Servicios)
-            // 🎯 FIX: Seguridad. Aseguramos que solo pueda editar si es su negocio y no está borrado.
             .FirstOrDefaultAsync(p => p.Id == id && p.NegocioId == tenantId && !p.IsDeleted);
 
-        if (prestadorDb == null) return false;
+        if (prestadorDb == null) 
+            return false;
 
         _mapper.Map(dto, prestadorDb);
 
@@ -122,9 +128,7 @@ public class PrestadoresService : IPrestadoresService
 
             if (dto.ServiciosIds.Any())
             {
-                var nuevosServicios = await _context.Servicios
-                    .Where(s => s.NegocioId == tenantId.Value && dto.ServiciosIds.Contains(s.Id))
-                    .ToListAsync();
+                var nuevosServicios = await _context.Servicios.Where(s => s.NegocioId == tenantId.Value && dto.ServiciosIds.Contains(s.Id)).ToListAsync();
 
                 foreach (var servicio in nuevosServicios)
                 {
@@ -139,7 +143,6 @@ public class PrestadoresService : IPrestadoresService
         return true;
     }
 
-    // Asumiendo que recibes el CancellationToken desde el controlador hasta el servicio
     public async Task<bool> DeleteAsync(Guid id)
     {
         var tenantId = _tenantService.GetCurrentTenantId();
@@ -150,18 +153,16 @@ public class PrestadoresService : IPrestadoresService
 
         if (prestador == null) return false;
 
-        // 1. Definimos explícitamente qué significa "Pendiente" para el negocio
         var estadosActivos = new[]
         {
-        Zenda.Core.Enums.EstadoTurnoEnum.Pendiente,
-        Zenda.Core.Enums.EstadoTurnoEnum.Confirmado
-    };
+            EstadoTurnoEnum.Pendiente,
+            EstadoTurnoEnum.Confirmado
+        };
 
-        // 2. Ejecutamos la consulta optimizada y segura a futuro
         var tieneTurnosPendientes = await _context.Turnos
             .AnyAsync(t => t.PrestadorId == id
                         && t.FechaHoraInicioUtc > DateTime.UtcNow
-                        && estadosActivos.Contains(t.Estado)); // Pasamos el token
+                        && estadosActivos.Contains(t.Estado));
 
         if (tieneTurnosPendientes)
         {
@@ -170,9 +171,6 @@ public class PrestadoresService : IPrestadoresService
 
         prestador.IsDeleted = true;
 
-        // Si tienes campos de auditoría, es un buen momento para actualizarlos:
-        // prestador.DeletedAtUtc = DateTime.UtcNow;
-
         await _context.SaveChangesAsync();
         return true;
     }
@@ -180,7 +178,6 @@ public class PrestadoresService : IPrestadoresService
 
     public async Task ActualizarGoogleTokenAsync(Guid prestadorId, string refreshToken, string calendarId)
     {
-        // Usamos IgnoreQueryFilters por el contexto del Callback (Anonymous)
         var prestador = await _context.Prestadores
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == prestadorId);
@@ -190,7 +187,6 @@ public class PrestadoresService : IPrestadoresService
             throw new KeyNotFoundException($"No se encontró el prestador con ID {prestadorId}.");
         }
 
-        // Actualizamos AMBOS datos
         prestador.GoogleRefreshToken = refreshToken;
         prestador.GoogleCalendarId = calendarId;
 
@@ -206,7 +202,6 @@ public class PrestadoresService : IPrestadoresService
             throw new KeyNotFoundException($"No se encontró el prestador con ID {prestadorId}.");
         }
 
-        // Limpiamos los tokens y el ID del calendario
         prestador.GoogleRefreshToken = null;
         prestador.GoogleCalendarId = null;
 
