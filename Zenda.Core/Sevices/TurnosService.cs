@@ -648,40 +648,42 @@ public class TurnosService : ITurnosService
         return Math.Round(((actual - anterior) / anterior) * 100, 1);
     }
 
-    public async Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, MedioPagoEnum medioPago)
+    public async Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, Guid sedeCajaId, MedioPagoEnum medioPago)
     {
         var negocioId = _tenantService.GetCurrentTenantId();
-        if (negocioId == null) throw new Exception("Id de Negocio invalido.");
+        if (negocioId == null) throw new Exception("Id de Negocio inválido.");
 
         var turno = await _context.Turnos
             .Include(t => t.Servicio)
-            .Include(t => t.Prestador)
-            .ThenInclude(p => p.Sede)
+            .Include(t => t.Prestador).ThenInclude(p => p.Sede)
             .Include(t => t.Cliente)
             .FirstOrDefaultAsync(t => t.Id == turnoId && t.NegocioId == negocioId);
 
         if (turno == null) throw new Exception("Turno no encontrado.");
         if (turno.Estado == EstadoTurnoEnum.Completado) throw new Exception("El turno ya fue cobrado anteriormente.");
 
-        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(turno.Prestador!.Sede!.ZonaHorariaId);
+        // Utilizamos el TimeZone de la sede física que cobra para alinear fechas de caja
+        var sedeCaja = await _context.Sedes.FindAsync(sedeCajaId);
+        var zonaSede = TimeZoneInfo.FindSystemTimeZoneById(sedeCaja?.ZonaHorariaId ?? "America/Argentina/Buenos_Aires");
         var hoyLocalCrudo = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, zonaSede).Date;
         var hoyLocal = DateTime.SpecifyKind(hoyLocalCrudo, DateTimeKind.Utc);
 
-        var cajaDelDia = await _context.CajasDiarias.FirstOrDefaultAsync(c => c.SedeId == turno.Prestador.SedeId && c.EstaAbierta && c.FechaCaja == hoyLocal);
+        // BUSCAMOS LA CAJA DE LA SEDE QUE OPERA, NO LA DEL PRESTADOR
+        var cajaDelDia = await _context.CajasDiarias
+            .FirstOrDefaultAsync(c => c.SedeId == sedeCajaId && c.EstaAbierta && c.FechaCaja == hoyLocal);
 
-        // auto-apertura de caja
         if (cajaDelDia == null)
         {
             cajaDelDia = new CajaDiaria
             {
                 NegocioId = negocioId.Value,
-                SedeId = turno.Prestador.SedeId,
+                SedeId = sedeCajaId, 
                 FechaCaja = hoyLocal,
                 MontoInicial = 0,
                 EstaAbierta = true
             };
             _context.CajasDiarias.Add(cajaDelDia);
-            await _context.SaveChangesAsync(); // Guardamos para generar el ID
+            await _context.SaveChangesAsync(); 
         }
 
         var ingreso = new MovimientoCaja
@@ -691,16 +693,17 @@ public class TurnosService : ITurnosService
             Monto = turno.Servicio.Precio,
             Tipo = TipoMovimientoEnum.Ingreso,
             MedioPago = medioPago,
-            Detalle = $"Cobro Turno: {turno.Servicio.Nombre} - {turno.Cliente.Nombre}",
+            // Agregamos el nombre del prestador al detalle para no perder la trazabilidad de la venta
+            Detalle = $"Cobro Turno: {turno.Servicio.Nombre} - {turno.Cliente.Nombre} (Prof: {turno.Prestador!.Nombre})",
             TurnoId = turno.Id
         };
 
         _context.MovimientosCaja.Add(ingreso);
-
         turno.Estado = EstadoTurnoEnum.Completado;
 
         return await _context.SaveChangesAsync() > 0;
     }
+
     public async Task<byte[]> GenerarReporteExcelAsync(DateTime desde, DateTime hasta)
     {
         var negocioId = _tenantService.GetCurrentTenantId();

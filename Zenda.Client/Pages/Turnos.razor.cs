@@ -332,7 +332,23 @@ namespace Zenda.Client.Pages
 
             try
             {
-                await TurnoService.CobrarTurno(turnoACobrar.Id, medioPagoSeleccionado);
+                // 1. Determinar el contexto de la Sede Física del operador.
+                // Si hay una sede en el filtro, usamos esa. Si no, usamos la primera disponible en memoria.
+                var sedeOperacion = sedesCompletas.FirstOrDefault(s => s.Nombre == sedeFiltro) 
+                                ?? sedesCompletas.FirstOrDefault();
+                                
+                if (sedeOperacion == null) 
+                    throw new Exception("No se ha definido una sede activa para procesar la caja.");
+
+                // 2. Modificar tu TurnoService del Frontend para que acepte un objeto Request en lugar de un Enum suelto.
+                var request = new CobrarTurnoRequest
+                {
+                    MedioPago = medioPagoSeleccionado,
+                    SedeCajaId = sedeOperacion.Id
+                };
+
+                // NOTA: Asegúrate de actualizar la firma de este método en tu cliente HTTP
+                await TurnoService.CobrarTurno(turnoACobrar.Id, request);
 
                 var turnoLocal = turnosDelPeriodo.FirstOrDefault(t => t.Id == turnoACobrar.Id);
                 if (turnoLocal != null)
