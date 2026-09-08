@@ -101,17 +101,21 @@ public class TurnoClient : BaseClient
         return await _http.GetFromJsonAsync<DashboardResumenDto>("api/Turnos/dashboard/resumen");
     }
 
-    public async Task<bool> CobrarTurno(Guid id, Zenda.Core.Enums.MedioPagoEnum medioPago)
+    public async Task<bool> CobrarTurno(Guid id, CobrarTurnoRequest request)
     {
-        var response = await _http.PostAsJsonAsync($"api/turnos/{id}/cobrar", new { MedioPago = medioPago });
+        // System.Net.Http.Json serializa el DTO automáticamente
+        var response = await _http.PostAsJsonAsync($"api/turnos/{id}/cobrar", request);
 
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            throw new Exception(error); // Lanzamos el error para atajarlo en la UI
+            // Centralizamos el parseo del BadRequest / Error Response
+            throw new Exception(ParseError(error)); 
         }
+        
         return true;
     }
+    
     public async Task<Stream?> GetExcelStreamAsync(DateTime desde, DateTime hasta)
     {
         // Formateamos en ISO para evitar problemas en la URL

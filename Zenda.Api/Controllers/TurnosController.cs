@@ -122,14 +122,15 @@ public class TurnosController : ControllerBase
         var resumen = await _turnosService.GetDashboardResumenAsync();
         return Ok(resumen);
     }
+    
     [Authorize]
     [HttpPost("{id}/cobrar")]
     public async Task<IActionResult> CobrarTurno(Guid id, [FromBody] CobrarTurnoRequest request)
     {
         try
         {
-            var exito = await _turnosService.FinalizarYCobrarTurnoAsync(id, request.MedioPago);
-
+            // Pasamos el SedeCajaId al servicio de dominio
+            var exito = await _turnosService.FinalizarYCobrarTurnoAsync(id, request.SedeCajaId, request.MedioPago);
             if (exito) return Ok();
 
             return BadRequest("No se pudo procesar el cobro.");
@@ -170,5 +171,6 @@ public class TurnosController : ControllerBase
     public class CobrarTurnoRequest
     {
         public MedioPagoEnum MedioPago { get; set; }
+        public Guid SedeCajaId { get; set; }
     }
 }
