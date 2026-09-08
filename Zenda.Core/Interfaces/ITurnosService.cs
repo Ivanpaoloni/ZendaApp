@@ -20,5 +20,5 @@ public interface ITurnosService
     Task<byte[]> GenerarReporteExcelAsync(DateTime desde, DateTime hasta);
     Task<bool> CambiarEstadoAsync(Guid turnoId, EstadoTurnoEnum nuevoEstado);
     Task<bool> CancelarPorClienteAsync(Guid turnoId);
-    Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, MedioPagoEnum medioPago); 
+    Task<bool> FinalizarYCobrarTurnoAsync(Guid turnoId, Guid sedeCajaId, MedioPagoEnum medioPago);
 }
