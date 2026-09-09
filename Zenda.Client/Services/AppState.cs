@@ -17,7 +17,20 @@ public class AppState
     // 3. La sede seleccionada (Útil si querés filtrar la agenda por sede)
     public SedeReadDto? SedeSeleccionada { get; set; }
 
-    // --- MAGIA DE BLAZOR: Notificar cambios ---
+    private string? _profesionalAgendaSeleccionado;
+    public string? ProfesionalAgendaSeleccionado
+    {
+        get => _profesionalAgendaSeleccionado;
+        set
+        {
+            if (_profesionalAgendaSeleccionado != value)
+            {
+                _profesionalAgendaSeleccionado = value;
+                NotifyStateChanged();
+            }
+        }
+    }
+
     // Esto sirve para que si un componente cambia algo, el resto se entere
     public event Action? OnChange;
 
@@ -29,6 +42,7 @@ public class AppState
         CurrentNegocio = null;
         PrestadorEnEdicion = null;
         SedeSeleccionada = null;
+        ProfesionalAgendaSeleccionado = null;
         NotifyStateChanged();
     }
 

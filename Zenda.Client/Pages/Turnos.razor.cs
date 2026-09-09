@@ -33,9 +33,19 @@ namespace Zenda.Client.Pages
         // Variables Filtros
         protected string busquedaCliente = "";
         protected string estadoFiltro = "";
-        protected string profesionalFiltro = "";
         protected string sedeFiltro = "";
         protected string servicioFiltro = "";
+        protected string profesionalFiltro
+        {
+            get => State.ProfesionalAgendaSeleccionado ?? "";
+            set
+            {
+                if (State.ProfesionalAgendaSeleccionado != value)
+                {
+                    State.ProfesionalAgendaSeleccionado = value;
+                }
+            }
+        }
 
         // Opciones Combos Desplegables
         protected List<string> listaProfesionalesDropdown = new();
@@ -334,10 +344,10 @@ namespace Zenda.Client.Pages
             {
                 // 1. Determinar el contexto de la Sede Física del operador.
                 // Si hay una sede en el filtro, usamos esa. Si no, usamos la primera disponible en memoria.
-                var sedeOperacion = sedesCompletas.FirstOrDefault(s => s.Nombre == sedeFiltro) 
+                var sedeOperacion = sedesCompletas.FirstOrDefault(s => s.Nombre == sedeFiltro)
                                 ?? sedesCompletas.FirstOrDefault();
-                                
-                if (sedeOperacion == null) 
+
+                if (sedeOperacion == null)
                     throw new Exception("No se ha definido una sede activa para procesar la caja.");
 
                 // 2. Modificar tu TurnoService del Frontend para que acepte un objeto Request en lugar de un Enum suelto.
