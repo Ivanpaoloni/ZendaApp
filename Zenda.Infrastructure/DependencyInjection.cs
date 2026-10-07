@@ -56,18 +56,25 @@ public static class DependencyInjection
                 options.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"));
             }, new PostgreSqlStorageOptions
             {
-                QueuePollInterval = TimeSpan.FromSeconds(30), // frecuencia de consulta. 
-                InvisibilityTimeout = TimeSpan.FromMinutes(5), // Evita reprocesamientos agresivos
-                JobExpirationCheckInterval = TimeSpan.FromHours(1), // Limpieza de disco, verifica los trabajos completados/expirados
-                PrepareSchemaIfNecessary = true // Otras opciones recomendadas para estabilidad
+                //QueuePollInterval = TimeSpan.FromSeconds(30), // frecuencia de consulta. 
+                //InvisibilityTimeout = TimeSpan.FromMinutes(5), // Evita reprocesamientos agresivos
+                //JobExpirationCheckInterval = TimeSpan.FromHours(1), // Limpieza de disco, verifica los trabajos completados/expirados
+                //PrepareSchemaIfNecessary = true // Otras opciones recomendadas para estabilidad
+
+                // Aumentar a 3-5 minutos. Si entra un envío de correo, tardará hasta 5 min en procesarse, 
+                // lo cual es aceptable para un entorno sin usuarios.
+                QueuePollInterval = TimeSpan.FromMinutes(2),
+                InvisibilityTimeout = TimeSpan.FromMinutes(2),
+                JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                PrepareSchemaIfNecessary = true
             }));
 
         // Limitar los Workers
         // Por defecto Hangfire usa Environment.ProcessorCount * 5 (lo que abre muchas conexiones).
-        // 2 Workers son más que suficientes para ZendaApp antes del lanzamiento masivo.
+        // 1-2 Workers son más que suficientes para ZendaApp antes del lanzamiento masivo.
         services.AddHangfireServer(options =>
         {
-            options.WorkerCount = 2;
+            options.WorkerCount = 1;
         });
         #endregion
 
@@ -102,7 +109,8 @@ public static class DependencyInjection
             var baseApiUrl = configuration["BaseApiUrl"] ?? "https://api.zendy.com.ar/";
             var healthEndpoint = $"{baseApiUrl.TrimEnd('/')}/health";
 
-            setup.SetEvaluationTimeInSeconds(30);
+            setup.SetEvaluationTimeInSeconds(300);
+            setup.SetMinimumSecondsBetweenFailureNotifications(3600); // Notificar fallos máximo 1 vez por hora
         }).AddInMemoryStorage();
 
         return services;
